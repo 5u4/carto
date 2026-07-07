@@ -179,4 +179,15 @@ describe("applyHashes", () => {
     mutatedChildren?.push("ghost");
     expect(ir.nodes["a"]?.children).toEqual(["b"]);
   });
+
+  it("does not pollute Object.prototype for a __proto__ node id", () => {
+    const ir = makeIr();
+    const hostile = JSON.parse(
+      '{"__proto__":{"id":"__proto__","name":"X","parent":null,"children":[],"sources":[]}}',
+    ) as Ir["nodes"];
+    const polluted: Ir = { ...ir, nodes: hostile };
+    applyHashes(polluted, new Map());
+    expect(({} as Record<string, unknown>)["id"]).toBeUndefined();
+    expect(Object.prototype).not.toHaveProperty("name");
+  });
 });

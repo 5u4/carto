@@ -56,7 +56,7 @@ export function staleNodes(ir: Ir, changedFiles: Iterable<string>): StaleNode[] 
 }
 
 export function applyHashes(ir: Ir, current: ReadonlyMap<string, string>): Ir {
-  const nodes: Ir["nodes"] = {};
+  const nodes = Object.create(null) as Ir["nodes"];
   for (const [id, node] of Object.entries(ir.nodes)) {
     nodes[id] = {
       ...node,

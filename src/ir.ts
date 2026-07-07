@@ -4,7 +4,7 @@ export const SourceSchema = z.object({
   file: z
     .string()
     .min(1)
-    .refine((file) => !file.startsWith("/") && !/^[A-Za-z]:/.test(file), {
+    .refine((file) => !file.startsWith("/") && !file.startsWith("\\") && !/^[A-Za-z]:/.test(file), {
       message: "source file must be a relative path",
     })
     .refine((file) => !file.split(/[\\/]/).includes(".."), {

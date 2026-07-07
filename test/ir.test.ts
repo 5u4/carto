@@ -159,4 +159,16 @@ describe("IrSchema", () => {
     };
     expect(() => IrSchema.parse(invalid)).toThrow();
   });
+
+  it("rejects a Windows UNC absolute source file path", () => {
+    const ir = validIr();
+    const invalid = {
+      ...ir,
+      nodes: {
+        ...ir.nodes,
+        root: { ...ir.nodes["root"], sources: [{ file: "\\\\server\\share\\file.ts", hash: "sha256:x" }] },
+      },
+    };
+    expect(() => IrSchema.parse(invalid)).toThrow();
+  });
 });
