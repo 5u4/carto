@@ -135,4 +135,28 @@ describe("IrSchema", () => {
     };
     expect(() => IrSchema.parse(shared)).not.toThrow();
   });
+
+  it("rejects an absolute source file path", () => {
+    const ir = validIr();
+    const invalid = {
+      ...ir,
+      nodes: {
+        ...ir.nodes,
+        root: { ...ir.nodes["root"], sources: [{ file: "/etc/passwd", hash: "sha256:x" }] },
+      },
+    };
+    expect(() => IrSchema.parse(invalid)).toThrow();
+  });
+
+  it("rejects a source file with a '..' traversal segment", () => {
+    const ir = validIr();
+    const invalid = {
+      ...ir,
+      nodes: {
+        ...ir.nodes,
+        root: { ...ir.nodes["root"], sources: [{ file: "../../secret.ts", hash: "sha256:x" }] },
+      },
+    };
+    expect(() => IrSchema.parse(invalid)).toThrow();
+  });
 });

@@ -168,4 +168,15 @@ describe("applyHashes", () => {
     expect(updated).not.toBe(ir);
     expect(updated.nodes).not.toBe(ir.nodes);
   });
+
+  it("does not alias children arrays or source objects from the input ir", () => {
+    const ir = makeIr();
+    const current = new Map<string, string>();
+    const updated = applyHashes(ir, current);
+    expect(updated.nodes["a"]?.children).not.toBe(ir.nodes["a"]?.children);
+    expect(updated.nodes["a"]?.sources[0]).not.toBe(ir.nodes["a"]?.sources[0]);
+    const mutatedChildren = updated.nodes["a"]?.children;
+    mutatedChildren?.push("ghost");
+    expect(ir.nodes["a"]?.children).toEqual(["b"]);
+  });
 });

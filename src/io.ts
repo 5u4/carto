@@ -26,8 +26,11 @@ export async function currentHashes(ir: Ir, root: string): Promise<Map<string, s
       }
       try {
         hashes.set(file, hashContent(await readFile(resolve(root, file))));
-      } catch {
-        continue;
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+          continue;
+        }
+        throw error;
       }
     }
   };

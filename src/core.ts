@@ -60,9 +60,10 @@ export function applyHashes(ir: Ir, current: ReadonlyMap<string, string>): Ir {
   for (const [id, node] of Object.entries(ir.nodes)) {
     nodes[id] = {
       ...node,
+      children: [...node.children],
       sources: node.sources.map((source) => {
         const currentHash = current.get(source.file);
-        return currentHash === undefined ? source : { ...source, hash: currentHash };
+        return { ...source, hash: currentHash ?? source.hash };
       }),
     };
   }
