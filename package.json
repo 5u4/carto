@@ -1,0 +1,26 @@
+{
+  "name": "carto",
+  "version": "1.0.0",
+  "description": "Agent-driven tool that turns a codebase into a human-readable, incrementally-maintainable static site: component responsibilities, data flow, and on-demand drill-down.",
+  "scripts": {
+    "build": "echo \"not implemented\" && exit 1"
+  },
+  "keywords": [
+    "codebase",
+    "documentation",
+    "static-site",
+    "astro",
+    "llm"
+  ],
+  "author": "sen",
+  "license": "MIT",
+  "devEngines": {
+    "packageManager": {
+      "name": "pnpm",
+      "version": "^11.10.0",
+      "onFail": "download"
+    }
+  },
+  "type": "module",
+  "packageManager": "pnpm@11.10.0"
+}
