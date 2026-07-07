@@ -36,6 +36,7 @@ export const IrSchema = z
         path: ["project", "defaultLocale"],
       });
     }
+    const hashByFile = new Map<string, string>();
     for (const [key, node] of Object.entries(ir.nodes)) {
       if (node.id !== key) {
         ctx.addIssue({
@@ -44,7 +45,7 @@ export const IrSchema = z
           path: ["nodes", key, "id"],
         });
       }
-      if (node.parent !== null && !(node.parent in ir.nodes)) {
+      if (node.parent !== null && !Object.hasOwn(ir.nodes, node.parent)) {
         ctx.addIssue({
           code: "custom",
           message: `node "${key}" references unknown parent "${node.parent}"`,
@@ -52,7 +53,7 @@ export const IrSchema = z
         });
       }
       for (const child of node.children) {
-        if (!(child in ir.nodes)) {
+        if (!Object.hasOwn(ir.nodes, child)) {
           ctx.addIssue({
             code: "custom",
             message: `node "${key}" references unknown child "${child}"`,
@@ -60,6 +61,18 @@ export const IrSchema = z
           });
         }
       }
+      node.sources.forEach((source, index) => {
+        const seen = hashByFile.get(source.file);
+        if (seen === undefined) {
+          hashByFile.set(source.file, source.hash);
+        } else if (seen !== source.hash) {
+          ctx.addIssue({
+            code: "custom",
+            message: `source "${source.file}" has conflicting hashes across nodes ("${seen}" vs "${source.hash}")`,
+            path: ["nodes", key, "sources", index, "hash"],
+          });
+        }
+      });
     }
   });
 

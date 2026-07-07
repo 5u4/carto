@@ -93,4 +93,46 @@ describe("IrSchema", () => {
     const invalid = { ...ir, project: { ...ir.project, locales: [] } };
     expect(() => IrSchema.parse(invalid)).toThrow();
   });
+
+  it("rejects a parent that only exists on the object prototype", () => {
+    const ir = validIr();
+    const invalid = {
+      ...ir,
+      nodes: {
+        ...ir.nodes,
+        child: { ...ir.nodes["child"], parent: "constructor" },
+      },
+    };
+    expect(() => IrSchema.parse(invalid)).toThrow();
+  });
+
+  it("rejects the same source file carrying conflicting hashes across nodes", () => {
+    const ir = validIr();
+    const invalid = {
+      ...ir,
+      nodes: {
+        ...ir.nodes,
+        child: {
+          ...ir.nodes["child"],
+          sources: [{ file: "src/index.ts", hash: "sha256:different" }],
+        },
+      },
+    };
+    expect(() => IrSchema.parse(invalid)).toThrow();
+  });
+
+  it("accepts the same source file repeated with identical hashes", () => {
+    const ir = validIr();
+    const shared = {
+      ...ir,
+      nodes: {
+        ...ir.nodes,
+        child: {
+          ...ir.nodes["child"],
+          sources: [{ file: "src/index.ts", hash: "sha256:aaa" }],
+        },
+      },
+    };
+    expect(() => IrSchema.parse(shared)).not.toThrow();
+  });
 });
