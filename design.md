@@ -8,10 +8,10 @@ Status: design baseline for review. Nothing built yet.
 
 ### Goals
 
-- Produce a **human-readable static HTML site** for learning a large codebase: component responsibilities, data flow, cross-component relationships, examples where they help.
+- Produce a **human-readable static HTML site** for learning a large codebase: component responsibilities, data flow, and how components relate, with examples where they help.
 - **Lazy, on-demand depth.** No full-repo upfront build. The LLM decides how broad/deep to seed on first creation; any component can then be drilled into, arbitrarily many levels deep, when asked. Depth is where the tree has grown, not a per-node flag.
 - **Incremental.** When source changes, the tool reports which pages depend on the changed files; regeneration is the LLM's/user's call, not automatic (see §6).
-- **Clean content/presentation split.** The LLM writes only structured content (a small structure IR + Markdown/MDX prose + Mermaid text). A compiler (Astro) renders the HTML. Re-theming never re-invokes the LLM.
+- **Clean content/presentation split.** The LLM writes only structured content (a small structure IR + Markdown/MDX prose). A compiler (Astro) renders the HTML. Re-theming never re-invokes the LLM.
 - **Bring-your-own-LLM.** carto ships **a skill + a deterministic CLI + an Astro template** and contains **zero LLM-provider code** — no model SDK, no knowledge of any provider. It adapts to the host agent (omp) through just two interfaces: a skill omp reads and a CLI omp runs (see §8). The agent supplies the model, LSP, file tools, and subagents; carto never calls an LLM.
 
 ### Non-goals
@@ -27,7 +27,7 @@ A retrieval/embedding approach earns its place only when you must (a) compress a
 
 This design needs neither:
 
-- **Bounded context comes from the component graph, not similarity search.** To write/drill a component, the agent is fed *that component's source files + the signatures of its direct graph neighbors* — precise, structural, deterministic. This is more accurate and cheaper than fuzzy top-k retrieval, and needs zero embeddings.
+- **Bounded context comes from structure, not similarity search.** To write/drill a component, the agent reads *that component's source files + the files they directly import/reference* — precise, structural, deterministic. This is more accurate and cheaper than fuzzy top-k retrieval, and needs zero embeddings.
 - **Navigation replaces free-text semantic search.** The user drills through the containment tree; there is no "which parts handle auth?" free-text query path, so the one scenario where retrieval earns its place is absent.
 
 Consequence: no embedding step at all — the CPU-embedding cost that makes retrieval-based tools impractical on a small box simply does not exist here.
@@ -52,15 +52,7 @@ The single source of truth for hierarchy, relationships, and staleness. It is th
       "children": ["scheduler.triggers", "scheduler.store"],
       "sources": [
         { "file": "crates/core/src/schedule/mod.rs", "hash": "sha256:…" }
-      ],
-      "refs": [
-        { "to": "discord-engine", "kind": "data_flow" },
-        { "to": "config", "kind": "depends_on" }
-      ],
-      "content": {
-        "en": { "contentHash": "sha256:…" },
-        "zh": { "contentHash": "sha256:…" }
-      }
+      ]
     }
   }
 }
@@ -69,15 +61,14 @@ The single source of truth for hierarchy, relationships, and staleness. It is th
 Field notes:
 
 - `children` — the **containment tree** (the backbone). Drives navigation, sidebar, routing, and the drill hierarchy. Can grow arbitrarily deep. This is the "tree" half. **A node's presence in the tree is the only depth state there is — no `stub`/`deep`/`expanded` flag.** A node either exists (fully written, or a placeholder at the LLM's discretion) or it doesn't. "How deep is this explored" = "how far has the tree grown here". A node with no `children` simply hasn't had its next level generated yet.
-- `refs` — **cross-reference edges** overlaid on the tree, expressing what the tree can't: `depends_on` and `data_flow` (only these two — see §10). A cross-cutting node (error handling, logging, config) is referenced by many nodes via `refs` while living at exactly one place in the tree. This is the "graph" half. Rendered as in-page "→ related" links and Mermaid diagrams.
-- `sources` — the files this node's page describes, each with a content hash. Multiple nodes may list the same file. When a source hash changes, the tool *reports* the node as possibly-stale — this is **information, not a regeneration trigger** (see §6).
-- `content.<locale>.contentHash` — hash of the generated MDX body per locale, to detect manual edits. **Language is a content-layer property; everything above (`id`/`children`/`refs`/`sources`) is language-neutral** — component structure does not change per language. Adding a locale = adding content, never touching structure.
+- `sources` — the files this node's page describes, each with the hash **of that source file** at the time the node was last generated. One list per node (not per locale — see below). Multiple nodes may list the same file. When a source file's current hash differs from the stored one, the tool *reports* the node as possibly-stale — this is **information, not a regeneration trigger** (see §6). (Note: this hashes the *source*, never the generated MDX — tracking a hash of generated output would be pointless, since regeneration is unconstrained.)
+- **Locale is atomic, and lives entirely off the node.** A node carries no per-locale state at all — no `content` block, no per-locale hash. The set of languages is declared once in `project.locales`; each language is a sibling MDX file (`<id>.<locale>.mdx`). **Regenerating a node regenerates all of its locales together** — you can never update just `en` and leave `zh` behind, so there is no per-locale freshness to track and no version matrix. Node fresh ⟺ every language fresh. Everything in `ir.json` (`id`/`children`/`sources`) is language-neutral; language exists only as a projection in the content layer.
 
-Why tree **and** graph (not pure tree): code dependencies are a graph, not a tree. A pure tree cannot express a component depended on from many places, nor a data-flow path that crosses branches (Discord msg → engine → omp host). So: **tree is the backbone (navigation + file layout + drill); a thin edge layer is overlaid for relationships.** They are independent — `children` says "where things live", `refs` says "how things connect".
+The structure layer is deliberately a **pure tree** — `children` for containment plus `sources` for the staleness anchor, nothing else. Relationships a tree can't express (dependencies, data flow, "who uses this") are NOT encoded as structure-layer edges; they live in the content layer as prose and inline `[]()` links the LLM writes. This keeps the machine-truth minimal (hierarchy + staleness) and pushes every richer relationship into free narrative. A relationship-edge field can be added back later as a pure, non-breaking increment if machine-queryable dependencies are ever needed (see §10).
 
 ### Content layer — MDX per (node, locale) (LLM writes naturally, diffs cleanly)
 
-One MDX file per node per locale. Body is Markdown prose + code examples (with source file + line refs) + Mermaid text for data-flow diagrams. Frontmatter carries `locale` + the per-node structured metadata mirrored from `ir.json`. The LLM never emits HTML/CSS/SVG — Mermaid text is rendered to SVG by the compiler.
+One MDX file per node per locale. Body is Markdown prose + code examples (with source file + line refs). **Data flow is told as an ordered narrative** — step by step through the code path — not as a default diagram; large auto-generated graphs read poorly and are hostile on mobile. Mermaid is allowed but opt-in: the LLM may drop a ```mermaid block where a small diagram genuinely helps, and Astro renders it. The LLM never emits HTML/CSS/SVG.
 
 ## 4. On-disk layout — flat, id-addressed storage
 
@@ -113,8 +104,8 @@ Skill contents:
 
 - **Tool usage** — when/how to call the CLI (`carto hash|diff|stale|build`), the `ir.json` format, and what each frontmatter field means / how to keep MDX frontmatter consistent with `ir.json`.
 - **Style contract (the real value)** — the rules that keep output uniform and readable regardless of which node or session generated it:
-  - Link components by IR `id` cross-reference, never by bare file path.
-  - Data flow expressed as Mermaid; relationships surfaced as "→ related component" links from `refs`.
+  - Link to other component pages with inline `[]()` links by node id (the page route), never by bare file path.
+  - Data flow is walked as an ordered narrative (1 → 2 → 3 through the code path), not drawn as a default diagram. A Mermaid block is optional — only when a small diagram is genuinely clearer.
   - Consistent voice and a consistent section skeleton per page (responsibility → key types/functions → data flow → relationships → examples-if-needed).
   - Include a code example only when it clarifies (not for trivial glue).
 
@@ -133,9 +124,9 @@ Two distinct change kinds the tool distinguishes:
 
 CLI support (deterministic, zero LLM — pure fact-reporting):
 
-- `carto hash` — recompute source + content hashes, write into `ir.json`.
-- `carto diff` — compare current source hashes to `ir.json`; list changed files.
-- `carto stale` — map changed files → affected node ids (via `sources`); report what changed. Reporting only — issues no regeneration.
+- `carto hash` — recompute the hash of each source file listed in `ir.json` and write the current values in. (Source files only — carto never hashes generated MDX.)
+- `carto diff` — compare current source-file hashes to `ir.json`; list changed files.
+- `carto stale` — map changed files → affected node ids (via `sources`); report what changed. Node-level only — there is no per-locale staleness, since a node's locales are regenerated together (§3). Reporting only — issues no regeneration.
 - `carto build` — compile `content/` → static HTML.
 
 The agent calls these to learn what changed; the skill's style contract governs how a regenerated page reads, but nothing forces regeneration.
@@ -156,7 +147,7 @@ The tool is intentionally thin — skills + a small deterministic CLI + an Astro
 
 There is no API, config, or provider handshake between carto and omp — the coupling is just "a skill omp reads + a command omp runs". The agent supplies the model, the file/LSP tools, and the subagents; carto supplies structure-hashing, staleness reporting, and the Astro build.
 
-- **Astro template** — structure layer = a content collection with a Zod-validated schema (frontmatter: id/name/parent/children/sources+hashes/refs/locale); content layer = MDX bodies; Mermaid via an Astro rehype plugin; i18n via Astro's built-in locale routing.
+- **Astro template** — structure layer = a content collection with a Zod-validated schema (frontmatter: id/name/parent/children/sources+hashes/locale); content layer = MDX bodies; optional Mermaid via an Astro rehype plugin; i18n via Astro's built-in locale routing.
 
 ## 9. Known risks
 
@@ -166,12 +157,12 @@ There is no API, config, or provider handshake between carto and omp — the cou
 
 ## 10. Resolved decisions
 
-- **Hashing granularity: whole-file.** Line-range hashing is more precise but brittle under reformatting (rustfmt / bulk import edits shift every range → false stale). Whole-file + a `contentHash` short-circuit (regenerated MDX identical to old → don't rewrite, don't ripple) is cheaper and stable. Line-range permanently deferred unless non-reformat small-edit churn becomes a real problem.
-- **`refs` edge kinds: `depends_on` + `data_flow` only.** `calls` was dropped — it overlaps `depends_on` (A calls B ≈ A depends on B) and would make the LLM waver on which to tag, hurting style uniformity. `data_flow` stays because directional flow is a distinct axis from dependency. `implements`/`configures` are NOT added preemptively — new edge kinds are driven by "the docs can't explain something", not by upfront design.
+- **Hashing granularity: whole-file, source files only.** Line-range hashing is more precise but brittle under reformatting (rustfmt / bulk import edits shift every range → false stale). carto hashes the *source files* a node covers, never the generated MDX. Line-range permanently deferred unless non-reformat small-edit churn becomes a real problem.
+- **No structure-layer relationship edges.** `refs` (and its `depends_on`/`data_flow`/`calls` kinds) was removed entirely. Navigation is inline `[]()` links the LLM writes in prose; data flow is ordered narrative; "who depends on me" reverse-lookup and ripple analysis are not needs for a learning doc. Per the "edges are driven by what the docs can't explain" rule, nothing is encoded upfront. A relationship-edge field can be re-added later as a pure, non-breaking increment if machine-queryable dependencies become a real need.
 - **No node depth states, no `expanded`.** Dropped entirely (see §3). A node either exists (fully generated) or doesn't. Depth is the tree's shape, not a per-node flag.
 - **Regeneration is never gated on source change.** `stale` is information, not a trigger (see §6). The LLM may rewrite any page anytime — even with unchanged sources — and may leave placeholders. Generation strategy is entirely the LLM's call and is deliberately NOT encoded in the skill.
-- **Compiler: Astro + Zod-validated content collections.** Decisive reason: the structure-layer schema (id/sources/hashes/refs/parent/children/locale) is directly a Zod schema, validated at build time. MDX first-class, Mermaid via rehype, componentized sidebar. mdBook (all-Rust) rejected: its "structured Markdown directory" input model fights the flat-id + ir.json-rebuilt-tree + graph-edges + Zod-validation approach, needing more glue.
-- **i18n: language is a content-layer property; the structure layer is language-neutral.** See §3/§4.
+- **Compiler: Astro + Zod-validated content collections.** Decisive reason: the structure-layer schema (id/name/parent/children/sources+hashes/locale) is directly a Zod schema, validated at build time. MDX first-class, optional Mermaid via rehype, componentized sidebar. mdBook (all-Rust) rejected: its "structured Markdown directory" input model fights the flat-id + ir.json-rebuilt-tree + Zod-validation approach, needing more glue.
+- **i18n: language is an atomic content-layer projection.** The structure layer is language-neutral; a node holds no per-locale state. Regenerating a node regenerates ALL its locales together — no updating just one language, so no per-locale freshness tracking and no version matrix. Node fresh ⟺ every language fresh. See §3/§4.
 
 ## 11. Implementation stack
 
