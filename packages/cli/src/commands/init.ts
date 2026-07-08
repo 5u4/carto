@@ -1,0 +1,40 @@
+import { defineCommand } from 'citty'
+import { access, mkdir, writeFile } from 'node:fs/promises'
+import { join } from 'node:path'
+import { serializeManifest, type Manifest } from '@carto/core'
+
+export const initCommand = defineCommand({
+  meta: { name: 'init', description: 'Scaffold carto.json and docs/ in the current directory' },
+  args: {
+    locales: { type: 'string', description: 'Comma-separated locales', default: 'en' },
+    defaultLocale: { type: 'string', description: 'Default locale', default: 'en' }
+  },
+  async run({ args }) {
+    const root = process.cwd()
+    const manifestPath = join(root, 'carto.json')
+    if (await exists(manifestPath)) {
+      console.error('carto.json already exists; refusing to overwrite')
+      process.exit(1)
+    }
+    const locales = args.locales.split(',').map((l) => l.trim()).filter(Boolean)
+    const manifest: Manifest = {
+      version: 1,
+      locales,
+      defaultLocale: args.defaultLocale,
+      updated_at: new Date().toISOString(),
+      nodes: []
+    }
+    await mkdir(join(root, 'docs'), { recursive: true })
+    await writeFile(manifestPath, serializeManifest(manifest), 'utf8')
+    console.log(`initialized carto.json (locales: ${locales.join(', ')}) and docs/`)
+  }
+})
+
+async function exists(path: string): Promise<boolean> {
+  try {
+    await access(path)
+    return true
+  } catch {
+    return false
+  }
+}
