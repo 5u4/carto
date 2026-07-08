@@ -69,6 +69,22 @@ describe('checkTree', () => {
     expect(cycleIssues[0]).toMatchObject({ severity: 'error', kind: 'parent-cycle' })
   })
 
+  it('excludes lead-in nodes from a cycle reached via a non-cyclic path', () => {
+    const nodes = [node({ id: 'x', parent: 'a' }), node({ id: 'a', parent: 'b' }), node({ id: 'b', parent: 'a' })]
+    const issues = checkTree(nodes)
+    const cycleIssues = issues.filter((issue) => issue.kind === 'parent-cycle')
+    expect(cycleIssues).toHaveLength(1)
+    const [cycleIssue] = cycleIssues
+    if (cycleIssue?.kind !== 'parent-cycle') throw new Error('expected a parent-cycle issue')
+    expect([...cycleIssue.ids].sort()).toEqual(['a', 'b'])
+  })
+
+  it('reports a self-parent as a one-node cycle', () => {
+    const nodes = [node({ id: 'a', parent: 'a' })]
+    const issues = checkTree(nodes)
+    expect(issues).toEqual([{ severity: 'error', kind: 'parent-cycle', ids: ['a'] }])
+  })
+
   it('returns no issues for a valid tree', () => {
     const nodes = [node({ id: 'root' }), node({ id: 'child', parent: 'root' })]
     expect(checkTree(nodes)).toEqual([])

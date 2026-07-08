@@ -65,18 +65,21 @@ export function checkTree(nodes: Node[]): TreeIssue[] {
 
   const cycleKeys = new Set<string>()
   for (const start of nodes) {
-    const seen = new Set<string>()
+    const path: string[] = []
+    const onPath = new Set<string>()
     let current: Node | undefined = start
     while (current && current.parent !== undefined && byId.has(current.parent)) {
-      if (seen.has(current.id)) {
-        const key = [...seen].sort().join(',')
+      if (onPath.has(current.id)) {
+        const cycle = path.slice(path.indexOf(current.id))
+        const key = [...cycle].sort().join(',')
         if (!cycleKeys.has(key)) {
           cycleKeys.add(key)
-          issues.push({ severity: 'error', kind: 'parent-cycle', ids: [...seen] })
+          issues.push({ severity: 'error', kind: 'parent-cycle', ids: cycle })
         }
         break
       }
-      seen.add(current.id)
+      path.push(current.id)
+      onPath.add(current.id)
       current = byId.get(current.parent)
     }
   }
