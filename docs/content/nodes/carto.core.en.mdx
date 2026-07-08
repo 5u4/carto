@@ -1,0 +1,74 @@
+---
+id: carto.core
+name: Hashing Core
+locale: en
+contentHash: sha256:pending
+---
+
+## Responsibility
+
+`src/core.ts` holds carto's pure hashing, diffing, and staleness logic. Every function here is filesystem-free: it takes an [IR](/en/carto.ir/) and, where relevant, a `current` hash map, and returns a value without reading a file, calling a model, or mutating its input. This is what makes the logic trivially testable and lets the [IR & Source I/O](/en/carto.io/) layer own all the impure work of reading source bytes off disk.
+
+## Key functions
+
+`hashContent(data: Buffer | string): string` produces the canonical hash string:
+
+```ts
+export function hashContent(data: Buffer | string): string {
+  return `sha256:${createHash("sha256").update(data).digest("hex")}`;
+}
+```
+
+It accepts a `Buffer | string`, feeds it to Node's `sha256`, and returns `` `sha256:${hex}` `` — the same `sha256:<hex>` format an author writes as `sha256:pending` before `carto hash` fills it in.
+
+`sourceKey(anchor: string, file: string): string` builds the identity key used everywhere sources are compared:
+
+```ts
+export function sourceKey(anchor: string, file: string): string {
+  return `${anchor}\u0000${file}`;
+}
+```
+
+The anchor and file are joined by a `\u0000` NUL byte. NUL cannot appear in an anchor name or a relative path, so it is an unambiguous separator: no anchor/file pair can collide with another simply because their concatenation happens to align. This is the dedup and identity key — the same string the [IR Schema](/en/carto.ir/) uses inline for its hash-conflict check.
+
+`collectSources(ir: Ir): SourceRef[]` returns the unique `{ anchor, file }` references across all nodes, in first-seen order. It walks `Object.values(ir.nodes)`, keys each source through `sourceKey`, skips keys already in a `Set`, and pushes the rest onto an ordered array. A source cited by three nodes appears once; two anchors over the same file appear as two refs.
+
+`diffHashes(ir: Ir, current: ReadonlyMap<string, string>): FileChange[]` compares stored hashes against a freshly computed map. A `FileChange` is `{ anchor, file, stored, current }` where `current` is a `string | null`. It first folds every source into a `stored` map keyed by `sourceKey` (so each unique source is compared once), then for each stored entry looks up `current.get(key) ?? null`. When the current hash differs from the stored hash — including when it is `null` because the file is absent from the `current` map — it emits a `FileChange`. An identical hash is omitted.
+
+`staleNodes(ir: Ir, changed): StaleNode[]` maps changed refs back to the nodes that cite them. A `StaleNode` is `{ id, files }`. It builds a `Set` of changed `sourceKey`s from the `changed` iterable, then for each node filters its sources down to the ones whose key is in that set, formatting each hit as `` `${anchor}:${file}` ``. A node with at least one hit is reported with the list of hit files; every node sharing a changed source is reported, so one changed shared file marks all its citers stale.
+
+`applyHashes(ir: Ir, current: ReadonlyMap<string, string>): Ir` returns a **new** IR with refreshed source hashes and never mutates the input:
+
+```ts
+export function applyHashes(ir: Ir, current: ReadonlyMap<string, string>): Ir {
+  const nodes = Object.create(null) as Ir["nodes"];
+  for (const [id, node] of Object.entries(ir.nodes)) {
+    nodes[id] = {
+      ...node,
+      children: [...node.children],
+      sources: node.sources.map((source) => {
+        const currentHash = current.get(sourceKey(source.anchor, source.file));
+        return { ...source, hash: currentHash ?? source.hash };
+      }),
+    };
+  }
+  return { ...ir, nodes };
+}
+```
+
+The rebuilt `nodes` record is created with `Object.create(null)` — a null-prototype object, so a hostile node id like `__proto__` writes an own property instead of polluting `Object.prototype`. Each node is shallow-copied, its `children` array is copied (`[...node.children]`), and every source is copied via `map` with a fresh `hash` taken from `current` when present and left unchanged otherwise. Nothing from the input is aliased.
+
+## Data flow
+
+The impure edges live outside this module and feed it:
+
+1. The [IR & Source I/O](/en/carto.io/) layer reads each source file (resolving its `anchor` to a base path plus the relative `file`), runs the bytes through `hashContent`, and assembles a `current` map keyed by `sourceKey`.
+2. `carto hash` calls `applyHashes(ir, current)` and writes the returned IR back — every `sha256:pending` or drifted hash becomes the real digest.
+3. `carto diff` and `carto stale` call `diffHashes` / `staleNodes` to report what drifted, without writing anything; `carto stale` is a report the author acts on, not a gate.
+4. The [Site Build Driver](/en/carto.build/) uses the same staleness read to know which nodes' content may be out of date before it renders.
+
+## Relationships
+
+- Operates only on IRs shaped by the [IR Schema](/en/carto.ir/), and shares that schema's anchor + `\u0000` + file identity key.
+- Is driven by the [IR & Source I/O](/en/carto.io/) layer, which supplies the `current` map and persists `applyHashes` output.
+- Powers the report surface described in the [Staleness Lifecycle](/en/carto.staleness/) and the [CLI Commands](/en/carto.cli/).

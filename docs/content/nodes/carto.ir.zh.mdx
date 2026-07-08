@@ -1,0 +1,83 @@
+---
+id: carto.ir
+name: IR Schema
+locale: zh
+contentHash: sha256:pending
+---
+
+## 职责
+
+`src/ir.ts` 定义了作为 vault 已校验形态、也是其唯一结构真相来源的 [zod](https://zod.dev) schema。carto 的其余各部分——[Hashing Core](/zh/carto.core/)、[IR & Source I/O](/zh/carto.io/) 层以及 CLI——都只在一个 IR 通过 `IrSchema.parse` 之后才信任它。该 schema 不仅编码字段类型，还编码 [Vault Data Model](/zh/carto.model/) 的跨节点不变式：键必须与 id 匹配、引用必须可解析、anchor 必须存在，且被两个节点共享的 source 必须对其 hash 达成一致。
+
+## 关键类型
+
+模块自最小单元起逐步搭建到整份文档。
+
+`RelativeFile` 是一个经细化（refine）的字符串，用于每个 source 的 `file`。它要求非空字符串，随后拒绝三种绝对路径或逃逸路径的形态：
+
+```ts
+const RelativeFile = z
+  .string()
+  .min(1)
+  .refine((file) => !file.startsWith("/") && !file.startsWith("\\") && !/^[A-Za-z]:/.test(file), {
+    message: "source file must be a relative path",
+  })
+  .refine((file) => !file.split(/[\\/]/).includes(".."), {
+    message: "source file must not contain a '..' path segment",
+  });
+```
+
+第一条细化拒绝 POSIX 前导 `/`、Windows 前导 `\` 以及形如 `C:` 的盘符前缀（由 `^[A-Za-z]:` 匹配）。第二条按任一斜杠切分，拒绝任何 `..` 回溯段。因此 `file` 始终是一条干净的、相对于仓库根的路径，可由某个 anchor 安全解析。
+
+`SourceSchema` 为 `{ anchor, file, hash }`，其中 `anchor` 与 `hash` 是非空字符串，`file` 是一个 `RelativeFile`。
+
+`NodeSchema` 为 `{ id, name, parent, children, sources }`。`id` 与 `name` 是非空字符串；`parent` 是非空字符串或 `null`（根节点）；`children` 是节点 id 字符串数组；`sources` 是 `SourceSchema` 数组。
+
+`VaultSchema` 为 `{ name, anchors, generatedAt, locales, defaultLocale }`。`anchors` 是把每个 anchor 名映射到一条非空基路径的 record（`z.record`）；`locales` 是非空的 locale 字符串数组；`defaultLocale` 是单个 locale 字符串。
+
+`IrSchema` 将一切包裹起来：
+
+```ts
+export const IrSchema = z
+  .object({
+    version: z.literal("1"),
+    vault: VaultSchema,
+    nodes: z.record(z.string(), NodeSchema),
+  })
+  .superRefine((ir, ctx) => { /* cross-checks */ });
+```
+
+`version` 必须是字面量 `"1"`，`vault` 是一个 `VaultSchema`，`nodes` 是从节点 id 到 `NodeSchema` 的扁平 record。树结构并不在此处嵌套——它存在于每个节点的 `children` 中，`parent: null` 标记一个根，因此该森林可以有多个根。
+
+## 数据流 —— superRefine 跨检查
+
+单纯的对象级类型解析无法跨节点观察，因此 `IrSchema.superRefine` 会运行第二遍：它遍历整份文档，并为每条被违反的不变式添加一个自定义 issue。执行顺序如下：
+
+1. **`defaultLocale` 成员资格。** 若 `vault.locales` 不包含 `vault.defaultLocale`，则在路径 `["vault", "defaultLocale"]` 添加 issue。
+2. 创建一个名为 `hashByKey` 的空 `Map<string, string>`，用于追踪每个 source 首次见到的 hash，然后以 `[key, node]` 迭代 `Object.entries(ir.nodes)`。
+3. **键/id 一致。** 若 `node.id !== key`，则标记 `["nodes", key, "id"]`——record 键与节点自身的 `id` 必须是同一字符串。
+4. **parent 可解析。** 若 `node.parent !== null` 且 `Object.hasOwn(ir.nodes, node.parent)` 为假，则标记 `["nodes", key, "parent"]`。使用 `Object.hasOwn` 而非 `in` 运算符，意味着值为 `"constructor"` 或 `"__proto__"`（仅存在于对象原型上）的 `parent` 会被当作未知而拒绝。
+5. **children 可解析。** 对 `node.children` 中的每个字符串，若 `Object.hasOwn(ir.nodes, child)` 为假则标记 `["nodes", key, "children"]`——同样不受原型键干扰。
+6. **anchor 存在。** 对每个 `source`（连同其 `index`），若 `Object.hasOwn(ir.vault.anchors, source.anchor)` 为假则标记 `["nodes", key, "sources", index, "anchor"]`。
+7. **hash 一致性。** 它把每个 source 的键计算为 `` `${source.anchor}\u0000${source.file}` ``（anchor 与 file 由一个 `\u0000` NUL 连接，与 [Hashing Core](/zh/carto.core/) 中的 `sourceKey` 一致）。首次见到时把 hash 记入 `hashByKey`；再次见到同一键时进行比较——hash 相等则无碍，hash 不同则把 `["nodes", key, "sources", index, "hash"]` 标记为冲突。
+
+由于身份键把 anchor **与** file 一并连接，同一 `file` 字符串在两个不同 anchor 下被引用时会产生两个不同的键：它们是两个不同的 source，绝不构成 hash 冲突，且各自独立校验。
+
+## 关联
+
+- [Vault Data Model](/zh/carto.model/) 是本 schema 的概念对应物；`IrSchema` 是它的可执行形态。
+- [Hashing Core](/zh/carto.core/) 通过其 `sourceKey` 辅助函数复用同一套 anchor + `\u0000` + file 身份键，并且只在由本 schema 塑形的 IR 上运作。
+- [IR & Source I/O](/zh/carto.io/) 层在加载时通过 `IrSchema.parse` 解析原始 JSON，并在保存时序列化已校验的 IR。
+
+## 导出类型
+
+模块重新导出推断出的 TypeScript 类型，使 carto 其余部分共享同一份定义：
+
+```ts
+export type Source = z.infer<typeof SourceSchema>;
+export type Node = z.infer<typeof NodeSchema>;
+export type Vault = z.infer<typeof VaultSchema>;
+export type Ir = z.infer<typeof IrSchema>;
+```
+
+`Ir` 是每个消费者都会导入的形态；不存在会与运行时 schema 漂移的手写接口。

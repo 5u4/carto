@@ -1,0 +1,53 @@
+---
+id: carto
+name: carto
+locale: zh
+contentHash: sha256:pending
+---
+
+# carto
+
+carto 把你关心的源代码变成一个不断生长、供人阅读的静态站点：每个节点一个页面，彼此密集互链，你可以朝任意方向持续扩展。你（也就是 agent）写下全部内容；`carto` CLI 只做确定性的工作，**从不调用模型**。你是这个环路里唯一的智能。
+
+## 职责
+
+carto 掌管的是 *vault 的含义* 与 *vault 如何被校验和构建* 之间的分界。它是一个个人知识 vault 生成器：一个 vault 可以只记录一个代码库，也可以横跨多个仓库外加独立的概念笔记，两种情况用的是同一套原语。生成出的站点是一个**只读界面**——它无法回调 agent，所以每一次深入都意味着用户来问、你写更多节点、再重新构建。
+
+## 你要写的两层
+
+carto 恰好由两层构成，两层都由你来写：
+
+- **结构——`ir.json`。** 位于 content 根目录的单一文件，装着整个 vault：它的元数据，加上一份扁平的节点记录。具体形态见 [IR Schema](/zh/carto.ir/)，背后的思想见 [Vault Data Model](/zh/carto.model/)。
+- **内容——每节点的 MDX。** 每个节点每种语言一个扁平文件，命名为 `nodes/<id>.<locale>.mdx`（例如 `carto.core.en.mdx`）。它的 frontmatter 只携带 `id`、`name`、`locale` 和 `contentHash`；一切结构信息只存在于 `ir.json` 中。
+
+## 核心概念一览
+
+- **锚点（anchors）** 是节点 source 解析所依据的具名根目录。一个仓库只需一个锚点——这里是指向仓库根的 `self`——而跨项目的知识库则声明多个。锚点正是让 vault 摆脱单一仓库束缚的东西。
+- **森林（forest）。** `ir.json` 不是一棵树，而是一片森林：每个 `parent: null` 的节点都是一个顶层根，这些根就是 vault 的顶层维度。深度完全由每个节点的 `children` 表达。
+- **概念节点（concept nodes）。** `sources: []` 的节点描述的是一个想法而非一个文件——一条原则、一种模式、一段跨越多处的叙述。它们是把页面粘成 wiki 的胶水，给你一个可以链接*过去*的落点。[Vault Data Model](/zh/carto.model/) 与 [Staleness Lifecycle](/zh/carto.staleness/) 本身就是概念节点。
+
+## 数据流——工作环路
+
+carto 是当作一个环路来用的，而不是一次性生成器。把这条路径走一遍：
+
+1. **播种一个 vault。** 定好锚点与顶层根，把它们的节点写进 `ir.json`，每种语言各写一个 MDX 文件，然后运行 `carto hash` 与 `carto build`。
+2. **深入一个节点。** 把某个节点的 `children` 加进 `ir.json`，为每个子节点写 MDX，再次 hash + build。把树往下长一层，与最初播种是同一个动作——并没有单独的“深挖”模式。
+3. **新增一个方向。** 要纳入一个新仓库或主题，就加上它的锚点（若它由源代码支撑），加一个新的 `parent: null` 根，并在其下播种。vault 的其余部分毫发无损。
+4. **源代码变更后刷新。** 运行 `carto stale` 看看一次源代码改动波及了哪些节点，重写你判断值得刷新的那些（连同它们的全部语言），再 hash 与 build。完整循环见 [Staleness Lifecycle](/zh/carto.staleness/)。
+
+## CLI 一览
+
+[CLI Commands](/zh/carto.cli/) 的界面是四个确定性子命令：`hash` 把 source 的哈希记入 `ir.json`，`diff` 列出发生变化的 source，`stale` 把这些变化映射到节点 id 作为报告，`build` 编译站点。它们都不读写正文——只负责度量并组装你写好的东西。
+
+## 接下来去哪
+
+本页是入口。每个子节点覆盖 carto 的一个部分：
+
+- [Vault Data Model](/zh/carto.model/) —— 把 vault、锚点、森林、source 与语言作为概念模型来讲。
+- [IR Schema](/zh/carto.ir/) —— `ir.json` 的具体形态及其校验规则。
+- [Hashing Core](/zh/carto.core/) —— 哈希、比对与判定陈旧背后的纯函数。
+- [IR & Source I/O](/zh/carto.io/) —— 读写 `ir.json` 以及从磁盘上哈希源文件。
+- [CLI Commands](/zh/carto.cli/) —— `hash`、`diff`、`stale`、`build` 子命令。
+- [Site Build Driver](/zh/carto.build/) —— `carto build` 如何调用 Astro。
+- [Staleness Lifecycle](/zh/carto.staleness/) —— 一次源代码改动如何变成一条陈旧提示。
+- [Astro Site Template](/zh/carto.site/) —— 渲染 vault 的静态站点模板。

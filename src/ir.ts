@@ -1,15 +1,18 @@
 import { z } from "zod";
 
+const RelativeFile = z
+  .string()
+  .min(1)
+  .refine((file) => !file.startsWith("/") && !file.startsWith("\\") && !/^[A-Za-z]:/.test(file), {
+    message: "source file must be a relative path",
+  })
+  .refine((file) => !file.split(/[\\/]/).includes(".."), {
+    message: "source file must not contain a '..' path segment",
+  });
+
 export const SourceSchema = z.object({
-  file: z
-    .string()
-    .min(1)
-    .refine((file) => !file.startsWith("/") && !file.startsWith("\\") && !/^[A-Za-z]:/.test(file), {
-      message: "source file must be a relative path",
-    })
-    .refine((file) => !file.split(/[\\/]/).includes(".."), {
-      message: "source file must not contain a '..' path segment",
-    }),
+  anchor: z.string().min(1),
+  file: RelativeFile,
   hash: z.string().min(1),
 });
 
@@ -21,11 +24,10 @@ export const NodeSchema = z.object({
   sources: z.array(SourceSchema),
 });
 
-export const ProjectSchema = z.object({
+export const VaultSchema = z.object({
   name: z.string().min(1),
-  root: z.string().min(1),
+  anchors: z.record(z.string().min(1), z.string().min(1)),
   generatedAt: z.string().min(1),
-  commit: z.string().min(1),
   locales: z.array(z.string().min(1)).min(1),
   defaultLocale: z.string().min(1),
 });
@@ -33,18 +35,18 @@ export const ProjectSchema = z.object({
 export const IrSchema = z
   .object({
     version: z.literal("1"),
-    project: ProjectSchema,
+    vault: VaultSchema,
     nodes: z.record(z.string(), NodeSchema),
   })
   .superRefine((ir, ctx) => {
-    if (!ir.project.locales.includes(ir.project.defaultLocale)) {
+    if (!ir.vault.locales.includes(ir.vault.defaultLocale)) {
       ctx.addIssue({
         code: "custom",
-        message: `defaultLocale "${ir.project.defaultLocale}" is not listed in project.locales`,
-        path: ["project", "defaultLocale"],
+        message: `defaultLocale "${ir.vault.defaultLocale}" is not listed in vault.locales`,
+        path: ["vault", "defaultLocale"],
       });
     }
-    const hashByFile = new Map<string, string>();
+    const hashByKey = new Map<string, string>();
     for (const [key, node] of Object.entries(ir.nodes)) {
       if (node.id !== key) {
         ctx.addIssue({
@@ -70,13 +72,21 @@ export const IrSchema = z
         }
       }
       node.sources.forEach((source, index) => {
-        const seen = hashByFile.get(source.file);
+        if (!Object.hasOwn(ir.vault.anchors, source.anchor)) {
+          ctx.addIssue({
+            code: "custom",
+            message: `node "${key}" cites unknown anchor "${source.anchor}"`,
+            path: ["nodes", key, "sources", index, "anchor"],
+          });
+        }
+        const sourceKey = `${source.anchor}\u0000${source.file}`;
+        const seen = hashByKey.get(sourceKey);
         if (seen === undefined) {
-          hashByFile.set(source.file, source.hash);
+          hashByKey.set(sourceKey, source.hash);
         } else if (seen !== source.hash) {
           ctx.addIssue({
             code: "custom",
-            message: `source "${source.file}" has conflicting hashes across nodes ("${seen}" vs "${source.hash}")`,
+            message: `source "${source.anchor}:${source.file}" has conflicting hashes across nodes ("${seen}" vs "${source.hash}")`,
             path: ["nodes", key, "sources", index, "hash"],
           });
         }
@@ -86,5 +96,5 @@ export const IrSchema = z
 
 export type Source = z.infer<typeof SourceSchema>;
 export type Node = z.infer<typeof NodeSchema>;
-export type Project = z.infer<typeof ProjectSchema>;
+export type Vault = z.infer<typeof VaultSchema>;
 export type Ir = z.infer<typeof IrSchema>;

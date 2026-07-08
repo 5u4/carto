@@ -1,0 +1,53 @@
+---
+id: carto
+name: carto
+locale: en
+contentHash: sha256:pending
+---
+
+# carto
+
+carto turns source you care about into a growing, human-readable static site: one page per node, densely cross-linked, that you extend in any direction. You — the agent — supply every word of content; the `carto` CLI does only the deterministic work and **never calls a model**. You are the sole intelligence in the loop.
+
+## Responsibility
+
+carto owns the split between *what a vault means* and *how a vault is checked and built*. It is a personal knowledge-vault generator: a vault can document one codebase, or it can span many repos plus free-standing concept notes, and the same primitives cover both. The generated site is a **read surface** — it cannot call back into the agent, so drilling deeper always means the user asks, you write more nodes, and you rebuild.
+
+## The two layers you write
+
+carto is authored across exactly two layers, and both are yours to write:
+
+- **Structure — `ir.json`.** A single file at the content root that holds the whole vault: its metadata plus a flat record of nodes. See [IR Schema](/en/carto.ir/) for the concrete shape and [Vault Data Model](/en/carto.model/) for the ideas behind it.
+- **Content — per-node MDX.** One flat file per node per locale, named `nodes/<id>.<locale>.mdx` (for example `carto.core.en.mdx`). Its frontmatter carries only `id`, `name`, `locale`, and `contentHash`; everything structural lives in `ir.json` alone.
+
+## Core ideas at a glance
+
+- **Anchors** are named roots that a node's sources resolve against. One repo needs one anchor — here, `self` pointing at the repo root — while a cross-project knowledge base declares several. Anchors are what free a vault from a single repo.
+- **The forest.** `ir.json` is not a single tree but a forest: every node with `parent: null` is a top-level root, and the roots are the vault's top-level dimensions. Depth is expressed purely through each node's `children`.
+- **Concept nodes.** A node with `sources: []` describes an idea rather than a file — a principle, a pattern, a cross-cutting narrative. They are the wiki glue that gives you somewhere to link *to*. [Vault Data Model](/en/carto.model/) and [Staleness Lifecycle](/en/carto.staleness/) are themselves concept nodes.
+
+## Data flow — the working loop
+
+carto is used as a loop, not a one-shot generator. Walking the path once:
+
+1. **Seed a vault.** Decide the anchors and the top-level roots, write their nodes into `ir.json` plus one MDX file per locale, then run `carto hash` and `carto build`.
+2. **Drill into a node.** Add a node's `children` to `ir.json`, write each child's MDX, and hash + build again. Growing the tree one level deeper is the same act as seeding — there is no separate deep-dive mode.
+3. **Add a direction.** To bring in a new repo or theme, add its anchor (if it is source-backed), add a new `parent: null` root, and seed beneath it. The rest of the vault is untouched.
+4. **Refresh after source changes.** Run `carto stale` to see which nodes a source edit touched, rewrite the ones you judge worth refreshing (all their locales together), then hash and build. See [Staleness Lifecycle](/en/carto.staleness/) for the full cycle.
+
+## The CLI, at a glance
+
+The [CLI Commands](/en/carto.cli/) surface is four deterministic subcommands: `hash` records source hashes into `ir.json`, `diff` lists changed sources, `stale` maps those changes to node ids as a report, and `build` compiles the site. None of them read or write prose — they only measure and assemble what you wrote.
+
+## Where to go next
+
+This page is the front door. Each child covers one part of carto:
+
+- [Vault Data Model](/en/carto.model/) — the vault, anchors, forest, sources, and locales as a conceptual model.
+- [IR Schema](/en/carto.ir/) — the concrete `ir.json` shape and its validation rules.
+- [Hashing Core](/en/carto.core/) — the pure functions behind hashing, diffing, and staleness.
+- [IR & Source I/O](/en/carto.io/) — reading and writing `ir.json` and hashing source files off disk.
+- [CLI Commands](/en/carto.cli/) — the `hash`, `diff`, `stale`, and `build` subcommands.
+- [Site Build Driver](/en/carto.build/) — how `carto build` invokes Astro.
+- [Staleness Lifecycle](/en/carto.staleness/) — how a source edit becomes a staleness hint.
+- [Astro Site Template](/en/carto.site/) — the static-site template that renders the vault.

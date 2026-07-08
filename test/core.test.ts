@@ -1,15 +1,15 @@
 import { describe, expect, it } from "vitest";
-import { applyHashes, collectSourceFiles, diffHashes, hashContent, staleNodes } from "../src/core.js";
+import { IrSchema } from "../src/ir.js";
+import { applyHashes, collectSources, diffHashes, hashContent, sourceKey, staleNodes } from "../src/core.js";
 import type { Ir } from "../src/ir.js";
 
 function makeIr(): Ir {
   return {
     version: "1",
-    project: {
+    vault: {
       name: "carto",
-      root: "/repo",
+      anchors: { self: "/repo" },
       generatedAt: "2026-07-07T00:00:00Z",
-      commit: "abc123",
       locales: ["en"],
       defaultLocale: "en",
     },
@@ -20,8 +20,8 @@ function makeIr(): Ir {
         parent: null,
         children: ["b"],
         sources: [
-          { file: "src/shared.ts", hash: "sha256:shared-hash" },
-          { file: "src/a.ts", hash: "sha256:a-hash" },
+          { anchor: "self", file: "src/shared.ts", hash: "sha256:shared-hash" },
+          { anchor: "self", file: "src/a.ts", hash: "sha256:a-hash" },
         ],
       },
       b: {
@@ -30,8 +30,8 @@ function makeIr(): Ir {
         parent: "a",
         children: [],
         sources: [
-          { file: "src/shared.ts", hash: "sha256:shared-hash" },
-          { file: "src/b.ts", hash: "sha256:b-hash" },
+          { anchor: "self", file: "src/shared.ts", hash: "sha256:shared-hash" },
+          { anchor: "self", file: "src/b.ts", hash: "sha256:b-hash" },
         ],
       },
       c: {
@@ -39,7 +39,32 @@ function makeIr(): Ir {
         name: "C",
         parent: null,
         children: [],
-        sources: [{ file: "src/c.ts", hash: "sha256:c-hash" }],
+        sources: [{ anchor: "self", file: "src/c.ts", hash: "sha256:c-hash" }],
+      },
+    },
+  };
+}
+
+function twoAnchorIr(): Ir {
+  return {
+    version: "1",
+    vault: {
+      name: "carto",
+      anchors: { self: "/repo", lib: "/lib" },
+      generatedAt: "2026-07-07T00:00:00Z",
+      locales: ["en"],
+      defaultLocale: "en",
+    },
+    nodes: {
+      a: {
+        id: "a",
+        name: "A",
+        parent: null,
+        children: [],
+        sources: [
+          { anchor: "self", file: "src/shared.ts", hash: "sha256:self-hash" },
+          { anchor: "lib", file: "src/shared.ts", hash: "sha256:lib-hash" },
+        ],
       },
     },
   };
@@ -71,72 +96,85 @@ describe("hashContent", () => {
   });
 });
 
-describe("collectSourceFiles", () => {
-  it("returns the unique set of source files across all nodes", () => {
-    const files = collectSourceFiles(makeIr());
-    expect(files.sort()).toEqual(["src/a.ts", "src/b.ts", "src/c.ts", "src/shared.ts"]);
+describe("collectSources", () => {
+  it("returns the unique source refs across all nodes in first-seen order", () => {
+    expect(collectSources(makeIr())).toEqual([
+      { anchor: "self", file: "src/shared.ts" },
+      { anchor: "self", file: "src/a.ts" },
+      { anchor: "self", file: "src/b.ts" },
+      { anchor: "self", file: "src/c.ts" },
+    ]);
   });
 
-  it("dedupes a file referenced by more than one node", () => {
-    const files = collectSourceFiles(makeIr());
-    expect(files.filter((file) => file === "src/shared.ts")).toHaveLength(1);
+  it("dedupes a source referenced by more than one node", () => {
+    const shared = collectSources(makeIr()).filter(
+      (ref) => ref.anchor === "self" && ref.file === "src/shared.ts",
+    );
+    expect(shared).toHaveLength(1);
   });
 });
 
 describe("diffHashes", () => {
-  it("reports a changed file whose current hash differs from the stored hash", () => {
+  it("reports a changed source whose current hash differs from the stored hash", () => {
     const current = new Map<string, string>([
-      ["src/shared.ts", "sha256:shared-hash"],
-      ["src/a.ts", "sha256:a-hash-CHANGED"],
-      ["src/b.ts", "sha256:b-hash"],
-      ["src/c.ts", "sha256:c-hash"],
+      [sourceKey("self", "src/shared.ts"), "sha256:shared-hash"],
+      [sourceKey("self", "src/a.ts"), "sha256:a-hash-CHANGED"],
+      [sourceKey("self", "src/b.ts"), "sha256:b-hash"],
+      [sourceKey("self", "src/c.ts"), "sha256:c-hash"],
     ]);
     const changes = diffHashes(makeIr(), current);
-    expect(changes).toEqual([{ file: "src/a.ts", stored: "sha256:a-hash", current: "sha256:a-hash-CHANGED" }]);
+    expect(changes).toEqual([
+      { anchor: "self", file: "src/a.ts", stored: "sha256:a-hash", current: "sha256:a-hash-CHANGED" },
+    ]);
   });
 
-  it("reports current: null for a file missing from the current map", () => {
+  it("reports current: null for a source missing from the current map", () => {
     const current = new Map<string, string>([
-      ["src/shared.ts", "sha256:shared-hash"],
-      ["src/b.ts", "sha256:b-hash"],
-      ["src/c.ts", "sha256:c-hash"],
+      [sourceKey("self", "src/shared.ts"), "sha256:shared-hash"],
+      [sourceKey("self", "src/b.ts"), "sha256:b-hash"],
+      [sourceKey("self", "src/c.ts"), "sha256:c-hash"],
     ]);
     const changes = diffHashes(makeIr(), current);
-    expect(changes).toEqual([{ file: "src/a.ts", stored: "sha256:a-hash", current: null }]);
+    expect(changes).toEqual([
+      { anchor: "self", file: "src/a.ts", stored: "sha256:a-hash", current: null },
+    ]);
   });
 
-  it("omits files whose current hash matches the stored hash", () => {
+  it("omits sources whose current hash matches the stored hash", () => {
     const current = new Map<string, string>([
-      ["src/shared.ts", "sha256:shared-hash"],
-      ["src/a.ts", "sha256:a-hash"],
-      ["src/b.ts", "sha256:b-hash"],
-      ["src/c.ts", "sha256:c-hash"],
+      [sourceKey("self", "src/shared.ts"), "sha256:shared-hash"],
+      [sourceKey("self", "src/a.ts"), "sha256:a-hash"],
+      [sourceKey("self", "src/b.ts"), "sha256:b-hash"],
+      [sourceKey("self", "src/c.ts"), "sha256:c-hash"],
     ]);
     expect(diffHashes(makeIr(), current)).toEqual([]);
   });
 });
 
 describe("staleNodes", () => {
-  it("reports a node whose single source file changed", () => {
-    const stale = staleNodes(makeIr(), ["src/c.ts"]);
-    expect(stale).toEqual([{ id: "c", files: ["src/c.ts"] }]);
+  it("reports a node whose single source changed", () => {
+    const stale = staleNodes(makeIr(), [{ anchor: "self", file: "src/c.ts" }]);
+    expect(stale).toEqual([{ id: "c", files: ["self:src/c.ts"] }]);
   });
 
-  it("reports every matching file for a node with multiple hits", () => {
-    const stale = staleNodes(makeIr(), ["src/shared.ts", "src/a.ts"]);
+  it("reports every matching source for a node with multiple hits", () => {
+    const stale = staleNodes(makeIr(), [
+      { anchor: "self", file: "src/shared.ts" },
+      { anchor: "self", file: "src/a.ts" },
+    ]);
     expect(stale.find((node) => node.id === "a")).toEqual({
       id: "a",
-      files: ["src/shared.ts", "src/a.ts"],
+      files: ["self:src/shared.ts", "self:src/a.ts"],
     });
   });
 
-  it("marks every node sharing a changed file as stale", () => {
-    const stale = staleNodes(makeIr(), ["src/shared.ts"]);
+  it("marks every node sharing a changed source as stale", () => {
+    const stale = staleNodes(makeIr(), [{ anchor: "self", file: "src/shared.ts" }]);
     expect(stale.map((node) => node.id).sort()).toEqual(["a", "b"]);
   });
 
-  it("omits nodes with no changed files", () => {
-    const stale = staleNodes(makeIr(), ["src/c.ts"]);
+  it("omits nodes with no changed sources", () => {
+    const stale = staleNodes(makeIr(), [{ anchor: "self", file: "src/c.ts" }]);
     expect(stale.find((node) => node.id === "a")).toBeUndefined();
     expect(stale.find((node) => node.id === "b")).toBeUndefined();
   });
@@ -145,7 +183,7 @@ describe("staleNodes", () => {
 describe("applyHashes", () => {
   it("replaces the hash of a source present in the current map", () => {
     const ir = makeIr();
-    const current = new Map<string, string>([["src/a.ts", "sha256:new-a-hash"]]);
+    const current = new Map<string, string>([[sourceKey("self", "src/a.ts"), "sha256:new-a-hash"]]);
     const updated = applyHashes(ir, current);
     const source = updated.nodes["a"]?.sources.find((entry) => entry.file === "src/a.ts");
     expect(source?.hash).toBe("sha256:new-a-hash");
@@ -153,7 +191,7 @@ describe("applyHashes", () => {
 
   it("keeps the old hash for a source absent from the current map", () => {
     const ir = makeIr();
-    const current = new Map<string, string>([["src/a.ts", "sha256:new-a-hash"]]);
+    const current = new Map<string, string>([[sourceKey("self", "src/a.ts"), "sha256:new-a-hash"]]);
     const updated = applyHashes(ir, current);
     const source = updated.nodes["c"]?.sources.find((entry) => entry.file === "src/c.ts");
     expect(source?.hash).toBe("sha256:c-hash");
@@ -162,7 +200,7 @@ describe("applyHashes", () => {
   it("does not mutate the input ir", () => {
     const ir = makeIr();
     const snapshot = structuredClone(ir);
-    const current = new Map<string, string>([["src/a.ts", "sha256:new-a-hash"]]);
+    const current = new Map<string, string>([[sourceKey("self", "src/a.ts"), "sha256:new-a-hash"]]);
     const updated = applyHashes(ir, current);
     expect(ir).toEqual(snapshot);
     expect(updated).not.toBe(ir);
@@ -189,5 +227,39 @@ describe("applyHashes", () => {
     applyHashes(polluted, new Map());
     expect(({} as Record<string, unknown>)["id"]).toBeUndefined();
     expect(Object.prototype).not.toHaveProperty("name");
+  });
+});
+
+describe("the same file under two anchors", () => {
+  it("is accepted without a conflicting-hash error", () => {
+    expect(() => IrSchema.parse(twoAnchorIr())).not.toThrow();
+  });
+
+  it("is collected as two distinct source refs", () => {
+    expect(collectSources(twoAnchorIr())).toEqual([
+      { anchor: "self", file: "src/shared.ts" },
+      { anchor: "lib", file: "src/shared.ts" },
+    ]);
+  });
+
+  it("diffs each anchor's hash independently for the shared file string", () => {
+    const current = new Map<string, string>([
+      [sourceKey("self", "src/shared.ts"), "sha256:self-CHANGED"],
+      [sourceKey("lib", "src/shared.ts"), "sha256:lib-hash"],
+    ]);
+    expect(diffHashes(twoAnchorIr(), current)).toEqual([
+      { anchor: "self", file: "src/shared.ts", stored: "sha256:self-hash", current: "sha256:self-CHANGED" },
+    ]);
+  });
+
+  it("applies a distinct hash to each anchor's source", () => {
+    const current = new Map<string, string>([
+      [sourceKey("self", "src/shared.ts"), "sha256:new-self"],
+      [sourceKey("lib", "src/shared.ts"), "sha256:new-lib"],
+    ]);
+    const updated = applyHashes(twoAnchorIr(), current);
+    const sources = updated.nodes["a"]?.sources ?? [];
+    expect(sources.find((entry) => entry.anchor === "self")?.hash).toBe("sha256:new-self");
+    expect(sources.find((entry) => entry.anchor === "lib")?.hash).toBe("sha256:new-lib");
   });
 });

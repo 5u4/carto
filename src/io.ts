@@ -1,7 +1,7 @@
 import { readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { IrSchema, type Ir } from "./ir.js";
-import { collectSourceFiles, hashContent } from "./core.js";
+import { collectSources, hashContent, sourceKey } from "./core.js";
 
 export async function readIr(irPath: string): Promise<Ir> {
   const raw = await readFile(irPath, "utf8");
@@ -14,18 +14,20 @@ export async function writeIr(irPath: string, ir: Ir): Promise<void> {
 
 const HASH_CONCURRENCY = 16;
 
-export async function currentHashes(ir: Ir, root: string): Promise<Map<string, string>> {
-  const files = collectSourceFiles(ir);
+export async function currentHashes(ir: Ir, contentDir: string): Promise<Map<string, string>> {
+  const sources = collectSources(ir);
   const hashes = new Map<string, string>();
   let next = 0;
   const worker = async (): Promise<void> => {
-    while (next < files.length) {
-      const file = files[next++];
-      if (file === undefined) {
+    while (next < sources.length) {
+      const source = sources[next++];
+      if (source === undefined) {
         return;
       }
+      const anchorAbs = resolve(contentDir, ir.vault.anchors[source.anchor]!);
+      const fileAbs = resolve(anchorAbs, source.file);
       try {
-        hashes.set(file, hashContent(await readFile(resolve(root, file))));
+        hashes.set(sourceKey(source.anchor, source.file), hashContent(await readFile(fileAbs)));
       } catch (error) {
         if ((error as NodeJS.ErrnoException).code === "ENOENT") {
           continue;
@@ -34,7 +36,7 @@ export async function currentHashes(ir: Ir, root: string): Promise<Map<string, s
       }
     }
   };
-  const pool = Array.from({ length: Math.min(HASH_CONCURRENCY, files.length) }, worker);
+  const pool = Array.from({ length: Math.min(HASH_CONCURRENCY, sources.length) }, worker);
   await Promise.all(pool);
   return hashes;
 }

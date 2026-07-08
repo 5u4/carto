@@ -5,7 +5,7 @@ import Page from "../../layouts/Page.astro";
 
 export async function getStaticPaths() {
   const ir = loadIr();
-  const locales = new Set(ir.project.locales);
+  const locales = new Set(ir.vault.locales);
   const entries = await getCollection("nodes");
   return entries.flatMap((entry) => {
     const node = ir.nodes[entry.data.id];

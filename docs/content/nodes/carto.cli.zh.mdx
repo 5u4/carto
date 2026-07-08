@@ -1,0 +1,62 @@
+---
+id: carto.cli
+name: CLI Commands
+locale: zh
+contentHash: sha256:pending
+---
+
+## 职责
+
+`src/cli.ts` 是 carto 的**命令行界面**——将终端调用转换为流水线调用的可执行入口。它构建于 [citty](https://github.com/unjs/citty) 之上：一个根 `carto` 命令，外加四个子命令。这一层本身不含任何哈希逻辑；它解析参数，将其接入 [IR & Source I/O](/zh/carto.io/) 与 [Hashing Core](/zh/carto.core/)，并打印人类可读的输出。关键在于，**CLI 从不调用模型**——它只做确定性的报告。
+
+## 共享参数
+
+每个子命令都共享同一个选项，只在 `sharedArgs` 中定义一次：
+
+- `--content`（string，默认 `content`）——存放 `ir.json` 与 `nodes/` 的内容目录。
+
+每个子命令都以相同方式解析 IR 路径：`resolve(args.content, "ir.json")`。因此 `ir.json` 总是从 **`--content` 之下**读取。
+
+## 关键子命令
+
+### `hash`
+
+将源文件哈希重新计算并写入 `ir.json`。流程：`readIr` → `currentHashes` → `applyHashes` → `writeIr`。它读取并校验 IR，为每个被引用的源文件计算实时哈希，用 `applyHashes` 将这些哈希折回节点森林，写出结果，并打印数量：
+
+```
+hashed <n> source file(s)
+```
+
+### `diff`
+
+列出自上次 `hash` 以来发生变化的源文件。流程：`readIr` → `currentHashes` → `diffHashes`。若没有变化，打印 `no changes`。否则每条变化打印一行，以制表符分隔，标记为 `missing`（文件已无法哈希——`change.current === null`）或 `changed`，其后是 `anchor:file` 标识：
+
+```
+changed	self:src/core.ts
+missing	self:src/gone.ts
+```
+
+### `stale`
+
+将变化的文件映射到它们影响的节点 id——**这是报告，而非闸门**。流程：`readIr` → `currentHashes` → `diffHashes` → `staleNodes`。它把每条变化归约为 `{ anchor, file }`，交给 `staleNodes`，当无节点受影响时打印 `no stale nodes`。否则每个陈旧节点打印一行：节点 `id`、一个制表符、然后是它命中的文件以 `, ` 连接。不会写回任何内容；由作者决定是否重写。参见 [Staleness Lifecycle](/zh/carto.staleness/)。
+
+### `build`
+
+将 `content/` 编译为静态 HTML 站点。它在共享参数集上再加一个选项：
+
+- `--out`（string，默认 `dist-site`）——生成站点的输出目录。
+
+它完全委托给 [Site Build Driver](/zh/carto.build/)，调用 `build({ irPath, contentDir, outDir })`，其中 `irPath` 为 `resolve(args.content, "ir.json")`，`contentDir` 为 `args.content`，`outDir` 为 `args.out`。
+
+## 数据流
+
+1. `runMain(main)` 针对根 `carto` 命令启动 citty，其 `subCommands` 为 `{ hash, diff, stale, build }`。
+2. citty 解析 `argv`，应用 `--content`（以及 `build` 的 `--out`）默认值，并分发到匹配子命令的 `run`。
+3. `run` 处理函数解析 IR 路径，调入 [IR & Source I/O](/zh/carto.io/) 与 [Hashing Core](/zh/carto.core/)，并将报告写入 `process.stdout`。
+
+## 关系
+
+- 通过 [IR & Source I/O](/zh/carto.io/) 边界读写 IR（`readIr`、`writeIr`、`currentHashes`）。
+- 通过 [Hashing Core](/zh/carto.core/) 应用并解读哈希（`applyHashes`、`diffHashes`、`staleNodes`）。
+- 将 `build` 移交给 [Site Build Driver](/zh/carto.build/)。
+- 通过 `diff` 与 `stale` 呈现 [Staleness Lifecycle](/zh/carto.staleness/)。

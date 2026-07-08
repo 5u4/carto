@@ -1,0 +1,61 @@
+---
+id: carto.site
+name: Astro Site Template
+locale: zh
+contentHash: sha256:pending
+---
+
+# Astro 站点模板
+
+carto 在把知识库渲染成静态站点时所调用的 Astro 项目。carto 本身从不 import Astro，而是由
+[站点构建驱动](/zh/carto.build/) 针对这个模板目录启动 `astro build`，并通过环境变量把知识库交给它。
+`astro/` 目录下的一切——配置、内容加载器、路由与布局——都是固定的模板；它渲染的*内容*则是驱动所指向
+的那个内容目录。
+
+## 配置——`astro.config.mjs`
+
+本节点唯一的源文件是 `astro/astro.config.mjs`。它是一个很小的 `defineConfig` 调用，包含三个有意为之
+的选择：
+
+```js
+export default defineConfig({
+  outDir: process.env.CARTO_OUT_DIR ?? "../dist-site",
+  integrations: [mdx()],
+  markdown: {
+    shikiConfig: { theme: "github-light" },
+  },
+});
+```
+
+- **`outDir` 取自环境变量。** 构建输出目录读取自 `CARTO_OUT_DIR`，当该变量未设置时回退到
+  `../dist-site`（例如你在开发模板期间直接运行 Astro 的情形）。驱动总会设置它，因此真正的 carto
+  构建会写到 `--out` 所要求的位置。
+- **`@astrojs/mdx`。** 注册了 `mdx()` 集成，于是每个节点页面——作者以 `.mdx` 编写——都会编译成组件，
+  从而能够承载这些页面所依赖的交叉链接与围栏代码块。
+- **Shiki `github-light`。** Markdown 代码围栏使用 `github-light` 主题高亮，与布局所采用的浅色配色一致。
+
+## 驱动如何把知识库交接过来
+
+carto 从不把文件作为参数传入；它传入三个环境变量，并让模板自行读取。逐步走一遍这个交接过程（参见
+[站点构建驱动](/zh/carto.build/)）：
+
+1. `carto build` 读取 IR，将记录的哈希与磁盘上的源文件比对，算出过期节点 id 的集合。
+2. 它解析出模板目录（随 carto 一起发布的 `astro/` 文件夹）与本地的 Astro 可执行文件。
+3. 它以父进程环境外加三个注入变量启动 `astro build --root <template>`：
+   - `CARTO_CONTENT_DIR`——被渲染内容目录的绝对路径。
+   - `CARTO_OUT_DIR`——成品站点应落地位置的绝对路径。
+   - `CARTO_STALE_IDS`——以换行连接的过期节点 id 列表。
+4. Astro 以此配置启动，两个子模块各取所需：加载器读取 `CARTO_CONTENT_DIR` 与 `CARTO_STALE_IDS`，
+   页面则把每个节点通过布局渲染出来。
+
+由于配置在加载时就解析 `outDir`，驱动注入的值才是决定输出位置的那个；`../dist-site` 这个默认值仅在你
+脱离 carto 单独运行模板时才生效。
+
+## 两个子节点
+
+本节点是模板的根；它的两个子节点分担了工作：
+
+- [内容加载器](/zh/carto.site.loader/)——把内容目录变成带类型、经校验的数据：覆盖节点 `.mdx` 文件的
+  Astro 内容集合、`loadIr`、`staleIds` 集合，以及 `tree` 遍历。
+- [页面与布局](/zh/carto.site.pages/)——路由与外壳：首页重定向、动态节点路由，以及导航／语言／过期状态
+  的布局。

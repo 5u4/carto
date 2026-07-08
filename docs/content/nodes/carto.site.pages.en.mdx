@@ -1,0 +1,118 @@
+---
+id: carto.site.pages
+name: Pages & Layout
+locale: en
+contentHash: sha256:pending
+---
+
+# Pages & Layout
+
+This node is the site's routing and its visual shell: the entry redirect, the one
+dynamic route that renders every node page, and the layout that wraps each page in
+navigation. Its three source files are `astro/src/pages/index.astro`,
+`astro/src/pages/[locale]/[...id].astro`, and `astro/src/layouts/Page.astro`.
+
+## The entry redirect — `index.astro`
+
+`index.astro` has no content of its own; it bounces the visitor to the first node
+in the default locale:
+
+```astro
+const ir = loadIr();
+const roots = Object.values(ir.nodes).filter((node) => node.parent === null);
+const first = roots[0] ?? Object.values(ir.nodes)[0];
+const target = first === undefined
+  ? null
+  : `${import.meta.env.BASE_URL}${ir.vault.defaultLocale}/${first.id}/`;
+```
+
+It takes the first root (the first node whose `parent` is `null`), falling back to
+the first node of any kind, and builds a URL under `defaultLocale`. It then emits a
+`meta http-equiv="refresh"` and a canonical link to that target. If the vault has
+no nodes at all, `target` is `null` and the page shows a plain "No components
+generated yet." message instead.
+
+## The node route — `[locale]/[...id].astro`
+
+Every node page is produced by one dynamic route, `[locale]/[...id].astro`. Its
+`getStaticPaths` joins the two data sources — the content collection and the IR:
+
+```astro
+export async function getStaticPaths() {
+  const ir = loadIr();
+  const locales = new Set(ir.vault.locales);
+  const entries = await getCollection("nodes");
+  return entries.flatMap((entry) => {
+    const node = ir.nodes[entry.data.id];
+    if (node === undefined || !locales.has(entry.data.locale)) {
+      return [];
+    }
+    return [{
+      params: { locale: entry.data.locale, id: entry.data.id },
+      props: { entry, node },
+    }];
+  });
+}
+```
+
+Reading it in order:
+
+1. It loads the IR and turns the vault's declared `locales` into a set.
+2. It fetches every entry in the `nodes` collection — one per `.mdx` file the
+   [Content Loader](/en/carto.site.loader/) found.
+3. For each entry it looks up the matching IR node by `entry.data.id`, and it
+   `flatMap`s the entry away (returns `[]`) when either the id has no node in the
+   IR or the file's `locale` is not one the vault declares. Both guards mean a
+   stray or mislabelled `.mdx` file simply produces no page.
+4. A surviving entry becomes one static path: `params` carry the `locale` and `id`
+   that form the URL, and `props` carry both the collection `entry` and its IR
+   `node`.
+
+The page then renders the entry's compiled MDX and drops it into the layout:
+
+```astro
+const { entry, node } = Astro.props;
+const { Content } = await render(entry);
+```
+
+```astro
+<Page node={node} locale={entry.data.locale}>
+  <Content />
+</Page>
+```
+
+## The shell — `Page.astro`
+
+`Page.astro` receives the `node` and `locale` and draws the frame around the
+rendered content. Its inputs come straight from the loader:
+
+```astro
+const ir = loadIr();
+const items = tree(ir);
+const locales = ir.vault.locales;
+const isStale = staleIds.has(node.id);
+const hasChildren = node.children.length > 0;
+```
+
+- **Navigation tree.** `tree(ir)` gives the flattened, preorder list of every node
+  with its `depth` (see [Content Loader](/en/carto.site.loader/)). The layout
+  renders one link per item.
+- **Active node & indent.** A link gets the `active` class when its id equals the
+  current `node.id`, and its left padding is computed from `depth`
+  (`0.5 + depth * 0.9` rem), so the tree reads as an indented outline.
+- **Locale switcher.** When the vault declares more than one locale
+  (`locales.length > 1`), a row of locale links is shown; each points at the same
+  `node.id` under a different locale, and the current one is marked.
+- **Stale hint.** `isStale` is `staleIds.has(node.id)`. When true, a banner warns
+  that the source changed since the page was written — see
+  [Staleness Lifecycle](/en/carto.staleness/). Concept nodes carry no sources and
+  are never stale, so they never show it.
+- **Leaf hint.** `hasChildren` is `node.children.length > 0`. When a node has no
+  children, a hint invites the reader to ask the agent to dig deeper into that
+  component.
+
+The compiled page content arrives through a slot between the two hints, so the
+stale banner sits above the content and the leaf hint below it.
+
+Upstream, the [Site Build Driver](/en/carto.build/) is what supplies the stale ids
+and the content directory these pages read.

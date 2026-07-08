@@ -1,0 +1,63 @@
+<!DOCTYPE html><html lang="en" data-astro-cid-ybatimd6><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Astro Site Template — carto</title><style>:root{color-scheme:light}[data-astro-cid-ybatimd6]{box-sizing:border-box}body{color:#1a1a1a;margin:0;font:16px/1.6 -apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif}.shell[data-astro-cid-ybatimd6]{min-height:100vh;display:flex}nav[data-astro-cid-ybatimd6]{background:#fafafa;border-right:1px solid #e5e5e5;flex:0 0 280px;width:280px;padding:1.5rem 1rem;overflow-y:auto}nav[data-astro-cid-ybatimd6] .project[data-astro-cid-ybatimd6]{text-transform:uppercase;letter-spacing:.05em;color:#666;margin-bottom:1rem;font-size:.85rem;font-weight:700}nav[data-astro-cid-ybatimd6] ul[data-astro-cid-ybatimd6]{margin:0;padding:0;list-style:none}nav[data-astro-cid-ybatimd6] a[data-astro-cid-ybatimd6]{color:#333;border-radius:4px;padding:.2rem .5rem;font-size:.9rem;text-decoration:none;display:block}nav[data-astro-cid-ybatimd6] a[data-astro-cid-ybatimd6]:hover{background:#eee}nav[data-astro-cid-ybatimd6] a[data-astro-cid-ybatimd6].active{color:#fff;background:#1a1a1a}main[data-astro-cid-ybatimd6]{flex:1;min-width:0;max-width:860px;padding:2rem 3rem}main[data-astro-cid-ybatimd6] pre{border-radius:6px;padding:1rem;font-size:.85rem;overflow-x:auto}main[data-astro-cid-ybatimd6] h1{margin-top:0}.hint[data-astro-cid-ybatimd6]{border-radius:6px;margin-bottom:1.5rem;padding:.6rem 1rem;font-size:.9rem}.hint[data-astro-cid-ybatimd6].stale{color:#8a5300;background:#fff4e5;border:1px solid #ffcc80}.hint[data-astro-cid-ybatimd6].leaf{color:#555;background:#f0f0f0;border:1px solid #ddd}.locales[data-astro-cid-ybatimd6]{margin-bottom:1rem;font-size:.85rem}.locales[data-astro-cid-ybatimd6] a[data-astro-cid-ybatimd6]{color:#0366d6;margin-right:.5rem;text-decoration:none}.locales[data-astro-cid-ybatimd6] a[data-astro-cid-ybatimd6].current{color:#666;font-weight:700}@media (width<=720px){.shell[data-astro-cid-ybatimd6]{flex-direction:column}nav[data-astro-cid-ybatimd6]{border-bottom:1px solid #e5e5e5;border-right:none;flex:none;width:100%}main[data-astro-cid-ybatimd6]{padding:1.5rem 1.25rem}}
+</style></head><body data-astro-cid-ybatimd6><div class="shell" data-astro-cid-ybatimd6><nav data-astro-cid-ybatimd6><div class="project" data-astro-cid-ybatimd6>carto</div><div class="locales" data-astro-cid-ybatimd6><a href="/en/carto.site/" class="current" data-astro-cid-ybatimd6>en</a><a href="/zh/carto.site/" class data-astro-cid-ybatimd6>zh</a></div><ul data-astro-cid-ybatimd6><li data-astro-cid-ybatimd6><a href="/en/carto/" class style="padding-left: 0.5rem" data-astro-cid-ybatimd6>carto</a></li><li data-astro-cid-ybatimd6><a href="/en/carto.model/" class style="padding-left: 1.4rem" data-astro-cid-ybatimd6>Vault Data Model</a></li><li data-astro-cid-ybatimd6><a href="/en/carto.ir/" class style="padding-left: 1.4rem" data-astro-cid-ybatimd6>IR Schema</a></li><li data-astro-cid-ybatimd6><a href="/en/carto.core/" class style="padding-left: 1.4rem" data-astro-cid-ybatimd6>Hashing Core</a></li><li data-astro-cid-ybatimd6><a href="/en/carto.io/" class style="padding-left: 1.4rem" data-astro-cid-ybatimd6>IR &amp; Source I/O</a></li><li data-astro-cid-ybatimd6><a href="/en/carto.cli/" class style="padding-left: 1.4rem" data-astro-cid-ybatimd6>CLI Commands</a></li><li data-astro-cid-ybatimd6><a href="/en/carto.build/" class style="padding-left: 1.4rem" data-astro-cid-ybatimd6>Site Build Driver</a></li><li data-astro-cid-ybatimd6><a href="/en/carto.staleness/" class style="padding-left: 1.4rem" data-astro-cid-ybatimd6>Staleness Lifecycle</a></li><li data-astro-cid-ybatimd6><a href="/en/carto.site/" class="active" style="padding-left: 1.4rem" data-astro-cid-ybatimd6>Astro Site Template</a></li><li data-astro-cid-ybatimd6><a href="/en/carto.site.loader/" class style="padding-left: 2.3rem" data-astro-cid-ybatimd6>Content Loader</a></li><li data-astro-cid-ybatimd6><a href="/en/carto.site.pages/" class style="padding-left: 2.3rem" data-astro-cid-ybatimd6>Pages &amp; Layout</a></li></ul></nav><main data-astro-cid-ybatimd6><h1 id="astro-site-template">Astro Site Template</h1>
+<p>The Astro project that carto shells out to when it renders a vault into a static
+site. carto itself never imports Astro; instead the <a href="/en/carto.build/">Site Build Driver</a>
+spawns <code>astro build</code> against this template directory and hands it the vault
+through environment variables. Everything under <code>astro/</code> — the config, the content
+loader, the routes, and the layout — is a fixed template; the <em>content</em> it renders
+is whatever content directory the driver points it at.</p>
+<h2 id="configuration--astroconfigmjs">Configuration — <code>astro.config.mjs</code></h2>
+<p>The single source file for this node is <code>astro/astro.config.mjs</code>. It is a small
+<code>defineConfig</code> call with three deliberate choices:</p>
+<pre class="astro-code github-light" style="background-color:#fff;color:#24292e; overflow-x: auto;" tabindex="0" data-language="js"><code><span class="line"><span style="color:#D73A49">export</span><span style="color:#D73A49"> default</span><span style="color:#6F42C1"> defineConfig</span><span style="color:#24292E">({</span></span>
+<span class="line"><span style="color:#24292E">  outDir: process.env.</span><span style="color:#005CC5">CARTO_OUT_DIR</span><span style="color:#D73A49"> ??</span><span style="color:#032F62"> "../dist-site"</span><span style="color:#24292E">,</span></span>
+<span class="line"><span style="color:#24292E">  integrations: [</span><span style="color:#6F42C1">mdx</span><span style="color:#24292E">()],</span></span>
+<span class="line"><span style="color:#24292E">  markdown: {</span></span>
+<span class="line"><span style="color:#24292E">    shikiConfig: { theme: </span><span style="color:#032F62">"github-light"</span><span style="color:#24292E"> },</span></span>
+<span class="line"><span style="color:#24292E">  },</span></span>
+<span class="line"><span style="color:#24292E">});</span></span></code></pre>
+<ul>
+<li><strong><code>outDir</code> from the environment.</strong> The build output directory is read from
+<code>CARTO_OUT_DIR</code>, falling back to <code>../dist-site</code> when the variable is unset (for
+example when you run Astro directly during template development). The driver
+always sets it, so a real carto build writes wherever <code>--out</code> asked.</li>
+<li><strong><code>@astrojs/mdx</code>.</strong> The <code>mdx()</code> integration is registered so every node page —
+which authors write as <code>.mdx</code> — compiles to a component and can carry the
+cross-links and fenced code these pages rely on.</li>
+<li><strong>Shiki <code>github-light</code>.</strong> Markdown code fences are highlighted with the
+<code>github-light</code> theme, matching the light colour scheme the layout ships.</li>
+</ul>
+<h2 id="how-the-driver-hands-off-the-vault">How the driver hands off the vault</h2>
+<p>carto never passes files as arguments; it passes three environment variables and
+lets the template read them. Walking the handoff (see
+<a href="/en/carto.build/">Site Build Driver</a>):</p>
+<ol>
+<li><code>carto build</code> reads the IR, diffs the recorded hashes against the sources on
+disk, and computes the set of stale node ids.</li>
+<li>It resolves the template directory (the <code>astro/</code> folder shipped with carto) and
+the local Astro binary.</li>
+<li>It spawns <code>astro build --root &lt;template&gt;</code> with the parent environment plus
+three injected variables:
+<ul>
+<li><code>CARTO_CONTENT_DIR</code> — the absolute path to the content directory being
+rendered.</li>
+<li><code>CARTO_OUT_DIR</code> — the absolute path where the finished site should land.</li>
+<li><code>CARTO_STALE_IDS</code> — the newline-joined list of stale node ids.</li>
+</ul>
+</li>
+<li>Astro boots with this config, and the two child modules pick the variables up:
+the loader reads <code>CARTO_CONTENT_DIR</code> and <code>CARTO_STALE_IDS</code>, the pages render
+each node through the layout.</li>
+</ol>
+<p>Because the config resolves <code>outDir</code> at load time, the value the driver injects is
+what governs the output location; the <code>../dist-site</code> default only applies when you
+run the template outside of carto.</p>
+<h2 id="the-two-children">The two children</h2>
+<p>This node is the template’s root; its two children divide the work:</p>
+<ul>
+<li><a href="/en/carto.site.loader/">Content Loader</a> — turns the content directory into
+typed, validated data: the Astro content collection over the node <code>.mdx</code> files,
+<code>loadIr</code>, the <code>staleIds</code> set, and the <code>tree</code> walk.</li>
+<li><a href="/en/carto.site.pages/">Pages &amp; Layout</a> — the routes and the shell: the index
+redirect, the dynamic node route, and the navigation/locale/stale layout.</li>
+</ul></main></div></body></html>

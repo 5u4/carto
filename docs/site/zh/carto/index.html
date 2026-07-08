@@ -1,0 +1,39 @@
+<!DOCTYPE html><html lang="zh" data-astro-cid-ybatimd6><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>carto — carto</title><style>:root{color-scheme:light}[data-astro-cid-ybatimd6]{box-sizing:border-box}body{color:#1a1a1a;margin:0;font:16px/1.6 -apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif}.shell[data-astro-cid-ybatimd6]{min-height:100vh;display:flex}nav[data-astro-cid-ybatimd6]{background:#fafafa;border-right:1px solid #e5e5e5;flex:0 0 280px;width:280px;padding:1.5rem 1rem;overflow-y:auto}nav[data-astro-cid-ybatimd6] .project[data-astro-cid-ybatimd6]{text-transform:uppercase;letter-spacing:.05em;color:#666;margin-bottom:1rem;font-size:.85rem;font-weight:700}nav[data-astro-cid-ybatimd6] ul[data-astro-cid-ybatimd6]{margin:0;padding:0;list-style:none}nav[data-astro-cid-ybatimd6] a[data-astro-cid-ybatimd6]{color:#333;border-radius:4px;padding:.2rem .5rem;font-size:.9rem;text-decoration:none;display:block}nav[data-astro-cid-ybatimd6] a[data-astro-cid-ybatimd6]:hover{background:#eee}nav[data-astro-cid-ybatimd6] a[data-astro-cid-ybatimd6].active{color:#fff;background:#1a1a1a}main[data-astro-cid-ybatimd6]{flex:1;min-width:0;max-width:860px;padding:2rem 3rem}main[data-astro-cid-ybatimd6] pre{border-radius:6px;padding:1rem;font-size:.85rem;overflow-x:auto}main[data-astro-cid-ybatimd6] h1{margin-top:0}.hint[data-astro-cid-ybatimd6]{border-radius:6px;margin-bottom:1.5rem;padding:.6rem 1rem;font-size:.9rem}.hint[data-astro-cid-ybatimd6].stale{color:#8a5300;background:#fff4e5;border:1px solid #ffcc80}.hint[data-astro-cid-ybatimd6].leaf{color:#555;background:#f0f0f0;border:1px solid #ddd}.locales[data-astro-cid-ybatimd6]{margin-bottom:1rem;font-size:.85rem}.locales[data-astro-cid-ybatimd6] a[data-astro-cid-ybatimd6]{color:#0366d6;margin-right:.5rem;text-decoration:none}.locales[data-astro-cid-ybatimd6] a[data-astro-cid-ybatimd6].current{color:#666;font-weight:700}@media (width<=720px){.shell[data-astro-cid-ybatimd6]{flex-direction:column}nav[data-astro-cid-ybatimd6]{border-bottom:1px solid #e5e5e5;border-right:none;flex:none;width:100%}main[data-astro-cid-ybatimd6]{padding:1.5rem 1.25rem}}
+</style></head><body data-astro-cid-ybatimd6><div class="shell" data-astro-cid-ybatimd6><nav data-astro-cid-ybatimd6><div class="project" data-astro-cid-ybatimd6>carto</div><div class="locales" data-astro-cid-ybatimd6><a href="/en/carto/" class data-astro-cid-ybatimd6>en</a><a href="/zh/carto/" class="current" data-astro-cid-ybatimd6>zh</a></div><ul data-astro-cid-ybatimd6><li data-astro-cid-ybatimd6><a href="/zh/carto/" class="active" style="padding-left: 0.5rem" data-astro-cid-ybatimd6>carto</a></li><li data-astro-cid-ybatimd6><a href="/zh/carto.model/" class style="padding-left: 1.4rem" data-astro-cid-ybatimd6>Vault Data Model</a></li><li data-astro-cid-ybatimd6><a href="/zh/carto.ir/" class style="padding-left: 1.4rem" data-astro-cid-ybatimd6>IR Schema</a></li><li data-astro-cid-ybatimd6><a href="/zh/carto.core/" class style="padding-left: 1.4rem" data-astro-cid-ybatimd6>Hashing Core</a></li><li data-astro-cid-ybatimd6><a href="/zh/carto.io/" class style="padding-left: 1.4rem" data-astro-cid-ybatimd6>IR &amp; Source I/O</a></li><li data-astro-cid-ybatimd6><a href="/zh/carto.cli/" class style="padding-left: 1.4rem" data-astro-cid-ybatimd6>CLI Commands</a></li><li data-astro-cid-ybatimd6><a href="/zh/carto.build/" class style="padding-left: 1.4rem" data-astro-cid-ybatimd6>Site Build Driver</a></li><li data-astro-cid-ybatimd6><a href="/zh/carto.staleness/" class style="padding-left: 1.4rem" data-astro-cid-ybatimd6>Staleness Lifecycle</a></li><li data-astro-cid-ybatimd6><a href="/zh/carto.site/" class style="padding-left: 1.4rem" data-astro-cid-ybatimd6>Astro Site Template</a></li><li data-astro-cid-ybatimd6><a href="/zh/carto.site.loader/" class style="padding-left: 2.3rem" data-astro-cid-ybatimd6>Content Loader</a></li><li data-astro-cid-ybatimd6><a href="/zh/carto.site.pages/" class style="padding-left: 2.3rem" data-astro-cid-ybatimd6>Pages &amp; Layout</a></li></ul></nav><main data-astro-cid-ybatimd6><h1 id="carto">carto</h1>
+<p>carto 把你关心的源代码变成一个不断生长、供人阅读的静态站点：每个节点一个页面，彼此密集互链，你可以朝任意方向持续扩展。你（也就是 agent）写下全部内容；<code>carto</code> CLI 只做确定性的工作，<strong>从不调用模型</strong>。你是这个环路里唯一的智能。</p>
+<h2 id="职责">职责</h2>
+<p>carto 掌管的是 <em>vault 的含义</em> 与 <em>vault 如何被校验和构建</em> 之间的分界。它是一个个人知识 vault 生成器：一个 vault 可以只记录一个代码库，也可以横跨多个仓库外加独立的概念笔记，两种情况用的是同一套原语。生成出的站点是一个<strong>只读界面</strong>——它无法回调 agent，所以每一次深入都意味着用户来问、你写更多节点、再重新构建。</p>
+<h2 id="你要写的两层">你要写的两层</h2>
+<p>carto 恰好由两层构成，两层都由你来写：</p>
+<ul>
+<li><strong>结构——<code>ir.json</code>。</strong> 位于 content 根目录的单一文件，装着整个 vault：它的元数据，加上一份扁平的节点记录。具体形态见 <a href="/zh/carto.ir/">IR Schema</a>，背后的思想见 <a href="/zh/carto.model/">Vault Data Model</a>。</li>
+<li><strong>内容——每节点的 MDX。</strong> 每个节点每种语言一个扁平文件，命名为 <code>nodes/&lt;id&gt;.&lt;locale&gt;.mdx</code>（例如 <code>carto.core.en.mdx</code>）。它的 frontmatter 只携带 <code>id</code>、<code>name</code>、<code>locale</code> 和 <code>contentHash</code>；一切结构信息只存在于 <code>ir.json</code> 中。</li>
+</ul>
+<h2 id="核心概念一览">核心概念一览</h2>
+<ul>
+<li><strong>锚点（anchors）</strong> 是节点 source 解析所依据的具名根目录。一个仓库只需一个锚点——这里是指向仓库根的 <code>self</code>——而跨项目的知识库则声明多个。锚点正是让 vault 摆脱单一仓库束缚的东西。</li>
+<li><strong>森林（forest）。</strong> <code>ir.json</code> 不是一棵树，而是一片森林：每个 <code>parent: null</code> 的节点都是一个顶层根，这些根就是 vault 的顶层维度。深度完全由每个节点的 <code>children</code> 表达。</li>
+<li><strong>概念节点（concept nodes）。</strong> <code>sources: []</code> 的节点描述的是一个想法而非一个文件——一条原则、一种模式、一段跨越多处的叙述。它们是把页面粘成 wiki 的胶水，给你一个可以链接<em>过去</em>的落点。<a href="/zh/carto.model/">Vault Data Model</a> 与 <a href="/zh/carto.staleness/">Staleness Lifecycle</a> 本身就是概念节点。</li>
+</ul>
+<h2 id="数据流工作环路">数据流——工作环路</h2>
+<p>carto 是当作一个环路来用的，而不是一次性生成器。把这条路径走一遍：</p>
+<ol>
+<li><strong>播种一个 vault。</strong> 定好锚点与顶层根，把它们的节点写进 <code>ir.json</code>，每种语言各写一个 MDX 文件，然后运行 <code>carto hash</code> 与 <code>carto build</code>。</li>
+<li><strong>深入一个节点。</strong> 把某个节点的 <code>children</code> 加进 <code>ir.json</code>，为每个子节点写 MDX，再次 hash + build。把树往下长一层，与最初播种是同一个动作——并没有单独的“深挖”模式。</li>
+<li><strong>新增一个方向。</strong> 要纳入一个新仓库或主题，就加上它的锚点（若它由源代码支撑），加一个新的 <code>parent: null</code> 根，并在其下播种。vault 的其余部分毫发无损。</li>
+<li><strong>源代码变更后刷新。</strong> 运行 <code>carto stale</code> 看看一次源代码改动波及了哪些节点，重写你判断值得刷新的那些（连同它们的全部语言），再 hash 与 build。完整循环见 <a href="/zh/carto.staleness/">Staleness Lifecycle</a>。</li>
+</ol>
+<h2 id="cli-一览">CLI 一览</h2>
+<p><a href="/zh/carto.cli/">CLI Commands</a> 的界面是四个确定性子命令：<code>hash</code> 把 source 的哈希记入 <code>ir.json</code>，<code>diff</code> 列出发生变化的 source，<code>stale</code> 把这些变化映射到节点 id 作为报告，<code>build</code> 编译站点。它们都不读写正文——只负责度量并组装你写好的东西。</p>
+<h2 id="接下来去哪">接下来去哪</h2>
+<p>本页是入口。每个子节点覆盖 carto 的一个部分：</p>
+<ul>
+<li><a href="/zh/carto.model/">Vault Data Model</a> —— 把 vault、锚点、森林、source 与语言作为概念模型来讲。</li>
+<li><a href="/zh/carto.ir/">IR Schema</a> —— <code>ir.json</code> 的具体形态及其校验规则。</li>
+<li><a href="/zh/carto.core/">Hashing Core</a> —— 哈希、比对与判定陈旧背后的纯函数。</li>
+<li><a href="/zh/carto.io/">IR &amp; Source I/O</a> —— 读写 <code>ir.json</code> 以及从磁盘上哈希源文件。</li>
+<li><a href="/zh/carto.cli/">CLI Commands</a> —— <code>hash</code>、<code>diff</code>、<code>stale</code>、<code>build</code> 子命令。</li>
+<li><a href="/zh/carto.build/">Site Build Driver</a> —— <code>carto build</code> 如何调用 Astro。</li>
+<li><a href="/zh/carto.staleness/">Staleness Lifecycle</a> —— 一次源代码改动如何变成一条陈旧提示。</li>
+<li><a href="/zh/carto.site/">Astro Site Template</a> —— 渲染 vault 的静态站点模板。</li>
+</ul></main></div></body></html>

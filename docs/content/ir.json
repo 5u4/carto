@@ -1,0 +1,181 @@
+{
+  "version": "1",
+  "vault": {
+    "name": "carto",
+    "anchors": {
+      "self": "../.."
+    },
+    "generatedAt": "2026-07-08T00:00:00Z",
+    "locales": [
+      "en",
+      "zh"
+    ],
+    "defaultLocale": "en"
+  },
+  "nodes": {
+    "carto": {
+      "id": "carto",
+      "name": "carto",
+      "parent": null,
+      "children": [
+        "carto.model",
+        "carto.ir",
+        "carto.core",
+        "carto.io",
+        "carto.cli",
+        "carto.build",
+        "carto.staleness",
+        "carto.site"
+      ],
+      "sources": [
+        {
+          "anchor": "self",
+          "file": "package.json",
+          "hash": "sha256:68fa805f3ac379336ed42f1e3eba7860d5becc4272d2d9e23d095c62585d8db1"
+        }
+      ]
+    },
+    "carto.model": {
+      "id": "carto.model",
+      "name": "Vault Data Model",
+      "parent": "carto",
+      "children": [],
+      "sources": [
+        {
+          "anchor": "self",
+          "file": "skill/SKILL.md",
+          "hash": "sha256:5f15c66e7b41e2ee83a40b3dba9259777b098582d2d925e1db902bc952f944d9"
+        }
+      ]
+    },
+    "carto.ir": {
+      "id": "carto.ir",
+      "name": "IR Schema",
+      "parent": "carto",
+      "children": [],
+      "sources": [
+        {
+          "anchor": "self",
+          "file": "src/ir.ts",
+          "hash": "sha256:375cbbb554d780c87ac7c1f683ef2386b125e9eec1cb0f5d7a71b0f0c60bc783"
+        }
+      ]
+    },
+    "carto.core": {
+      "id": "carto.core",
+      "name": "Hashing Core",
+      "parent": "carto",
+      "children": [],
+      "sources": [
+        {
+          "anchor": "self",
+          "file": "src/core.ts",
+          "hash": "sha256:07791ed85ab5dcb2eccbc154b710ef0de20bdf8c7ee4f035d3182f52e41d04c0"
+        }
+      ]
+    },
+    "carto.io": {
+      "id": "carto.io",
+      "name": "IR & Source I/O",
+      "parent": "carto",
+      "children": [],
+      "sources": [
+        {
+          "anchor": "self",
+          "file": "src/io.ts",
+          "hash": "sha256:55353d051a046c66f1d6d2d659fd4d7ba52c01e5569dd9c160e44a70590358c5"
+        }
+      ]
+    },
+    "carto.cli": {
+      "id": "carto.cli",
+      "name": "CLI Commands",
+      "parent": "carto",
+      "children": [],
+      "sources": [
+        {
+          "anchor": "self",
+          "file": "src/cli.ts",
+          "hash": "sha256:611f156b0c2686fee44bc98bef2f58625e2d9577e2d0dc4bcadb6af4f8b8a6d4"
+        }
+      ]
+    },
+    "carto.build": {
+      "id": "carto.build",
+      "name": "Site Build Driver",
+      "parent": "carto",
+      "children": [],
+      "sources": [
+        {
+          "anchor": "self",
+          "file": "src/build.ts",
+          "hash": "sha256:a8d2bdd91fdc91fab89a65214e50cf396c9a14b80fb18604c71ec149fdd29c95"
+        }
+      ]
+    },
+    "carto.staleness": {
+      "id": "carto.staleness",
+      "name": "Staleness Lifecycle",
+      "parent": "carto",
+      "children": [],
+      "sources": []
+    },
+    "carto.site": {
+      "id": "carto.site",
+      "name": "Astro Site Template",
+      "parent": "carto",
+      "children": [
+        "carto.site.loader",
+        "carto.site.pages"
+      ],
+      "sources": [
+        {
+          "anchor": "self",
+          "file": "astro/astro.config.mjs",
+          "hash": "sha256:82754494d2ca2fab13fc6cebd39903375867772f8e3acaf8fab1467e7d8dfb6d"
+        }
+      ]
+    },
+    "carto.site.loader": {
+      "id": "carto.site.loader",
+      "name": "Content Loader",
+      "parent": "carto.site",
+      "children": [],
+      "sources": [
+        {
+          "anchor": "self",
+          "file": "astro/src/content.config.ts",
+          "hash": "sha256:224b53319aaf9d7d2015c4228d51744275534cf2df7d4f0bf334a9031cf7c8a8"
+        },
+        {
+          "anchor": "self",
+          "file": "astro/src/lib/carto.ts",
+          "hash": "sha256:439f82bfc22fb6ebe035ad24505b3bbe1326c59cdea6e5bc4ded7a0d63dbdbfa"
+        }
+      ]
+    },
+    "carto.site.pages": {
+      "id": "carto.site.pages",
+      "name": "Pages & Layout",
+      "parent": "carto.site",
+      "children": [],
+      "sources": [
+        {
+          "anchor": "self",
+          "file": "astro/src/pages/index.astro",
+          "hash": "sha256:a97a2776089daedba83df44d0e4a20f19a1f172f46df8ca13c1aed2e47cd520f"
+        },
+        {
+          "anchor": "self",
+          "file": "astro/src/pages/[locale]/[...id].astro",
+          "hash": "sha256:245fd4812e164e4fe60bbcfc2ef93d0256d9fc9cddc44e3edcfc81f3996c0c5e"
+        },
+        {
+          "anchor": "self",
+          "file": "astro/src/layouts/Page.astro",
+          "hash": "sha256:1dfbd4606dcbbbeaa00b168b4ebd62c5acf7ae8e45e9689d0e8177f2cbd412a8"
+        }
+      ]
+    }
+  }
+}

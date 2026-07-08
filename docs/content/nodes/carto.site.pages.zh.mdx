@@ -1,0 +1,104 @@
+---
+id: carto.site.pages
+name: Pages & Layout
+locale: zh
+contentHash: sha256:pending
+---
+
+# 页面与布局
+
+本节点是站点的路由及其视觉外壳：入口重定向、渲染每个节点页面的那一条动态路由，以及把每个页面用导航
+包裹起来的布局。它的三个源文件是 `astro/src/pages/index.astro`、
+`astro/src/pages/[locale]/[...id].astro` 与 `astro/src/layouts/Page.astro`。
+
+## 入口重定向——`index.astro`
+
+`index.astro` 自身没有内容；它把访客弹送到默认语言下的第一个节点：
+
+```astro
+const ir = loadIr();
+const roots = Object.values(ir.nodes).filter((node) => node.parent === null);
+const first = roots[0] ?? Object.values(ir.nodes)[0];
+const target = first === undefined
+  ? null
+  : `${import.meta.env.BASE_URL}${ir.vault.defaultLocale}/${first.id}/`;
+```
+
+它取第一个根（第一个 `parent` 为 `null` 的节点），回退到任意类型的第一个节点，并在 `defaultLocale`
+下构造一个 URL。随后它输出一个 `meta http-equiv="refresh"` 与一个指向该目标的 canonical 链接。若
+知识库根本没有任何节点，`target` 为 `null`，页面转而显示一句朴素的 "No components generated yet."
+提示。
+
+## 节点路由——`[locale]/[...id].astro`
+
+每个节点页面都由唯一一条动态路由 `[locale]/[...id].astro` 产出。它的 `getStaticPaths` 连接了两个
+数据源——内容集合与 IR：
+
+```astro
+export async function getStaticPaths() {
+  const ir = loadIr();
+  const locales = new Set(ir.vault.locales);
+  const entries = await getCollection("nodes");
+  return entries.flatMap((entry) => {
+    const node = ir.nodes[entry.data.id];
+    if (node === undefined || !locales.has(entry.data.locale)) {
+      return [];
+    }
+    return [{
+      params: { locale: entry.data.locale, id: entry.data.id },
+      props: { entry, node },
+    }];
+  });
+}
+```
+
+按顺序读它：
+
+1. 它加载 IR，并把知识库声明的 `locales` 变成一个集合。
+2. 它取出 `nodes` 集合中的每一条条目——[内容加载器](/zh/carto.site.loader/) 找到的每个 `.mdx`
+   文件对应一条。
+3. 对每条条目，它按 `entry.data.id` 查出匹配的 IR 节点，并在以下两种情况之一时用 `flatMap` 把该条目
+   丢弃（返回 `[]`）：该 id 在 IR 中没有对应节点，或文件的 `locale` 不在知识库声明之列。这两道守卫意味着
+   一个游离或标错的 `.mdx` 文件根本不会产出页面。
+4. 幸存下来的条目成为一条静态路径：`params` 携带构成 URL 的 `locale` 与 `id`，`props` 同时携带集合
+   `entry` 及其 IR `node`。
+
+随后页面渲染该条目编译后的 MDX，并把它放入布局：
+
+```astro
+const { entry, node } = Astro.props;
+const { Content } = await render(entry);
+```
+
+```astro
+<Page node={node} locale={entry.data.locale}>
+  <Content />
+</Page>
+```
+
+## 外壳——`Page.astro`
+
+`Page.astro` 接收 `node` 与 `locale`，并在渲染内容周围绘制框架。它的输入直接来自加载器：
+
+```astro
+const ir = loadIr();
+const items = tree(ir);
+const locales = ir.vault.locales;
+const isStale = staleIds.has(node.id);
+const hasChildren = node.children.length > 0;
+```
+
+- **导航树。** `tree(ir)` 给出每个节点连同其 `depth` 的摊平先序列表（见
+  [内容加载器](/zh/carto.site.loader/)）。布局为每个条目渲染一条链接。
+- **当前节点与缩进。** 当一条链接的 id 等于当前 `node.id` 时，它获得 `active` 类；其左内边距由
+  `depth` 计算得到（`0.5 + depth * 0.9` rem），于是整棵树读起来像一份缩进的大纲。
+- **语言切换器。** 当知识库声明了不止一种语言（`locales.length > 1`）时，会显示一行语言链接；每条都
+  指向同一个 `node.id` 的不同语言版本，且当前语言会被标注。
+- **过期提示。** `isStale` 即 `staleIds.has(node.id)`。为真时，一条横幅提醒页面写成之后源文件已变更——见
+  [过期生命周期](/zh/carto.staleness/)。概念节点不携带任何源文件，永不过期，因此从不显示它。
+- **叶子提示。** `hasChildren` 即 `node.children.length > 0`。当一个节点没有子节点时，一条提示邀请
+  读者请求 agent 深入挖掘该组件。
+
+编译后的页面内容通过两条提示之间的 slot 到达，于是过期横幅位于内容之上，叶子提示位于其下。
+
+上游的 [站点构建驱动](/zh/carto.build/) 正是为这些页面提供过期 id 与内容目录的那一环。

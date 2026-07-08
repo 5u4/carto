@@ -10,11 +10,6 @@ const sharedArgs = {
     description: "Content directory holding ir.json and nodes/",
     default: "content",
   },
-  root: {
-    type: "string",
-    description: "Repository root that source paths resolve against",
-    default: ".",
-  },
 } as const;
 
 const hash = defineCommand({
@@ -23,7 +18,7 @@ const hash = defineCommand({
   async run({ args }) {
     const irPath = resolve(args.content, "ir.json");
     const ir = await readIr(irPath);
-    const current = await currentHashes(ir, args.root);
+    const current = await currentHashes(ir, args.content);
     await writeIr(irPath, applyHashes(ir, current));
     process.stdout.write(`hashed ${current.size} source file(s)\n`);
   },
@@ -33,14 +28,18 @@ const diff = defineCommand({
   meta: { name: "diff", description: "List source files changed since last hash" },
   args: sharedArgs,
   async run({ args }) {
-    const ir = await readIr(resolve(args.content, "ir.json"));
-    const changes = diffHashes(ir, await currentHashes(ir, args.root));
+    const irPath = resolve(args.content, "ir.json");
+    const ir = await readIr(irPath);
+    const current = await currentHashes(ir, args.content);
+    const changes = diffHashes(ir, current);
     if (changes.length === 0) {
       process.stdout.write("no changes\n");
       return;
     }
     for (const change of changes) {
-      process.stdout.write(`${change.current === null ? "missing" : "changed"}\t${change.file}\n`);
+      process.stdout.write(
+        `${change.current === null ? "missing" : "changed"}\t${change.anchor}:${change.file}\n`,
+      );
     }
   },
 });
@@ -49,8 +48,13 @@ const stale = defineCommand({
   meta: { name: "stale", description: "Map changed files to affected node ids (report only)" },
   args: sharedArgs,
   async run({ args }) {
-    const ir = await readIr(resolve(args.content, "ir.json"));
-    const changed = diffHashes(ir, await currentHashes(ir, args.root)).map((change) => change.file);
+    const irPath = resolve(args.content, "ir.json");
+    const ir = await readIr(irPath);
+    const current = await currentHashes(ir, args.content);
+    const changed = diffHashes(ir, current).map((change) => ({
+      anchor: change.anchor,
+      file: change.file,
+    }));
     const nodes = staleNodes(ir, changed);
     if (nodes.length === 0) {
       process.stdout.write("no stale nodes\n");
@@ -76,7 +80,6 @@ const buildCommand = defineCommand({
     await build({
       irPath: resolve(args.content, "ir.json"),
       contentDir: args.content,
-      root: args.root,
       outDir: args.out,
     });
   },

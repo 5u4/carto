@@ -5,11 +5,10 @@ import type { Ir, Node } from "../src/ir.js";
 function makeIr(nodes: Record<string, Node>): Ir {
   return {
     version: "1",
-    project: {
+    vault: {
       name: "carto",
-      root: "/repo",
+      anchors: { self: "/repo" },
       generatedAt: "2026-07-07T00:00:00Z",
-      commit: "abc123",
       locales: ["en"],
       defaultLocale: "en",
     },

@@ -1,0 +1,64 @@
+<!DOCTYPE html><html lang="en" data-astro-cid-ybatimd6><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Site Build Driver — carto</title><style>:root{color-scheme:light}[data-astro-cid-ybatimd6]{box-sizing:border-box}body{color:#1a1a1a;margin:0;font:16px/1.6 -apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif}.shell[data-astro-cid-ybatimd6]{min-height:100vh;display:flex}nav[data-astro-cid-ybatimd6]{background:#fafafa;border-right:1px solid #e5e5e5;flex:0 0 280px;width:280px;padding:1.5rem 1rem;overflow-y:auto}nav[data-astro-cid-ybatimd6] .project[data-astro-cid-ybatimd6]{text-transform:uppercase;letter-spacing:.05em;color:#666;margin-bottom:1rem;font-size:.85rem;font-weight:700}nav[data-astro-cid-ybatimd6] ul[data-astro-cid-ybatimd6]{margin:0;padding:0;list-style:none}nav[data-astro-cid-ybatimd6] a[data-astro-cid-ybatimd6]{color:#333;border-radius:4px;padding:.2rem .5rem;font-size:.9rem;text-decoration:none;display:block}nav[data-astro-cid-ybatimd6] a[data-astro-cid-ybatimd6]:hover{background:#eee}nav[data-astro-cid-ybatimd6] a[data-astro-cid-ybatimd6].active{color:#fff;background:#1a1a1a}main[data-astro-cid-ybatimd6]{flex:1;min-width:0;max-width:860px;padding:2rem 3rem}main[data-astro-cid-ybatimd6] pre{border-radius:6px;padding:1rem;font-size:.85rem;overflow-x:auto}main[data-astro-cid-ybatimd6] h1{margin-top:0}.hint[data-astro-cid-ybatimd6]{border-radius:6px;margin-bottom:1.5rem;padding:.6rem 1rem;font-size:.9rem}.hint[data-astro-cid-ybatimd6].stale{color:#8a5300;background:#fff4e5;border:1px solid #ffcc80}.hint[data-astro-cid-ybatimd6].leaf{color:#555;background:#f0f0f0;border:1px solid #ddd}.locales[data-astro-cid-ybatimd6]{margin-bottom:1rem;font-size:.85rem}.locales[data-astro-cid-ybatimd6] a[data-astro-cid-ybatimd6]{color:#0366d6;margin-right:.5rem;text-decoration:none}.locales[data-astro-cid-ybatimd6] a[data-astro-cid-ybatimd6].current{color:#666;font-weight:700}@media (width<=720px){.shell[data-astro-cid-ybatimd6]{flex-direction:column}nav[data-astro-cid-ybatimd6]{border-bottom:1px solid #e5e5e5;border-right:none;flex:none;width:100%}main[data-astro-cid-ybatimd6]{padding:1.5rem 1.25rem}}
+</style></head><body data-astro-cid-ybatimd6><div class="shell" data-astro-cid-ybatimd6><nav data-astro-cid-ybatimd6><div class="project" data-astro-cid-ybatimd6>carto</div><div class="locales" data-astro-cid-ybatimd6><a href="/en/carto.build/" class="current" data-astro-cid-ybatimd6>en</a><a href="/zh/carto.build/" class data-astro-cid-ybatimd6>zh</a></div><ul data-astro-cid-ybatimd6><li data-astro-cid-ybatimd6><a href="/en/carto/" class style="padding-left: 0.5rem" data-astro-cid-ybatimd6>carto</a></li><li data-astro-cid-ybatimd6><a href="/en/carto.model/" class style="padding-left: 1.4rem" data-astro-cid-ybatimd6>Vault Data Model</a></li><li data-astro-cid-ybatimd6><a href="/en/carto.ir/" class style="padding-left: 1.4rem" data-astro-cid-ybatimd6>IR Schema</a></li><li data-astro-cid-ybatimd6><a href="/en/carto.core/" class style="padding-left: 1.4rem" data-astro-cid-ybatimd6>Hashing Core</a></li><li data-astro-cid-ybatimd6><a href="/en/carto.io/" class style="padding-left: 1.4rem" data-astro-cid-ybatimd6>IR &amp; Source I/O</a></li><li data-astro-cid-ybatimd6><a href="/en/carto.cli/" class style="padding-left: 1.4rem" data-astro-cid-ybatimd6>CLI Commands</a></li><li data-astro-cid-ybatimd6><a href="/en/carto.build/" class="active" style="padding-left: 1.4rem" data-astro-cid-ybatimd6>Site Build Driver</a></li><li data-astro-cid-ybatimd6><a href="/en/carto.staleness/" class style="padding-left: 1.4rem" data-astro-cid-ybatimd6>Staleness Lifecycle</a></li><li data-astro-cid-ybatimd6><a href="/en/carto.site/" class style="padding-left: 1.4rem" data-astro-cid-ybatimd6>Astro Site Template</a></li><li data-astro-cid-ybatimd6><a href="/en/carto.site.loader/" class style="padding-left: 2.3rem" data-astro-cid-ybatimd6>Content Loader</a></li><li data-astro-cid-ybatimd6><a href="/en/carto.site.pages/" class style="padding-left: 2.3rem" data-astro-cid-ybatimd6>Pages &amp; Layout</a></li></ul></nav><main data-astro-cid-ybatimd6><h2 id="responsibility">Responsibility</h2>
+<p><code>src/build.ts</code> is the bridge between carto’s hashing pipeline and the <a href="/en/carto.site/">Astro Site Template</a>. Its job is two-fold: <strong>compute which nodes are stale</strong>, then <strong>shell out to Astro</strong> to render the static site — handing the stale set to the template through the environment. It exposes one function, <code>build</code>, which the <code>build</code> subcommand of the <a href="/en/carto.cli/">CLI Commands</a> calls.</p>
+<h2 id="key-types-and-functions">Key types and functions</h2>
+<ul>
+<li>
+<p><code>BuildOptions</code> — the input contract:</p>
+<pre class="astro-code github-light" style="background-color:#fff;color:#24292e; overflow-x: auto;" tabindex="0" data-language="ts"><code><span class="line"><span style="color:#D73A49">export</span><span style="color:#D73A49"> interface</span><span style="color:#6F42C1"> BuildOptions</span><span style="color:#24292E"> {</span></span>
+<span class="line"><span style="color:#E36209">  irPath</span><span style="color:#D73A49">:</span><span style="color:#005CC5"> string</span><span style="color:#24292E">;</span></span>
+<span class="line"><span style="color:#E36209">  contentDir</span><span style="color:#D73A49">:</span><span style="color:#005CC5"> string</span><span style="color:#24292E">;</span></span>
+<span class="line"><span style="color:#E36209">  outDir</span><span style="color:#D73A49">:</span><span style="color:#005CC5"> string</span><span style="color:#24292E">;</span></span>
+<span class="line"><span style="color:#24292E">}</span></span></code></pre>
+</li>
+<li>
+<p><code>build(options)</code> — reads the IR, derives the stale node ids, spawns Astro, and resolves when the child process exits cleanly.</p>
+</li>
+</ul>
+<h2 id="data-flow">Data flow</h2>
+<ol>
+<li>
+<p><strong>Read + validate.</strong> <code>readIr(options.irPath)</code> loads and schema-checks the IR through the <a href="/en/carto.io/">IR &amp; Source I/O</a> boundary.</p>
+</li>
+<li>
+<p><strong>Diff.</strong> <code>diffHashes(ir, await currentHashes(ir, options.contentDir))</code> compares each node’s stored hash against the live on-disk hash and returns the list of changed sources.</p>
+</li>
+<li>
+<p><strong>Reduce to stale ids.</strong> The changes are mapped to <code>{ anchor, file }</code>, passed to <code>staleNodes</code> (from the <a href="/en/carto.core/">Hashing Core</a>), and each stale node’s <code>id</code> is collected into <code>staleIds</code>.</p>
+</li>
+<li>
+<p><strong>Locate the template and the Astro bin.</strong> The template directory is resolved relative to the <em>compiled</em> module — <code>resolve(dirname(fileURLToPath(import.meta.url)), &quot;..&quot;, &quot;astro&quot;)</code> — so it points at the sibling <code>astro/</code> template dir regardless of cwd. The Astro executable is found via <code>require.resolve(&quot;astro/package.json&quot;)</code>, then joined to <code>bin/astro.mjs</code>.</p>
+</li>
+<li>
+<p><strong>Spawn.</strong> <code>spawn(process.execPath, [astroBin, &quot;build&quot;, &quot;--root&quot;, templateDir], …)</code> launches <code>astro build</code> as a child of the current Node binary with <code>stdio: &quot;inherit&quot;</code>, so Astro’s output streams straight to the user’s terminal. Three environment variables carry carto’s state into the build:</p>
+<ul>
+<li><code>CARTO_CONTENT_DIR</code> — the absolute content directory (<code>resolve(options.contentDir)</code>).</li>
+<li><code>CARTO_OUT_DIR</code> — the absolute output directory (<code>resolve(options.outDir)</code>).</li>
+<li><code>CARTO_STALE_IDS</code> — the stale node ids joined by newlines (<code>staleIds.join(&quot;\n&quot;)</code>).</li>
+</ul>
+</li>
+<li>
+<p><strong>Await the child.</strong> Using <code>Promise.withResolvers</code>, the function wires the child’s lifecycle to a promise:</p>
+<ul>
+<li><code>child.on(&quot;error&quot;, reject)</code> — a spawn failure rejects.</li>
+<li><code>child.on(&quot;close&quot;, (code, signal) =&gt; …)</code> — exit code <code>0</code> resolves (<code>settle()</code>); a non-null <code>signal</code> rejects with <code>astro build terminated by signal &lt;signal&gt;</code>; any other non-zero code rejects with <code>astro build exited with code &lt;code&gt;</code>.</li>
+</ul>
+<p>The returned <code>promise</code> therefore settles exactly when the Astro build succeeds and rejects on any failure mode.</p>
+</li>
+</ol>
+<pre class="astro-code github-light" style="background-color:#fff;color:#24292e; overflow-x: auto;" tabindex="0" data-language="ts"><code><span class="line"><span style="color:#24292E">child.</span><span style="color:#6F42C1">on</span><span style="color:#24292E">(</span><span style="color:#032F62">"close"</span><span style="color:#24292E">, (</span><span style="color:#E36209">code</span><span style="color:#24292E">, </span><span style="color:#E36209">signal</span><span style="color:#24292E">) </span><span style="color:#D73A49">=></span><span style="color:#24292E"> {</span></span>
+<span class="line"><span style="color:#D73A49">  if</span><span style="color:#24292E"> (code </span><span style="color:#D73A49">===</span><span style="color:#005CC5"> 0</span><span style="color:#24292E">) {</span></span>
+<span class="line"><span style="color:#6F42C1">    settle</span><span style="color:#24292E">();</span></span>
+<span class="line"><span style="color:#24292E">  } </span><span style="color:#D73A49">else</span><span style="color:#D73A49"> if</span><span style="color:#24292E"> (signal </span><span style="color:#D73A49">!==</span><span style="color:#005CC5"> null</span><span style="color:#24292E">) {</span></span>
+<span class="line"><span style="color:#6F42C1">    reject</span><span style="color:#24292E">(</span><span style="color:#D73A49">new</span><span style="color:#6F42C1"> Error</span><span style="color:#24292E">(</span><span style="color:#032F62">`astro build terminated by signal ${</span><span style="color:#24292E">signal</span><span style="color:#032F62">}`</span><span style="color:#24292E">));</span></span>
+<span class="line"><span style="color:#24292E">  } </span><span style="color:#D73A49">else</span><span style="color:#24292E"> {</span></span>
+<span class="line"><span style="color:#6F42C1">    reject</span><span style="color:#24292E">(</span><span style="color:#D73A49">new</span><span style="color:#6F42C1"> Error</span><span style="color:#24292E">(</span><span style="color:#032F62">`astro build exited with code ${</span><span style="color:#24292E">code</span><span style="color:#D73A49"> ??</span><span style="color:#032F62"> "null"}`</span><span style="color:#24292E">));</span></span>
+<span class="line"><span style="color:#24292E">  }</span></span>
+<span class="line"><span style="color:#24292E">});</span></span></code></pre>
+<h2 id="relationships">Relationships</h2>
+<ul>
+<li>Invoked by the <code>build</code> subcommand of the <a href="/en/carto.cli/">CLI Commands</a>.</li>
+<li>Reuses the <a href="/en/carto.core/">Hashing Core</a> (<code>diffHashes</code>, <code>staleNodes</code>) and the <a href="/en/carto.io/">IR &amp; Source I/O</a> (<code>readIr</code>, <code>currentHashes</code>) to compute staleness.</li>
+<li>Feeds the <a href="/en/carto.site/">Astro Site Template</a> through the three <code>CARTO_*</code> environment variables — the template reads them to load content and mark stale pages.</li>
+<li>Realizes the reporting side of the <a href="/en/carto.staleness/">Staleness Lifecycle</a> at render time.</li>
+</ul><div class="hint leaf" data-astro-cid-ybatimd6>No sub-components generated yet — ask your agent to dig into this component.</div></main></div></body></html>

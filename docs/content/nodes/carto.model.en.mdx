@@ -1,0 +1,44 @@
+---
+id: carto.model
+name: Vault Data Model
+locale: en
+contentHash: sha256:pending
+---
+
+# Vault Data Model
+
+This is a concept node: it describes the data model a carto vault is built on, independent of any one source file. For the concrete schema and its validation, see [IR Schema](/en/carto.ir/).
+
+## Responsibility
+
+A carto **vault** is one logical knowledge base. The vault data model answers a single question: what pieces make up a vault, and how do they combine so that the same primitives describe one repo or a knowledge base spanning many? Everything the agent writes into `ir.json` is an instance of this model.
+
+## The pieces
+
+- **Vault.** The top-level container: a `name`, the set of `anchors`, the declared `locales` and `defaultLocale`, and a `generatedAt` timestamp. It carries no content itself — it frames everything below.
+- **Anchors.** A map from a short name to a root directory. Each source cites an anchor plus a repo-relative `file`, so anchors are the indirection that lets sources live outside the vault's own directory. Anchor paths resolve relative to the directory holding `ir.json`, which is what makes a relative anchor like `..` portable.
+- **Nodes.** The flat record `nodes` holds every node by id. A node has an `id`, a display `name`, a `parent`, a list of `children`, and a list of `sources`.
+- **Sources.** Each source is an `anchor` + `file` + `hash`. The same `file` cited under two different anchors is two distinct sources, and a source shared by two nodes must carry an identical hash.
+- **Locales.** Languages are declared once in `vault.locales`; each node has one MDX sibling file per locale.
+
+## Children are the only depth state
+
+The vault has no separate notion of "levels" or "sections". The containment tree lives entirely in each node's `children` array, and **a node's place in that tree is the only depth state there is**. A node with an empty `children` list has simply not had its next level written yet — nothing marks it as a leaf on purpose. Relationships other than containment (depends-on, data-flow, who-uses-this) are never encoded in `ir.json`; they live in prose as inline links, which keeps the structure a pure forest.
+
+## Anchors free a vault from one repo
+
+Because every source resolves through an anchor, a vault is not bound to a single checkout:
+
+1. **One repo** declares one anchor — here, `self` resolving to the repo root — and every source cites it.
+2. **A knowledge base** declares many anchors, one per repo or checkout it wants to describe, and nodes from different roots sit side by side in the forest.
+3. **Attaching a dependency** is just adding another anchor and writing your own nodes about the parts you use; you describe its internals from your vault rather than importing its docs.
+
+See [CLI Commands](/en/carto.cli/) for how `carto hash` turns an anchor plus file into a real hash on disk.
+
+## Concept nodes are the wiki glue
+
+A node with `sources: []` — like this page — describes an idea, not a file. Because it anchors to no source, a concept node is **never stale** (see [Staleness Lifecycle](/en/carto.staleness/)). Concept nodes exist so you are never forced to pin an idea to a file it does not live in; they are what turns a pile of per-file pages into a connected wiki, giving you a place to link *to*.
+
+## Locale atomicity
+
+A node is fresh only when *every* one of its locales is fresh. Languages are siblings, not a primary/translation pair, so when you regenerate a node you regenerate all of its locales together — never leave one language behind. This atomicity is a rule of the model, not something the CLI can repair for you.

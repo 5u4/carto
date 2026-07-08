@@ -5,11 +5,10 @@ import type { Ir } from "../src/ir.js";
 function validIr(): Ir {
   return {
     version: "1",
-    project: {
+    vault: {
       name: "carto",
-      root: "/repo",
+      anchors: { self: "/repo", lib: "/lib" },
       generatedAt: "2026-07-07T00:00:00Z",
-      commit: "abc123",
       locales: ["en", "fr"],
       defaultLocale: "en",
     },
@@ -19,14 +18,14 @@ function validIr(): Ir {
         name: "Root",
         parent: null,
         children: ["child"],
-        sources: [{ file: "src/index.ts", hash: "sha256:aaa" }],
+        sources: [{ anchor: "self", file: "src/index.ts", hash: "sha256:aaa" }],
       },
       child: {
         id: "child",
         name: "Child",
         parent: "root",
         children: [],
-        sources: [{ file: "src/child.ts", hash: "sha256:bbb" }],
+        sources: [{ anchor: "self", file: "src/child.ts", hash: "sha256:bbb" }],
       },
     },
   };
@@ -45,9 +44,9 @@ describe("IrSchema", () => {
     expect(() => IrSchema.parse(invalid)).toThrow();
   });
 
-  it("rejects a defaultLocale absent from project.locales", () => {
+  it("rejects a defaultLocale absent from vault.locales", () => {
     const ir = validIr();
-    const invalid = { ...ir, project: { ...ir.project, defaultLocale: "de" } };
+    const invalid = { ...ir, vault: { ...ir.vault, defaultLocale: "de" } };
     expect(() => IrSchema.parse(invalid)).toThrow();
   });
 
@@ -88,9 +87,9 @@ describe("IrSchema", () => {
     expect(() => IrSchema.parse(invalid)).toThrow();
   });
 
-  it("rejects an empty project.locales list", () => {
+  it("rejects an empty vault.locales list", () => {
     const ir = validIr();
-    const invalid = { ...ir, project: { ...ir.project, locales: [] } };
+    const invalid = { ...ir, vault: { ...ir.vault, locales: [] } };
     expect(() => IrSchema.parse(invalid)).toThrow();
   });
 
@@ -106,7 +105,22 @@ describe("IrSchema", () => {
     expect(() => IrSchema.parse(invalid)).toThrow();
   });
 
-  it("rejects the same source file carrying conflicting hashes across nodes", () => {
+  it("rejects a source citing an anchor absent from vault.anchors", () => {
+    const ir = validIr();
+    const invalid = {
+      ...ir,
+      nodes: {
+        ...ir.nodes,
+        root: {
+          ...ir.nodes["root"],
+          sources: [{ anchor: "ghost", file: "src/index.ts", hash: "sha256:aaa" }],
+        },
+      },
+    };
+    expect(() => IrSchema.parse(invalid)).toThrow();
+  });
+
+  it("rejects the same source carrying conflicting hashes across nodes", () => {
     const ir = validIr();
     const invalid = {
       ...ir,
@@ -114,14 +128,14 @@ describe("IrSchema", () => {
         ...ir.nodes,
         child: {
           ...ir.nodes["child"],
-          sources: [{ file: "src/index.ts", hash: "sha256:different" }],
+          sources: [{ anchor: "self", file: "src/index.ts", hash: "sha256:different" }],
         },
       },
     };
     expect(() => IrSchema.parse(invalid)).toThrow();
   });
 
-  it("accepts the same source file repeated with identical hashes", () => {
+  it("accepts the same source repeated with identical hashes", () => {
     const ir = validIr();
     const shared = {
       ...ir,
@@ -129,7 +143,7 @@ describe("IrSchema", () => {
         ...ir.nodes,
         child: {
           ...ir.nodes["child"],
-          sources: [{ file: "src/index.ts", hash: "sha256:aaa" }],
+          sources: [{ anchor: "self", file: "src/index.ts", hash: "sha256:aaa" }],
         },
       },
     };
@@ -142,7 +156,7 @@ describe("IrSchema", () => {
       ...ir,
       nodes: {
         ...ir.nodes,
-        root: { ...ir.nodes["root"], sources: [{ file: "/etc/passwd", hash: "sha256:x" }] },
+        root: { ...ir.nodes["root"], sources: [{ anchor: "self", file: "/etc/passwd", hash: "sha256:x" }] },
       },
     };
     expect(() => IrSchema.parse(invalid)).toThrow();
@@ -154,7 +168,7 @@ describe("IrSchema", () => {
       ...ir,
       nodes: {
         ...ir.nodes,
-        root: { ...ir.nodes["root"], sources: [{ file: "../../secret.ts", hash: "sha256:x" }] },
+        root: { ...ir.nodes["root"], sources: [{ anchor: "self", file: "../../secret.ts", hash: "sha256:x" }] },
       },
     };
     expect(() => IrSchema.parse(invalid)).toThrow();
@@ -166,7 +180,7 @@ describe("IrSchema", () => {
       ...ir,
       nodes: {
         ...ir.nodes,
-        root: { ...ir.nodes["root"], sources: [{ file: "\\\\server\\share\\file.ts", hash: "sha256:x" }] },
+        root: { ...ir.nodes["root"], sources: [{ anchor: "self", file: "\\\\server\\share\\file.ts", hash: "sha256:x" }] },
       },
     };
     expect(() => IrSchema.parse(invalid)).toThrow();

@@ -1,0 +1,74 @@
+---
+id: carto.core
+name: Hashing Core
+locale: zh
+contentHash: sha256:pending
+---
+
+## 职责
+
+`src/core.ts` 承载 carto 纯粹的 hash、diff 与 staleness 逻辑。这里的每个函数都不触及文件系统：它接收一个 [IR](/zh/carto.ir/)，并在相关处接收一个 `current` hash map，返回一个值，而不读取文件、不调用模型、也不修改其输入。正是这一点使该逻辑极易测试，并让 [IR & Source I/O](/zh/carto.io/) 层独揽读取源字节这类不纯的工作。
+
+## 关键函数
+
+`hashContent(data: Buffer | string): string` 产出规范的 hash 字符串：
+
+```ts
+export function hashContent(data: Buffer | string): string {
+  return `sha256:${createHash("sha256").update(data).digest("hex")}`;
+}
+```
+
+它接收一个 `Buffer | string`，交给 Node 的 `sha256`，返回 `` `sha256:${hex}` ``——与作者在 `carto hash` 填入真值之前写下的 `sha256:pending` 同为 `sha256:<hex>` 格式。
+
+`sourceKey(anchor: string, file: string): string` 构造在各处比较 source 时使用的身份键：
+
+```ts
+export function sourceKey(anchor: string, file: string): string {
+  return `${anchor}\u0000${file}`;
+}
+```
+
+anchor 与 file 由一个 `\u0000` NUL 字节连接。NUL 不可能出现在 anchor 名或相对路径中，因此它是一个无歧义的分隔符：没有任何 anchor/file 组合会仅因其拼接恰好对齐而与另一个碰撞。这是去重与身份键——与 [IR Schema](/zh/carto.ir/) 在其 hash 冲突检查中内联使用的字符串相同。
+
+`collectSources(ir: Ir): SourceRef[]` 返回所有节点中唯一的 `{ anchor, file }` 引用，按首次见到的顺序排列。它遍历 `Object.values(ir.nodes)`，用 `sourceKey` 为每个 source 生成键，跳过已在 `Set` 中的键，其余压入一个有序数组。被三个节点引用的 source 只出现一次；同一 file 的两个 anchor 则出现为两个引用。
+
+`diffHashes(ir: Ir, current: ReadonlyMap<string, string>): FileChange[]` 将存储的 hash 与一份新计算的 map 比较。`FileChange` 为 `{ anchor, file, stored, current }`，其中 `current` 是 `string | null`。它先把每个 source 折叠进一个以 `sourceKey` 为键的 `stored` map（使每个唯一 source 只比较一次），随后对每个 stored 条目查 `current.get(key) ?? null`。当当前 hash 与存储 hash 不同时——包括因文件不在 `current` map 中而为 `null` 时——发出一个 `FileChange`。hash 相同则略去。
+
+`staleNodes(ir: Ir, changed): StaleNode[]` 将变更的引用映射回引用它们的节点。`StaleNode` 为 `{ id, files }`。它从 `changed` 可迭代对象构建一个变更 `sourceKey` 的 `Set`，随后对每个节点，把其 sources 过滤为键落在该集合中的那些，并把每个命中格式化为 `` `${anchor}:${file}` ``。至少有一个命中的节点会连同命中文件列表被报告；每个共享了某个变更 source 的节点都会被报告，因此一个变更的共享文件会把它的所有引用者标记为陈旧。
+
+`applyHashes(ir: Ir, current: ReadonlyMap<string, string>): Ir` 返回一个带有刷新后 source hash 的**全新** IR，且绝不修改输入：
+
+```ts
+export function applyHashes(ir: Ir, current: ReadonlyMap<string, string>): Ir {
+  const nodes = Object.create(null) as Ir["nodes"];
+  for (const [id, node] of Object.entries(ir.nodes)) {
+    nodes[id] = {
+      ...node,
+      children: [...node.children],
+      sources: node.sources.map((source) => {
+        const currentHash = current.get(sourceKey(source.anchor, source.file));
+        return { ...source, hash: currentHash ?? source.hash };
+      }),
+    };
+  }
+  return { ...ir, nodes };
+}
+```
+
+重建的 `nodes` record 由 `Object.create(null)` 创建——一个空原型对象，因此像 `__proto__` 这样的恶意节点 id 会写成一个自有属性，而非污染 `Object.prototype`。每个节点被浅拷贝，其 `children` 数组被拷贝（`[...node.children]`），每个 source 经 `map` 拷贝并带一个新 `hash`：当 `current` 中存在时取之，否则保持不变。输入中的任何东西都不会被别名引用。
+
+## 数据流
+
+不纯的边缘位于本模块之外并向它供料：
+
+1. [IR & Source I/O](/zh/carto.io/) 层读取每个源文件（将其 `anchor` 解析为一条基路径加上相对 `file`），把字节交给 `hashContent`，并组装一份以 `sourceKey` 为键的 `current` map。
+2. `carto hash` 调用 `applyHashes(ir, current)` 并把返回的 IR 写回——每个 `sha256:pending` 或漂移的 hash 都变为真实摘要。
+3. `carto diff` 与 `carto stale` 调用 `diffHashes` / `staleNodes` 来报告漂移，而不写入任何东西；`carto stale` 是一份供作者据以行动的报告，而非一道闸门。
+4. [Site Build Driver](/zh/carto.build/) 使用同一套 staleness 读取，以便在渲染前知道哪些节点的内容可能已过时。
+
+## 关联
+
+- 只在由 [IR Schema](/zh/carto.ir/) 塑形的 IR 上运作，并共享该 schema 的 anchor + `\u0000` + file 身份键。
+- 由 [IR & Source I/O](/zh/carto.io/) 层驱动，后者供给 `current` map 并持久化 `applyHashes` 的输出。
+- 支撑 [Staleness Lifecycle](/zh/carto.staleness/) 与 [CLI Commands](/zh/carto.cli/) 所描述的报告界面。

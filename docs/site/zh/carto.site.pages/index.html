@@ -1,0 +1,73 @@
+<!DOCTYPE html><html lang="zh" data-astro-cid-ybatimd6><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Pages &amp; Layout — carto</title><style>:root{color-scheme:light}[data-astro-cid-ybatimd6]{box-sizing:border-box}body{color:#1a1a1a;margin:0;font:16px/1.6 -apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif}.shell[data-astro-cid-ybatimd6]{min-height:100vh;display:flex}nav[data-astro-cid-ybatimd6]{background:#fafafa;border-right:1px solid #e5e5e5;flex:0 0 280px;width:280px;padding:1.5rem 1rem;overflow-y:auto}nav[data-astro-cid-ybatimd6] .project[data-astro-cid-ybatimd6]{text-transform:uppercase;letter-spacing:.05em;color:#666;margin-bottom:1rem;font-size:.85rem;font-weight:700}nav[data-astro-cid-ybatimd6] ul[data-astro-cid-ybatimd6]{margin:0;padding:0;list-style:none}nav[data-astro-cid-ybatimd6] a[data-astro-cid-ybatimd6]{color:#333;border-radius:4px;padding:.2rem .5rem;font-size:.9rem;text-decoration:none;display:block}nav[data-astro-cid-ybatimd6] a[data-astro-cid-ybatimd6]:hover{background:#eee}nav[data-astro-cid-ybatimd6] a[data-astro-cid-ybatimd6].active{color:#fff;background:#1a1a1a}main[data-astro-cid-ybatimd6]{flex:1;min-width:0;max-width:860px;padding:2rem 3rem}main[data-astro-cid-ybatimd6] pre{border-radius:6px;padding:1rem;font-size:.85rem;overflow-x:auto}main[data-astro-cid-ybatimd6] h1{margin-top:0}.hint[data-astro-cid-ybatimd6]{border-radius:6px;margin-bottom:1.5rem;padding:.6rem 1rem;font-size:.9rem}.hint[data-astro-cid-ybatimd6].stale{color:#8a5300;background:#fff4e5;border:1px solid #ffcc80}.hint[data-astro-cid-ybatimd6].leaf{color:#555;background:#f0f0f0;border:1px solid #ddd}.locales[data-astro-cid-ybatimd6]{margin-bottom:1rem;font-size:.85rem}.locales[data-astro-cid-ybatimd6] a[data-astro-cid-ybatimd6]{color:#0366d6;margin-right:.5rem;text-decoration:none}.locales[data-astro-cid-ybatimd6] a[data-astro-cid-ybatimd6].current{color:#666;font-weight:700}@media (width<=720px){.shell[data-astro-cid-ybatimd6]{flex-direction:column}nav[data-astro-cid-ybatimd6]{border-bottom:1px solid #e5e5e5;border-right:none;flex:none;width:100%}main[data-astro-cid-ybatimd6]{padding:1.5rem 1.25rem}}
+</style></head><body data-astro-cid-ybatimd6><div class="shell" data-astro-cid-ybatimd6><nav data-astro-cid-ybatimd6><div class="project" data-astro-cid-ybatimd6>carto</div><div class="locales" data-astro-cid-ybatimd6><a href="/en/carto.site.pages/" class data-astro-cid-ybatimd6>en</a><a href="/zh/carto.site.pages/" class="current" data-astro-cid-ybatimd6>zh</a></div><ul data-astro-cid-ybatimd6><li data-astro-cid-ybatimd6><a href="/zh/carto/" class style="padding-left: 0.5rem" data-astro-cid-ybatimd6>carto</a></li><li data-astro-cid-ybatimd6><a href="/zh/carto.model/" class style="padding-left: 1.4rem" data-astro-cid-ybatimd6>Vault Data Model</a></li><li data-astro-cid-ybatimd6><a href="/zh/carto.ir/" class style="padding-left: 1.4rem" data-astro-cid-ybatimd6>IR Schema</a></li><li data-astro-cid-ybatimd6><a href="/zh/carto.core/" class style="padding-left: 1.4rem" data-astro-cid-ybatimd6>Hashing Core</a></li><li data-astro-cid-ybatimd6><a href="/zh/carto.io/" class style="padding-left: 1.4rem" data-astro-cid-ybatimd6>IR &amp; Source I/O</a></li><li data-astro-cid-ybatimd6><a href="/zh/carto.cli/" class style="padding-left: 1.4rem" data-astro-cid-ybatimd6>CLI Commands</a></li><li data-astro-cid-ybatimd6><a href="/zh/carto.build/" class style="padding-left: 1.4rem" data-astro-cid-ybatimd6>Site Build Driver</a></li><li data-astro-cid-ybatimd6><a href="/zh/carto.staleness/" class style="padding-left: 1.4rem" data-astro-cid-ybatimd6>Staleness Lifecycle</a></li><li data-astro-cid-ybatimd6><a href="/zh/carto.site/" class style="padding-left: 1.4rem" data-astro-cid-ybatimd6>Astro Site Template</a></li><li data-astro-cid-ybatimd6><a href="/zh/carto.site.loader/" class style="padding-left: 2.3rem" data-astro-cid-ybatimd6>Content Loader</a></li><li data-astro-cid-ybatimd6><a href="/zh/carto.site.pages/" class="active" style="padding-left: 2.3rem" data-astro-cid-ybatimd6>Pages &amp; Layout</a></li></ul></nav><main data-astro-cid-ybatimd6><h1 id="页面与布局">页面与布局</h1>
+<p>本节点是站点的路由及其视觉外壳：入口重定向、渲染每个节点页面的那一条动态路由，以及把每个页面用导航
+包裹起来的布局。它的三个源文件是 <code>astro/src/pages/index.astro</code>、
+<code>astro/src/pages/[locale]/[...id].astro</code> 与 <code>astro/src/layouts/Page.astro</code>。</p>
+<h2 id="入口重定向indexastro">入口重定向——<code>index.astro</code></h2>
+<p><code>index.astro</code> 自身没有内容；它把访客弹送到默认语言下的第一个节点：</p>
+<pre class="astro-code github-light" style="background-color:#fff;color:#24292e; overflow-x: auto;" tabindex="0" data-language="astro"><code><span class="line"><span style="color:#24292E">const ir = loadIr();</span></span>
+<span class="line"><span style="color:#24292E">const roots = Object.values(ir.nodes).filter((node) => node.parent === null);</span></span>
+<span class="line"><span style="color:#24292E">const first = roots[0] ?? Object.values(ir.nodes)[0];</span></span>
+<span class="line"><span style="color:#24292E">const target = first === undefined</span></span>
+<span class="line"><span style="color:#24292E">  ? null</span></span>
+<span class="line"><span style="color:#24292E">  : `${</span><span style="color:#D73A49">import</span><span style="color:#24292E">.</span><span style="color:#005CC5">meta</span><span style="color:#24292E">.env.</span><span style="color:#005CC5">BASE_URL</span><span style="color:#24292E">}${ir.vault.defaultLocale}/${first.id}/`;</span></span></code></pre>
+<p>它取第一个根（第一个 <code>parent</code> 为 <code>null</code> 的节点），回退到任意类型的第一个节点，并在 <code>defaultLocale</code>
+下构造一个 URL。随后它输出一个 <code>meta http-equiv=&quot;refresh&quot;</code> 与一个指向该目标的 canonical 链接。若
+知识库根本没有任何节点，<code>target</code> 为 <code>null</code>，页面转而显示一句朴素的 “No components generated yet.”
+提示。</p>
+<h2 id="节点路由localeidastro">节点路由——<code>[locale]/[...id].astro</code></h2>
+<p>每个节点页面都由唯一一条动态路由 <code>[locale]/[...id].astro</code> 产出。它的 <code>getStaticPaths</code> 连接了两个
+数据源——内容集合与 IR：</p>
+<pre class="astro-code github-light" style="background-color:#fff;color:#24292e; overflow-x: auto;" tabindex="0" data-language="astro"><code><span class="line"><span style="color:#24292E">export async function getStaticPaths() {</span></span>
+<span class="line"><span style="color:#D73A49">  const</span><span style="color:#005CC5"> ir</span><span style="color:#D73A49"> =</span><span style="color:#6F42C1"> loadIr</span><span style="color:#24292E">();</span></span>
+<span class="line"><span style="color:#D73A49">  const</span><span style="color:#005CC5"> locales</span><span style="color:#D73A49"> =</span><span style="color:#D73A49"> new</span><span style="color:#6F42C1"> Set</span><span style="color:#24292E">(ir.vault.locales);</span></span>
+<span class="line"><span style="color:#D73A49">  const</span><span style="color:#005CC5"> entries</span><span style="color:#D73A49"> =</span><span style="color:#D73A49"> await</span><span style="color:#6F42C1"> getCollection</span><span style="color:#24292E">(</span><span style="color:#032F62">"nodes"</span><span style="color:#24292E">);</span></span>
+<span class="line"><span style="color:#D73A49">  return</span><span style="color:#24292E"> entries.</span><span style="color:#6F42C1">flatMap</span><span style="color:#24292E">((</span><span style="color:#E36209">entry</span><span style="color:#24292E">) </span><span style="color:#D73A49">=></span><span style="color:#24292E"> {</span></span>
+<span class="line"><span style="color:#D73A49">    const</span><span style="color:#005CC5"> node</span><span style="color:#D73A49"> =</span><span style="color:#24292E"> ir.nodes[entry.data.id];</span></span>
+<span class="line"><span style="color:#D73A49">    if</span><span style="color:#24292E"> (node </span><span style="color:#D73A49">===</span><span style="color:#005CC5"> undefined</span><span style="color:#D73A49"> ||</span><span style="color:#D73A49"> !</span><span style="color:#24292E">locales.</span><span style="color:#6F42C1">has</span><span style="color:#24292E">(entry.data.locale)) {</span></span>
+<span class="line"><span style="color:#D73A49">      return</span><span style="color:#24292E"> [];</span></span>
+<span class="line"><span style="color:#24292E">    }</span></span>
+<span class="line"><span style="color:#D73A49">    return</span><span style="color:#24292E"> [{</span></span>
+<span class="line"><span style="color:#24292E">      params: { locale: entry.data.locale, id: entry.data.id },</span></span>
+<span class="line"><span style="color:#24292E">      props: { entry, node },</span></span>
+<span class="line"><span style="color:#24292E">    }];</span></span>
+<span class="line"><span style="color:#24292E">  });</span></span>
+<span class="line"><span style="color:#24292E">}</span></span></code></pre>
+<p>按顺序读它：</p>
+<ol>
+<li>它加载 IR，并把知识库声明的 <code>locales</code> 变成一个集合。</li>
+<li>它取出 <code>nodes</code> 集合中的每一条条目——<a href="/zh/carto.site.loader/">内容加载器</a> 找到的每个 <code>.mdx</code>
+文件对应一条。</li>
+<li>对每条条目，它按 <code>entry.data.id</code> 查出匹配的 IR 节点，并在以下两种情况之一时用 <code>flatMap</code> 把该条目
+丢弃（返回 <code>[]</code>）：该 id 在 IR 中没有对应节点，或文件的 <code>locale</code> 不在知识库声明之列。这两道守卫意味着
+一个游离或标错的 <code>.mdx</code> 文件根本不会产出页面。</li>
+<li>幸存下来的条目成为一条静态路径：<code>params</code> 携带构成 URL 的 <code>locale</code> 与 <code>id</code>，<code>props</code> 同时携带集合
+<code>entry</code> 及其 IR <code>node</code>。</li>
+</ol>
+<p>随后页面渲染该条目编译后的 MDX，并把它放入布局：</p>
+<pre class="astro-code github-light" style="background-color:#fff;color:#24292e; overflow-x: auto;" tabindex="0" data-language="astro"><code><span class="line"><span style="color:#24292E">const { entry, node } = Astro.props;</span></span>
+<span class="line"><span style="color:#24292E">const { Content } = await render(entry);</span></span></code></pre>
+<pre class="astro-code github-light" style="background-color:#fff;color:#24292e; overflow-x: auto;" tabindex="0" data-language="astro"><code><span class="line"><span style="color:#24292E">&#x3C;</span><span style="color:#005CC5">Page</span><span style="color:#6F42C1"> node</span><span style="color:#24292E">={node} </span><span style="color:#6F42C1">locale</span><span style="color:#24292E">={entry.data.locale}></span></span>
+<span class="line"><span style="color:#24292E">  &#x3C;</span><span style="color:#005CC5">Content</span><span style="color:#24292E"> /></span></span>
+<span class="line"><span style="color:#24292E">&#x3C;/</span><span style="color:#005CC5">Page</span><span style="color:#24292E">></span></span></code></pre>
+<h2 id="外壳pageastro">外壳——<code>Page.astro</code></h2>
+<p><code>Page.astro</code> 接收 <code>node</code> 与 <code>locale</code>，并在渲染内容周围绘制框架。它的输入直接来自加载器：</p>
+<pre class="astro-code github-light" style="background-color:#fff;color:#24292e; overflow-x: auto;" tabindex="0" data-language="astro"><code><span class="line"><span style="color:#24292E">const ir = loadIr();</span></span>
+<span class="line"><span style="color:#24292E">const items = tree(ir);</span></span>
+<span class="line"><span style="color:#24292E">const locales = ir.vault.locales;</span></span>
+<span class="line"><span style="color:#24292E">const isStale = staleIds.has(node.id);</span></span>
+<span class="line"><span style="color:#24292E">const hasChildren = node.children.length > 0;</span></span></code></pre>
+<ul>
+<li><strong>导航树。</strong> <code>tree(ir)</code> 给出每个节点连同其 <code>depth</code> 的摊平先序列表（见
+<a href="/zh/carto.site.loader/">内容加载器</a>）。布局为每个条目渲染一条链接。</li>
+<li><strong>当前节点与缩进。</strong> 当一条链接的 id 等于当前 <code>node.id</code> 时，它获得 <code>active</code> 类；其左内边距由
+<code>depth</code> 计算得到（<code>0.5 + depth * 0.9</code> rem），于是整棵树读起来像一份缩进的大纲。</li>
+<li><strong>语言切换器。</strong> 当知识库声明了不止一种语言（<code>locales.length &gt; 1</code>）时，会显示一行语言链接；每条都
+指向同一个 <code>node.id</code> 的不同语言版本，且当前语言会被标注。</li>
+<li><strong>过期提示。</strong> <code>isStale</code> 即 <code>staleIds.has(node.id)</code>。为真时，一条横幅提醒页面写成之后源文件已变更——见
+<a href="/zh/carto.staleness/">过期生命周期</a>。概念节点不携带任何源文件，永不过期，因此从不显示它。</li>
+<li><strong>叶子提示。</strong> <code>hasChildren</code> 即 <code>node.children.length &gt; 0</code>。当一个节点没有子节点时，一条提示邀请
+读者请求 agent 深入挖掘该组件。</li>
+</ul>
+<p>编译后的页面内容通过两条提示之间的 slot 到达，于是过期横幅位于内容之上，叶子提示位于其下。</p>
+<p>上游的 <a href="/zh/carto.build/">站点构建驱动</a> 正是为这些页面提供过期 id 与内容目录的那一环。</p><div class="hint leaf" data-astro-cid-ybatimd6>No sub-components generated yet — ask your agent to dig into this component.</div></main></div></body></html>

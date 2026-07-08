@@ -10,14 +10,16 @@ const require = createRequire(import.meta.url);
 export interface BuildOptions {
   irPath: string;
   contentDir: string;
-  root: string;
   outDir: string;
 }
 
 export async function build(options: BuildOptions): Promise<void> {
   const ir = await readIr(options.irPath);
-  const changed = diffHashes(ir, await currentHashes(ir, options.root)).map((change) => change.file);
-  const staleIds = staleNodes(ir, changed).map((node) => node.id);
+  const changed = diffHashes(ir, await currentHashes(ir, options.contentDir));
+  const staleIds = staleNodes(
+    ir,
+    changed.map((change) => ({ anchor: change.anchor, file: change.file })),
+  ).map((node) => node.id);
 
   const templateDir = resolve(dirname(fileURLToPath(import.meta.url)), "..", "astro");
   const astroBin = resolve(dirname(require.resolve("astro/package.json")), "bin", "astro.mjs");

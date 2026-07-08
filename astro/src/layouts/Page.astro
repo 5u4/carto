@@ -10,7 +10,7 @@ interface Props {
 const { node, locale } = Astro.props;
 const ir = loadIr();
 const items = tree(ir);
-const locales = ir.project.locales;
+const locales = ir.vault.locales;
 const isStale = staleIds.has(node.id);
 const hasChildren = node.children.length > 0;
 
@@ -22,7 +22,7 @@ const switchHref = (loc: string): string => `${import.meta.env.BASE_URL}${loc}/$
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>{node.name} — {ir.project.name}</title>
+    <title>{node.name} — {ir.vault.name}</title>
     <style>
       :root { color-scheme: light; }
       * { box-sizing: border-box; }
@@ -53,7 +53,7 @@ const switchHref = (loc: string): string => `${import.meta.env.BASE_URL}${loc}/$
   <body>
     <div class="shell">
       <nav>
-        <div class="project">{ir.project.name}</div>
+        <div class="project">{ir.vault.name}</div>
         {locales.length > 1 && (
           <div class="locales">
             {locales.map((loc) => (
