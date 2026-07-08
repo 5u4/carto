@@ -1,7 +1,15 @@
 import { describe, expect, it } from 'vitest'
 import { manifestSchema } from './schema'
 
-function baseManifest() {
+interface RawManifest {
+  version: number
+  locales: string[]
+  defaultLocale: string
+  updated_at: string
+  nodes: Array<{ id: string; sources: Array<{ file: string; hash?: string }> }>
+}
+
+function baseManifest(): RawManifest {
   return {
     version: 1,
     locales: ['en'],
