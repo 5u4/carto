@@ -26,7 +26,12 @@ export interface TreeItem {
 
 export function tree(ir: Ir): TreeItem[] {
   const items: TreeItem[] = [];
+  const visited = new Set<string>();
   const walk = (node: Node, depth: number): void => {
+    if (visited.has(node.id)) {
+      return;
+    }
+    visited.add(node.id);
     items.push({ node, depth });
     for (const childId of node.children) {
       const child = ir.nodes[childId];

@@ -34,9 +34,11 @@ export async function build(options: BuildOptions): Promise<void> {
 
   const { promise, resolve: settle, reject } = Promise.withResolvers<void>();
   child.on("error", reject);
-  child.on("close", (code) => {
+  child.on("close", (code, signal) => {
     if (code === 0) {
       settle();
+    } else if (signal !== null) {
+      reject(new Error(`astro build terminated by signal ${signal}`));
     } else {
       reject(new Error(`astro build exited with code ${code ?? "null"}`));
     }

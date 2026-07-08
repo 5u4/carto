@@ -82,4 +82,27 @@ describe("tree", () => {
 
     expect(ids).toEqual(["second", "first"]);
   });
+
+  it("does not recurse indefinitely when nodes form a cycle", () => {
+    const ir = makeIr({
+      a: leaf("a", null, ["b"]),
+      b: leaf("b", "a", ["a"]),
+    });
+
+    const ids = tree(ir).map((item) => item.node.id);
+
+    expect(ids).toEqual(["a", "b"]);
+  });
+
+  it("visits a node shared as a child of two parents only once", () => {
+    const ir = makeIr({
+      p1: leaf("p1", null, ["shared"]),
+      p2: leaf("p2", null, ["shared"]),
+      shared: leaf("shared", "p1"),
+    });
+
+    const ids = tree(ir).map((item) => item.node.id);
+
+    expect(ids).toEqual(["p1", "shared", "p2"]);
+  });
 });
