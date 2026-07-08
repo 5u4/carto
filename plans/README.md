@@ -22,7 +22,7 @@ vitest. Repo rule: **zero code comments** (enforced by `scripts/lint-comments.sh
 
 | Plan | Title | Priority | Effort | Depends on | Status |
 |------|-------|----------|--------|------------|--------|
-| 001  | Monorepo foundation (pnpm workspace, tsconfig, vitest, comment gate, package skeletons) | P1 | M | — | TODO |
+| 001  | Monorepo foundation (pnpm workspace, tsconfig, vitest, comment gate, package skeletons) | P1 | M | — | DONE (branch `advisor/001-monorepo-foundation`, commit `20e4dd4`; all five commands green) |
 | 002  | `@carto/core` — schema, hashing, tree, resolver, status | P1 | L | 001 | TODO |
 | 003  | `@carto/cli` — the `carto` binary (six citty commands) | P1 | L | 002 | TODO |
 | 004  | `@carto/template` — Astro 5 + Starlight bundled site | P1 | L | 002 | TODO |

@@ -282,17 +282,26 @@ Create `scripts/lint-comments.sh` with **exactly** this body:
 #!/bin/sh
 set -eu
 
-files=$(git ls-files -- packages scripts | grep -E '\.(ts|mjs|js)$' || true)
+hits=""
 
-if [ -z "$files" ]; then
-  exit 0
-fi
-
-hits=$(printf '%s\n' $files | xargs grep -nHE '(^|[^:])//|/\*|\*/' 2>/dev/null | grep -v 'SPDX-License-Identifier' || true)
+while IFS= read -r file; do
+  [ -n "$file" ] || continue
+  case "$file" in
+    *.ts|*.mjs|*.js) ;;
+    *) continue ;;
+  esac
+  file_hits=$(grep -nHE '(^|[^:])//|/\*|\*/' "$file" 2>/dev/null | grep -v 'SPDX-License-Identifier' || true)
+  if [ -n "$file_hits" ]; then
+    hits="${hits}${file_hits}
+"
+  fi
+done <<EOF
+$(git ls-files -- packages scripts)
+EOF
 
 if [ -n "$hits" ]; then
   echo "lint-comments: disallowed comments found (see AGENTS.md 'No comments in code'):" >&2
-  echo "$hits" >&2
+  printf '%s' "$hits" >&2
   exit 1
 fi
 
@@ -300,11 +309,13 @@ exit 0
 ```
 
 How it works (for your understanding — do not paste into the file):
-- `git ls-files -- packages scripts` lists tracked files under those dirs; the
-  `grep -E '\.(ts|mjs|js)$'` keeps only TypeScript/JS sources. The gate script
-  itself is `.sh`, so it is **not** scanned (that is why the `//` and `/*` in its
-  own regex are safe).
-- `xargs grep -nHE '(^|[^:])//|/\*|\*/'` flags a `//` at line start or after a
+- `git ls-files -- packages scripts` lists tracked files under those dirs, fed one
+  path per line into the `while IFS= read -r file` loop; the `case` glob keeps only
+  `.ts`/`.mjs`/`.js` sources. Reading line by line (not `xargs`) means paths that
+  contain spaces or tabs are handled correctly instead of being word-split. The
+  gate script itself is `.sh`, so it is **not** scanned (that is why the `//` and
+  `/*` in its own regex are safe).
+- `grep -nHE '(^|[^:])//|/\*|\*/'` flags a `//` at line start or after a
   non-colon char (so `http://`, `https://`, `file://` protocol URLs are **not**
   flagged, because their `//` follows a `:`), plus any `/*` or `*/` block-comment
   marker.
