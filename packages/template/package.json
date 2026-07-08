@@ -13,9 +13,17 @@
   },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "dev": "node ./dist/materialize.js && astro dev",
+    "build:site": "node ./dist/materialize.js && astro build",
+    "preview": "astro preview"
   },
   "devDependencies": {
     "typescript": "^5.7.0"
+  },
+  "dependencies": {
+    "@astrojs/starlight": "^0.41.3",
+    "astro": "^7.0.7",
+    "@carto/core": "workspace:*"
   }
 }
