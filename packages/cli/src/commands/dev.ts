@@ -24,6 +24,10 @@ export function runTemplateScript(command: 'dev' | 'build'): void {
     stdio: 'inherit',
     env: { ...process.env, CARTO_ROOT: process.cwd() }
   })
+  child.on('error', () => {
+    console.error('error: failed to spawn pnpm; is pnpm installed and on your PATH?')
+    process.exit(1)
+  })
   child.on('exit', (code) => process.exit(code ?? 1))
 }
 export const devCommand = defineCommand({
