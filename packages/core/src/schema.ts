@@ -2,8 +2,15 @@ import { z } from 'zod'
 
 export const ID_PATTERN = /^[a-z0-9][a-z0-9-]*$/
 
+function isRelativeFile(value: string): boolean {
+  if (value.startsWith('/') || value.startsWith('\\')) return false
+  if (value.length >= 2 && value[1] === ':') return false
+  const segments = value.split('/').flatMap((part) => part.split('\\'))
+  return !segments.includes('..')
+}
+
 export const sourceSchema = z.object({
-  file: z.string().min(1),
+  file: z.string().min(1).refine(isRelativeFile, 'file must be a relative path without ".." segments'),
   hash: z.string().min(1).optional()
 })
 

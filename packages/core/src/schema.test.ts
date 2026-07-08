@@ -77,4 +77,34 @@ describe('manifestSchema', () => {
     const result = manifestSchema.safeParse(manifest)
     expect(result.success).toBe(true)
   })
+
+  it('rejects a source file with a parent-traversal segment', () => {
+    const manifest = baseManifest()
+    manifest.nodes = [{ id: 'payments', sources: [{ file: '../x' }] }]
+    expect(manifestSchema.safeParse(manifest).success).toBe(false)
+  })
+
+  it('rejects a source file with a traversal segment in the middle of the path', () => {
+    const manifest = baseManifest()
+    manifest.nodes = [{ id: 'payments', sources: [{ file: 'a/../b' }] }]
+    expect(manifestSchema.safeParse(manifest).success).toBe(false)
+  })
+
+  it('rejects an absolute source file path', () => {
+    const manifest = baseManifest()
+    manifest.nodes = [{ id: 'payments', sources: [{ file: '/abs/x' }] }]
+    expect(manifestSchema.safeParse(manifest).success).toBe(false)
+  })
+
+  it('rejects a windows drive-letter source file path', () => {
+    const manifest = baseManifest()
+    manifest.nodes = [{ id: 'payments', sources: [{ file: 'C:\\win' }] }]
+    expect(manifestSchema.safeParse(manifest).success).toBe(false)
+  })
+
+  it('accepts nested relative source file paths', () => {
+    const manifest = baseManifest()
+    manifest.nodes = [{ id: 'payments', sources: [{ file: 'packages/api/src/payment.ts' }] }]
+    expect(manifestSchema.safeParse(manifest).success).toBe(true)
+  })
 })
