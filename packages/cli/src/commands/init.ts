@@ -1,7 +1,7 @@
 import { defineCommand } from 'citty'
 import { access, mkdir, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
-import { serializeManifest, type Manifest } from '@carto/core'
+import { serializeManifest, parseManifest, ManifestError, type Manifest } from '@carto/core'
 
 export const initCommand = defineCommand({
   meta: { name: 'init', description: 'Scaffold carto.json and docs/ in the current directory' },
@@ -23,6 +23,12 @@ export const initCommand = defineCommand({
       defaultLocale: args.defaultLocale,
       updated_at: new Date().toISOString(),
       nodes: []
+    }
+    try {
+      parseManifest(manifest)
+    } catch (error) {
+      console.error(`error: ${error instanceof ManifestError ? error.message : String(error)}`)
+      process.exit(1)
     }
     await mkdir(join(root, 'docs'), { recursive: true })
     await writeFile(manifestPath, serializeManifest(manifest), 'utf8')

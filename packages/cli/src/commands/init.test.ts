@@ -62,4 +62,20 @@ describe('carto init', () => {
       expect(after).toBe(before)
     })
   })
+
+  it('rejects an empty --locales and writes no carto.json', async () => {
+    await withTempCwd(async (dir) => {
+      const exitCode = await runAndCaptureExit(['--locales', ''])
+      expect(exitCode).toBe(1)
+      await expect(stat(join(dir, 'carto.json'))).rejects.toThrow()
+    })
+  })
+
+  it('rejects a --defaultLocale not present in --locales and writes no carto.json', async () => {
+    await withTempCwd(async (dir) => {
+      const exitCode = await runAndCaptureExit(['--locales', 'en', '--defaultLocale', 'de'])
+      expect(exitCode).toBe(1)
+      await expect(stat(join(dir, 'carto.json'))).rejects.toThrow()
+    })
+  })
 })
