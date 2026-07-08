@@ -61,7 +61,7 @@ command below as fixed — do not invent alternatives.
 **Tech stack (fixed):** TypeScript single stack; Node ≥ 20; package manager
 **pnpm** (workspace); tests with **vitest** (`*.test.ts` beside sources). Internal
 packages: `@carto/core` (shared library), `@carto/cli` (binary `carto`, later
-built with `citty`), `@carto/template` (later an Astro 5 + Starlight site). This
+built with `citty`), `@carto/template` (later an Astro 7 + Starlight site). This
 plan creates only empty skeletons of the three — **no** citty, Astro, or Starlight
 dependencies yet (those arrive in plans 003 and 004).
 
@@ -696,7 +696,7 @@ For whoever builds on this skeleton (plans 002–006) and the PR reviewer:
   `packages/core/src/index.ts` with the zod schema, `hashFile`, manifest,
   tree/resolver/status modules; 003 turns `packages/cli` into the citty `carto`
   binary (adds a shebang + `citty` dependency + `commands/`); 004 turns
-  `packages/template` into the Astro 5 + Starlight site (adds `astro.config.mjs`,
+  `packages/template` into the Astro 7 + Starlight site (adds `astro.config.mjs`,
   `src/plugins/remark-carto-links.ts`, Astro deps). The **root scripts, package
   names, `tsconfig.base.json`, and the comment gate must stay as-is** — those are
   the shared contract.

@@ -68,7 +68,7 @@ carto/                          (repo root = pnpm workspace root = the doc root)
 ├── packages/
 │   ├── core/src/{schema,manifest,hash,tree,resolver,status,index}.ts   (@carto/core)
 │   ├── cli/src/{index.ts, commands/{init,status,sync,validate,dev,build}.ts}  (@carto/cli, bin: carto)
-│   └── template/  (@carto/template — bundled Astro 5 + Starlight site)
+│   └── template/  (@carto/template — bundled Astro 7 + Starlight site)
 ├── skill/SKILL.md              (the carto skill — the doc-authoring guide)
 └── docs/                       (THIS plan creates it: carto's own self-docs)
 ```

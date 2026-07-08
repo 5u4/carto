@@ -1,4 +1,4 @@
-# Plan 004: Implement `@carto/template` — the bundled Astro 5 + Starlight site
+# Plan 004: Implement `@carto/template` — the bundled Astro 7 + Starlight site
 
 > **Executor instructions**: Follow this plan step by step. Run every
 > verification command and confirm the expected result before moving to the
@@ -148,7 +148,7 @@ monorepo's `pnpm -r build` compiles the TS without needing a doc root).
 
 ## Suggested executor toolkit
 
-- Astro 5 config docs (`defineConfig`, integrations) and **Starlight** docs:
+- Astro config docs (`defineConfig`, integrations) and **Starlight** docs:
   the `starlight({ title, locales, sidebar })` integration, directory-based i18n
   (`locales: { root: { label, lang }, <locale>: { label, lang } }`), and the
   `sidebar` schema (`{ label, link }` and nested `{ label, items }`). **Confirm
@@ -254,7 +254,7 @@ throwaway Starlight scaffold, so a wrong assumption fails here, cheaply.
 
 ### Step 3: `src/content.config.ts` — the Starlight docs collection
 
-Define the content collection Starlight expects (Astro 5 content layer). Target
+Define the content collection Starlight expects (Astro content layer). Target
 shape (confirm against the installed Starlight's `docsSchema`/`docsLoader`):
 
 ```ts
