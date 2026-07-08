@@ -1,0 +1,16 @@
+---
+id: scheduler
+name: Scheduler
+locale: zh
+contentHash: sha256:pending
+---
+
+# 调度器
+
+调度器决定任务何时运行。它为每个任务解析下一次触发时刻,并把就绪的任务交给执行器。
+
+## 数据流
+
+1. 触发器声明一个节奏(见 [触发器](/zh/scheduler.triggers/))。
+2. 调度器根据节奏算出下一次触发时刻。
+3. 每次 tick 释放所有已到点的任务。
