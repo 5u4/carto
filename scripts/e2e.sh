@@ -20,20 +20,24 @@ carto validate
 tracked="packages/core/src/hash.ts"
 backup="$(mktemp)"
 cp "$tracked" "$backup"
+restore() {
+  if [ -f "$backup" ]; then
+    cp "$backup" "$tracked"
+    rm -f "$backup"
+  fi
+}
+trap restore EXIT
 
 printf '\n' >> "$tracked"
 if carto status; then
   echo "e2e: expected stale status after mutating $tracked, got fresh" >&2
-  cp "$backup" "$tracked"
-  rm -f "$backup"
   exit 1
 fi
 
 carto sync
 carto status
 
-cp "$backup" "$tracked"
-rm -f "$backup"
+restore
 carto sync
 carto status
 

@@ -8,7 +8,7 @@ function resolveTemplateManifest(): string {
   const script = `console.log(require('node:module').createRequire(${JSON.stringify(testFilePath)}).resolve('@carto/template/package.json'))`
   const env = { ...process.env }
   delete env.NODE_PATH
-  return execFileSync(process.execPath, ['-e', script], { encoding: 'utf8', env }).trim()
+  return execFileSync(process.execPath, ['-e', script], { encoding: 'utf8', env }).trim().split('\\').join('/')
 }
 
 describe('template resolution', () => {
