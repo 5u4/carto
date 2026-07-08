@@ -1,0 +1,23 @@
+---
+id: scheduler
+name: Scheduler
+locale: en
+contentHash: sha256:pending
+---
+
+# Scheduler
+
+The scheduler owns when work runs. It resolves each job's next fire time and hands
+ready jobs to the runner.
+
+## Data flow
+
+1. A trigger declares a cadence (see [Triggers](/en/scheduler.triggers/)).
+2. The scheduler computes the next fire instant from the cadence.
+3. On each tick it releases every job whose instant has passed.
+
+```ts
+export function nextFire(cadence: Cadence, from: Date): Date {
+  return cadence.advance(from);
+}
+```

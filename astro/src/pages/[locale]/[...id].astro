@@ -1,0 +1,28 @@
+---
+import { getCollection, render } from "astro:content";
+import { loadIr } from "../../lib/carto";
+import Page from "../../layouts/Page.astro";
+
+export async function getStaticPaths() {
+  const ir = loadIr();
+  const locales = new Set(ir.project.locales);
+  const entries = await getCollection("nodes");
+  return entries.flatMap((entry) => {
+    const node = ir.nodes[entry.data.id];
+    if (node === undefined || !locales.has(entry.data.locale)) {
+      return [];
+    }
+    return [{
+      params: { locale: entry.data.locale, id: entry.data.id },
+      props: { entry, node },
+    }];
+  });
+}
+
+const { entry, node } = Astro.props;
+const { Content } = await render(entry);
+---
+
+<Page node={node} locale={entry.data.locale}>
+  <Content />
+</Page>

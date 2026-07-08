@@ -1,0 +1,24 @@
+---
+import { loadIr } from "../lib/carto";
+
+const ir = loadIr();
+const roots = Object.values(ir.nodes).filter((node) => node.parent === null);
+const first = roots[0] ?? Object.values(ir.nodes)[0];
+const target = first === undefined
+  ? null
+  : `${import.meta.env.BASE_URL}${ir.project.defaultLocale}/${first.id}/`;
+---
+
+<html lang={ir.project.defaultLocale}>
+  <head>
+    <meta charset="utf-8" />
+    {target !== null && <meta http-equiv="refresh" content={`0; url=${target}`} />}
+    {target !== null && <link rel="canonical" href={target} />}
+    <title>{ir.project.name}</title>
+  </head>
+  <body>
+    {target !== null
+      ? <a href={target}>{ir.project.name}</a>
+      : <p>No components generated yet.</p>}
+  </body>
+</html>
