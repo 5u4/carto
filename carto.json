@@ -1,0 +1,60 @@
+{
+  "version": 1,
+  "locales": [
+    "en",
+    "zh"
+  ],
+  "defaultLocale": "en",
+  "updated_at": "2026-07-08T19:36:35.719Z",
+  "nodes": [
+    {
+      "id": "overview",
+      "sources": [
+        {
+          "file": "pnpm-workspace.yaml",
+          "hash": "0fb360452b0231d1"
+        },
+        {
+          "file": "package.json",
+          "hash": "eb8097e4e0cdc7f3"
+        }
+      ]
+    },
+    {
+      "id": "core",
+      "parent": "overview",
+      "sources": [
+        {
+          "file": "packages/core/src/schema.ts",
+          "hash": "e6a983b85fcd2dd4"
+        },
+        {
+          "file": "packages/core/src/hash.ts",
+          "hash": "2afef0f45e81f800"
+        },
+        {
+          "file": "packages/core/src/resolver.ts",
+          "hash": "31c33c07d42b3571"
+        }
+      ]
+    },
+    {
+      "id": "cli",
+      "parent": "overview",
+      "sources": [
+        {
+          "file": "packages/cli/src/commands/sync.ts",
+          "hash": "38cc6df7b2b71490"
+        },
+        {
+          "file": "packages/cli/src/commands/status.ts",
+          "hash": "4977c6ab25bcec3f"
+        },
+        {
+          "file": "packages/cli/src/commands/validate.ts",
+          "hash": "c8a6d4747723e806"
+        }
+      ]
+    }
+  ]
+}
