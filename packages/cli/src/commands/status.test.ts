@@ -13,23 +13,28 @@ class ProcessExitSignal extends Error {
   }
 }
 
-async function runAndCaptureExit(): Promise<{ exitCode: number | null; logs: string[] }> {
+async function runAndCaptureExit(): Promise<{ exitCode: number | null; logs: string[]; errors: string[] }> {
   const exitSpy = vi.spyOn(process, 'exit').mockImplementation((code?: string | number | null): never => {
     throw new ProcessExitSignal(typeof code === 'number' ? code : 0)
   })
   const logs: string[] = []
+  const errors: string[] = []
   const logSpy = vi.spyOn(console, 'log').mockImplementation((line: string) => {
     logs.push(line)
   })
+  const errorSpy = vi.spyOn(console, 'error').mockImplementation((line: string) => {
+    errors.push(line)
+  })
   try {
     await runCommand(statusCommand, { rawArgs: [] })
-    return { exitCode: null, logs }
+    return { exitCode: null, logs, errors }
   } catch (error) {
-    if (error instanceof ProcessExitSignal) return { exitCode: error.code, logs }
+    if (error instanceof ProcessExitSignal) return { exitCode: error.code, logs, errors }
     throw error
   } finally {
     exitSpy.mockRestore()
     logSpy.mockRestore()
+    errorSpy.mockRestore()
   }
 }
 
@@ -89,6 +94,14 @@ describe('carto status', () => {
       const { exitCode, logs } = await runAndCaptureExit()
       expect(exitCode).toBe(1)
       expect(logs.some((line) => line.includes('unsynced') && line.includes('payments'))).toBe(true)
+    })
+  })
+
+  it('exits 1 with an error message when carto.json is missing', async () => {
+    await withTempCwd(async () => {
+      const { exitCode, errors } = await runAndCaptureExit()
+      expect(exitCode).toBe(1)
+      expect(errors.some((line) => line.startsWith('error: '))).toBe(true)
     })
   })
 })
