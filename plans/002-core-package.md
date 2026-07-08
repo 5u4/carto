@@ -140,16 +140,20 @@ repo forbids code comments and a gate enforces it; see conventions.)
   error** (supports generating a subtree before its ancestors exist). A parent
   chain that forms a **cycle** (including self-parent) is an ERROR.
 - `nodes[].sources`: array (may be empty); each `{ file, hash? }`. `file` is a
-  path **relative to the directory containing carto.json**. `hash` is filled by
-  sync; before first sync an entry has `file` only (no `hash`) — the **unsynced**
-  state.
+  path **relative to the directory containing carto.json** and MUST be relative:
+  the schema rejects absolute paths, Windows drive prefixes (`C:\`), and any `..`
+  segment, so a `join(rootDir, file)` in sync/status cannot escape the root when
+  the carto.json is untrusted. `hash` is filled by sync; before first sync an
+  entry has `file` only (no `hash`) — the **unsynced** state.
 
 **Content hash:** sha256 of the file's raw bytes, hex, **first 16 chars**.
 
 **Staleness classes** (per node, aggregated from its sources):
 - `unsynced` — a source lacks a `hash`.
 - `stale` — a source file's current hash ≠ its stored `hash`.
-- `missing` — a source `file` does not exist on disk.
+- `missing` — a source `file` does not exist on disk (an `ENOENT` when hashing).
+  Any other IO error (permission, `EISDIR`, …) is **not** swallowed as `missing` —
+  it propagates so real problems surface.
 - `fresh` — all sources present and hashes match (zero-source node is fresh).
 - Aggregation priority: `missing` > `stale` > `unsynced` > `fresh` (report worst).
 
@@ -281,8 +285,15 @@ import { z } from 'zod'
 
 export const ID_PATTERN = /^[a-z0-9][a-z0-9-]*$/
 
+function isRelativeFile(value: string): boolean {
+  if (value.startsWith('/') || value.startsWith('\\')) return false
+  if (value.length >= 2 && value[1] === ':') return false
+  const segments = value.split('/').flatMap((part) => part.split('\\'))
+  return !segments.includes('..')
+}
+
 export const sourceSchema = z.object({
-  file: z.string().min(1),
+  file: z.string().min(1).refine(isRelativeFile, 'file must be a relative path without ".." segments'),
   hash: z.string().min(1).optional()
 })
 
@@ -371,6 +382,10 @@ export class ManifestError extends Error {
   }
 }
 
+function isNotFound(error: unknown): boolean {
+  return typeof error === 'object' && error !== null && 'code' in error && error.code === 'ENOENT'
+}
+
 export function parseManifest(raw: unknown): Manifest {
   const result = manifestSchema.safeParse(raw)
   if (!result.success) {
@@ -430,7 +445,8 @@ export async function syncManifest(manifest: Manifest, options: SyncOptions): Pr
     for (const source of node.sources) {
       try {
         sources.push({ file: source.file, hash: await hashFile(join(options.rootDir, source.file)) })
-      } catch {
+      } catch (error) {
+        if (!isNotFound(error)) throw error
         missing.push(source.file)
         sources.push({ file: source.file, hash: source.hash })
       }
@@ -521,18 +537,21 @@ export function checkTree(nodes: Node[]): TreeIssue[] {
 
   const cycleKeys = new Set<string>()
   for (const start of nodes) {
-    const seen = new Set<string>()
+    const path: string[] = []
+    const onPath = new Set<string>()
     let current: Node | undefined = start
     while (current && current.parent !== undefined && byId.has(current.parent)) {
-      if (seen.has(current.id)) {
-        const key = [...seen].sort().join(',')
+      if (onPath.has(current.id)) {
+        const cycle = path.slice(path.indexOf(current.id))
+        const key = [...cycle].sort().join(',')
         if (!cycleKeys.has(key)) {
           cycleKeys.add(key)
-          issues.push({ severity: 'error', kind: 'parent-cycle', ids: [...seen] })
+          issues.push({ severity: 'error', kind: 'parent-cycle', ids: cycle })
         }
         break
       }
-      seen.add(current.id)
+      path.push(current.id)
+      onPath.add(current.id)
       current = byId.get(current.parent)
     }
   }
@@ -609,7 +628,6 @@ export function resolveCartoLink(target: string, ctx: ResolveContext): ResolveRe
 Create `packages/core/src/status.ts`:
 
 ```ts
-import { access } from 'node:fs/promises'
 import { join } from 'node:path'
 import type { Manifest, Node } from './schema.js'
 import { hashFile } from './hash.js'
@@ -631,6 +649,10 @@ export interface NodeStatus {
 
 const PRIORITY: Record<FreshnessState, number> = { fresh: 0, unsynced: 1, stale: 2, missing: 3 }
 
+function isNotFound(error: unknown): boolean {
+  return typeof error === 'object' && error !== null && 'code' in error && error.code === 'ENOENT'
+}
+
 export async function classifyNode(node: Node, rootDir: string): Promise<NodeStatus> {
   const sources: SourceStatus[] = []
   for (const source of node.sources) {
@@ -642,13 +664,14 @@ export async function classifyNode(node: Node, rootDir: string): Promise<NodeSta
 
 async function classifySource(file: string, stored: string | undefined, rootDir: string): Promise<SourceStatus> {
   const absolute = join(rootDir, file)
+  let actual: string
   try {
-    await access(absolute)
-  } catch {
-    return { file, state: 'missing', stored }
+    actual = await hashFile(absolute)
+  } catch (error) {
+    if (isNotFound(error)) return { file, state: 'missing', stored }
+    throw error
   }
   if (stored === undefined) return { file, state: 'unsynced' }
-  const actual = await hashFile(absolute)
   return actual === stored ? { file, state: 'fresh', stored, actual } : { file, state: 'stale', stored, actual }
 }
 
