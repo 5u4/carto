@@ -27,7 +27,8 @@ vitest. Repo rule: **zero code comments** (enforced by `scripts/lint-comments.sh
 | 003  | `@carto/cli` — the `carto` binary (six citty commands) | P1 | L | 002 | DONE (branch `advisor/003-cli-package`; 13 tests, six commands, thin over core; self `workspace:*` devDep so `pnpm exec carto` links its bin) |
 | 004  | `@carto/template` — Astro 7 + Starlight bundled site | P1 | L | 002 | DONE (branch `advisor/004-astro-template`; routing spike passed, fixture builds both locales, 7 site-config tests) |
 | 005  | carto skill — `skill/SKILL.md`, the generation guide | P1 | M | 002 (concept) | DONE (branch `advisor/005-carto-skill`; verbatim skill, all token greps pass; `parent:null`→omit clause corrected to shipped schema) |
-| 006  | e2e smoke — carto documents its own repo | P2 | M | 003, 004, 005 | TODO |
+| 006  | e2e smoke — carto documents its own repo | P2 | M | 003, 004, 005, 007 | DONE (branch `advisor/006-e2e-smoke` @ 775725c; refined mid-execute to add Step 1b [root `@carto/cli` devDep] and to depend on new plan 007; 6 self-doc mdx + 3-node `carto.json` + `scripts/e2e.sh`; `pnpm e2e` green ×2 repeatable, staleness demo works, `git diff -- packages/` clean; reviewer re-ran full pipeline + typecheck/test/lint green) |
+| 007  | make `carto build`/`dev` resolve the bundled template | P1 | S | 003, 004 | DONE (branch `advisor/006-e2e-smoke`, commits 5fa31b9/82c7dc2/30af933; CLI→template runtime dep + template `./package.json` export + resolvability regression test; reviewer re-ran build/test/lint green) |
 
 Status values: TODO | IN PROGRESS | DONE | BLOCKED (with one-line reason) |
 REJECTED (with one-line rationale).
@@ -61,6 +62,22 @@ REJECTED (with one-line rationale).
   *written* without the code existing, but its facts must match what 002/003 ship.
 - **003, 004 → 006:** e2e runs `carto sync → status → validate → build` over
   carto's own docs; it needs the real binaries.
+- **007 → 006 (found during execute):** the CLI's `build`/`dev` commands resolve
+  `@carto/template/package.json` at runtime (`dev.ts:9`), but two packaging gaps
+  broke it and only surfaced at the first real `carto build`: (a) 003's
+  `packages/cli/package.json` never declared `@carto/template` as a runtime dep,
+  so pnpm's isolated linking left it unresolvable (`MODULE_NOT_FOUND`); (b) 004's
+  `packages/template/package.json` `exports` map omitted `./package.json`, so
+  even once linked it threw `ERR_PACKAGE_PATH_NOT_EXPORTED`. Plan **007** fixes
+  both and adds a resolvability regression test. The CLI's unit tests never
+  caught this because they drive each command's `run` in temp dirs without
+  spawning real template resolution — 006's `pnpm e2e` is now the standing guard.
+- **006 Step 1b (found during execute):** bare `pnpm exec carto` does not resolve
+  from the doc root unless the root `package.json` depends on `@carto/cli`
+  (`workspace:*` devDep). 003 wired a *self*-referencing devDep inside the CLI
+  package for its own `--filter` invocation, but the doc root is a separate
+  consumer; 006 adds the root devDep so `pnpm exec carto <cmd>` works with
+  cwd=doc-root (required because the CLI reads `carto.json` from `process.cwd()`).
 - **Cross-plan contracts locked during authoring (do not silently change one side):**
   - **ESM `.js` imports:** every intra-package relative import carries a `.js`
     extension (`moduleResolution: Bundler` keeps typecheck green; Node ESM needs
