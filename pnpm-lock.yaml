@@ -23,7 +23,13 @@ importers:
       '@carto/core':
         specifier: workspace:*
         version: link:../core
+      citty:
+        specifier: ^0.2.2
+        version: 0.2.2
     devDependencies:
+      '@carto/cli':
+        specifier: workspace:*
+        version: 'link:'
       typescript:
         specifier: ^5.7.0
         version: 5.9.3
@@ -365,6 +371,9 @@ packages:
   check-error@2.1.3:
     resolution: {integrity: sha512-PAJdDJusoxnwm1VwW07VWwUN1sl7smmC3OKggvndJFadxxDRyFJBX/ggnu/KE4kQAB7a3Dp8f/YXC1FlUprWmA==}
     engines: {node: '>= 16'}
+
+  citty@0.2.2:
+    resolution: {integrity: sha512-+6vJA3L98yv+IdfKGZHBNiGW5KHn22e/JwID0Strsz8h4S/csAu/OuICwxrg44k5MRiZHWIo8XXuJgQTriRP4w==}
 
   debug@4.4.3:
     resolution: {integrity: sha512-RGwwWnwQvkVfavKVt22FGLw+xYSdzARwm0ru6DhTVA3umU5hZc28V3kO4stgYryrTlLpuvgI9GiijltAjNbcqA==}
@@ -747,6 +756,8 @@ snapshots:
       pathval: 2.0.1
 
   check-error@2.1.3: {}
+
+  citty@0.2.2: {}
 
   debug@4.4.3:
     dependencies:
