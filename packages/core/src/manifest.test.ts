@@ -102,4 +102,21 @@ describe('syncManifest', () => {
       await rm(dir, { recursive: true, force: true })
     }
   })
+
+  it('rethrows a non-ENOENT error instead of treating it as missing', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'carto-sync-dir-'))
+    try {
+      await writeFile(join(dir, 'a.ts'), 'hello', 'utf8')
+      const manifest: Manifest = {
+        version: 1,
+        locales: ['en'],
+        defaultLocale: 'en',
+        updated_at: '2020-01-01T00:00:00Z',
+        nodes: [{ id: 'payments', sources: [{ file: '.' }] }]
+      }
+      await expect(syncManifest(manifest, { rootDir: dir })).rejects.not.toBeInstanceOf(ManifestError)
+    } finally {
+      await rm(dir, { recursive: true, force: true })
+    }
+  })
 })

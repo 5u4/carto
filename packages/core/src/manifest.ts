@@ -10,6 +10,10 @@ export class ManifestError extends Error {
   }
 }
 
+function isNotFound(error: unknown): boolean {
+  return typeof error === 'object' && error !== null && 'code' in error && error.code === 'ENOENT'
+}
+
 export function parseManifest(raw: unknown): Manifest {
   const result = manifestSchema.safeParse(raw)
   if (!result.success) {
@@ -69,7 +73,8 @@ export async function syncManifest(manifest: Manifest, options: SyncOptions): Pr
     for (const source of node.sources) {
       try {
         sources.push({ file: source.file, hash: await hashFile(join(options.rootDir, source.file)) })
-      } catch {
+      } catch (error) {
+        if (!isNotFound(error)) throw error
         missing.push(source.file)
         sources.push({ file: source.file, hash: source.hash })
       }

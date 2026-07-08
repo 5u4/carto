@@ -68,6 +68,16 @@ describe('classifyNode', () => {
       await rm(dir, { recursive: true, force: true })
     }
   })
+
+  it('rejects a stored-hash source that points at a directory instead of treating it as missing', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'carto-status-'))
+    try {
+      const node: Node = { id: 'payments', sources: [{ file: '.', hash: '2cf24dba5fb0a30e' }] }
+      await expect(classifyNode(node, dir)).rejects.toBeDefined()
+    } finally {
+      await rm(dir, { recursive: true, force: true })
+    }
+  })
 })
 
 describe('statusReport', () => {

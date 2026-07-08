@@ -1,4 +1,3 @@
-import { access } from 'node:fs/promises'
 import { join } from 'node:path'
 import type { Manifest, Node } from './schema.js'
 import { hashFile } from './hash.js'
@@ -20,6 +19,10 @@ export interface NodeStatus {
 
 const PRIORITY: Record<FreshnessState, number> = { fresh: 0, unsynced: 1, stale: 2, missing: 3 }
 
+function isNotFound(error: unknown): boolean {
+  return typeof error === 'object' && error !== null && 'code' in error && error.code === 'ENOENT'
+}
+
 export async function classifyNode(node: Node, rootDir: string): Promise<NodeStatus> {
   const sources: SourceStatus[] = []
   for (const source of node.sources) {
@@ -31,13 +34,14 @@ export async function classifyNode(node: Node, rootDir: string): Promise<NodeSta
 
 async function classifySource(file: string, stored: string | undefined, rootDir: string): Promise<SourceStatus> {
   const absolute = join(rootDir, file)
+  let actual: string
   try {
-    await access(absolute)
-  } catch {
-    return { file, state: 'missing', stored }
+    actual = await hashFile(absolute)
+  } catch (error) {
+    if (isNotFound(error)) return { file, state: 'missing', stored }
+    throw error
   }
   if (stored === undefined) return { file, state: 'unsynced' }
-  const actual = await hashFile(absolute)
   return actual === stored ? { file, state: 'fresh', stored, actual } : { file, state: 'stale', stored, actual }
 }
 
