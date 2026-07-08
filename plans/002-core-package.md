@@ -209,7 +209,15 @@ separators are unambiguous: `#` = anchor, `/` = federation boundary.
   (defaultLocale membership, id/locale uniqueness).
 - Node built-ins only for IO: `node:crypto` (`createHash`), `node:fs/promises`
   (`readFile`, `writeFile`, `access`), `node:path` (`join`). No runtime dep
-  besides `zod`.
+  besides `zod`. These `node:*` imports need `@types/node` to typecheck, and the
+  repo ships none yet — add it as a **devDependency at the workspace root**
+  (`pnpm add -w -D @types/node@^22`). One root copy covers core, cli, and
+  template: TypeScript's automatic `@types` inclusion walks each package's
+  tsconfig dir up to the root `node_modules/@types`. Do NOT add it per-package —
+  a core-only copy does not reach `@carto/cli`, whose tsc program transitively
+  includes core's node-using source through the types-from-source `exports`, and
+  pnpm does not hoist it across packages. `@types/node` is a devDep, so `zod`
+  stays the only added runtime dependency.
 
 ## Scope
 
@@ -222,6 +230,8 @@ separators are unambiguous: `#` = anchor, `/` = federation boundary.
 - `packages/core/src/resolver.ts` (create)
 - `packages/core/src/status.ts` (create)
 - `packages/core/src/index.ts` (modify — re-export the public API)
+- `package.json` (workspace root — add the `@types/node` **devDependency**; see
+  the toolkit note above for why it lives at the root, not in core)
 - Test files beside each source: `schema.test.ts`, `hash.test.ts`,
   `manifest.test.ts`, `tree.test.ts`, `resolver.test.ts`, `status.test.ts`
 - `packages/core/src/index.test.ts` (keep the plan-001 smoke test, or update it
@@ -229,9 +239,10 @@ separators are unambiguous: `#` = anchor, `/` = federation boundary.
 
 **Out of scope** (do NOT touch):
 - `packages/cli/**`, `packages/template/**` — plans 003, 004.
-- Root configs, `scripts/`, `.gitignore` — plan 001. (Adding `zod` via
-  `pnpm --filter @carto/core add` edits only `packages/core/package.json` + the
-  lockfile — expected and in scope.)
+- Root configs, `scripts/`, `.gitignore` — plan 001. (Two expected exceptions:
+  adding `zod` via `pnpm --filter @carto/core add` edits `packages/core/package.json`
+  + the lockfile; adding `@types/node` via `pnpm add -w -D` edits the **root**
+  `package.json` + the lockfile. Both are in scope. No other root-config edits.)
 - Any `docs/` scanning or mdx parsing — "each node has an mdx per locale" and "do
   mdx links resolve" are done by the CLI (003) and template (004) using the pure
   functions this package exports. Keep core free of `docs/` IO.
@@ -730,10 +741,14 @@ Machine-checkable. ALL must hold:
 - [ ] `pnpm lint` exits 0 (zero code comments in any created file).
 - [ ] `grep -q '"zod"' packages/core/package.json && echo ok` → `ok`; no other new
       runtime dependency added.
-- [ ] Public API is exported: after `pnpm build`, from the repo root
-      `node -e "import('@carto/core').then(m => { for (const n of ['manifestSchema','hashFile','urlPath','resolveCartoLink','statusReport','syncManifest','checkTree']) if (!(n in m)) { console.error('missing', n); process.exit(1) } console.log('ok') })"`
-      prints `ok`.
-- [ ] `git status` shows only `packages/core/**` and the lockfile modified.
+- [ ] Public API is exported: after `pnpm build`, run the export check from a
+      location where `@carto/core` resolves — the private workspace root does not
+      depend on it, so a bare `import('@carto/core')` from the repo root fails with
+      `ERR_MODULE_NOT_FOUND`; that is expected, not a defect. Run it from the real
+      consumer, `cd packages/cli && node -e "import('@carto/core').then(m => { for (const n of ['manifestSchema','hashFile','urlPath','resolveCartoLink','statusReport','syncManifest','checkTree']) if (!(n in m)) { console.error('missing', n); process.exit(1) } console.log('ok') })"`,
+      or import the built entry directly (`node --input-type=module -e "import('./packages/core/dist/index.js').then(...)"`). Either prints `ok`.
+- [ ] `git status` shows only `packages/core/**`, the **root `package.json`**
+      (`@types/node` devDep), and the lockfile modified.
 - [ ] `plans/README.md` status row updated (unless a dispatcher owns the index).
 
 ## STOP conditions
