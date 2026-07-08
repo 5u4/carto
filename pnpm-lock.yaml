@@ -26,6 +26,9 @@ importers:
       '@carto/core':
         specifier: workspace:*
         version: link:../core
+      '@carto/template':
+        specifier: workspace:*
+        version: link:../template
       citty:
         specifier: ^0.2.2
         version: 0.2.2

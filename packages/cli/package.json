@@ -19,7 +19,8 @@
   },
   "dependencies": {
     "@carto/core": "workspace:*",
-    "citty": "^0.2.2"
+    "citty": "^0.2.2",
+    "@carto/template": "workspace:*"
   },
   "devDependencies": {
     "@carto/cli": "workspace:*",
