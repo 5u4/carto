@@ -462,10 +462,13 @@ Maintenance notes as a follow-up (do NOT open a new plan — it lives here).
   `packages/core/src/*.test.ts`):
   - `buildLocales`: defaultLocale maps to key `root`; other locales map to their
     own key; each has `{ label, lang }`.
-  - `buildSidebar`: a 3-node tree (`overview` → `api` → `payments`, with slug
-    overrides) yields a nested structure whose leaf `link`s equal
-    `urlPath(manifest, id, defaultLocale)` (e.g. `/backend/billing/`), and whose
-    top level has exactly the root nodes in array order.
+  - `buildSidebar`: a tree of `overview` (root), `api` (root, slug `backend`) and
+    `payments` (parent `api`, slug `billing`) — note `overview` and `api` are both
+    **top-level roots** (omit `parent`), only `payments` nests under `api`, so the
+    leaf URL is `/backend/billing/` (making `api` a child of `overview` would give
+    `/overview/backend/billing/` and contradict the Done-criteria path). The nested
+    structure's leaf `link`s equal `urlPath(manifest, id, defaultLocale)` (e.g.
+    `/backend/billing/`), and the top level has exactly the root nodes in array order.
 - **Build smoke — `scripts/check-build.sh`** (Step 7): materialize + `astro build`
   the fixture, assert output HTML paths and resolved links. The real end-to-end
   proof that routing works.

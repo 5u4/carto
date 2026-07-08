@@ -24,9 +24,9 @@ vitest. Repo rule: **zero code comments** (enforced by `scripts/lint-comments.sh
 |------|-------|----------|--------|------------|--------|
 | 001  | Monorepo foundation (pnpm workspace, tsconfig, vitest, comment gate, package skeletons) | P1 | M | — | DONE (branch `advisor/001-monorepo-foundation`, commit `20e4dd4`; all five commands green) |
 | 002  | `@carto/core` — schema, hashing, tree, resolver, status | P1 | L | 001 | DONE (branch `advisor/002-core-package`; 39 tests, all commands green; needed root `@types/node` devDep) |
-| 003  | `@carto/cli` — the `carto` binary (six citty commands) | P1 | L | 002 | TODO |
-| 004  | `@carto/template` — Astro 5 + Starlight bundled site | P1 | L | 002 | TODO |
-| 005  | carto skill — `skill/SKILL.md`, the generation guide | P1 | M | 002 (concept) | TODO |
+| 003  | `@carto/cli` — the `carto` binary (six citty commands) | P1 | L | 002 | DONE (branch `advisor/003-cli-package`; 13 tests, six commands, thin over core; self `workspace:*` devDep so `pnpm exec carto` links its bin) |
+| 004  | `@carto/template` — Astro 5 + Starlight bundled site | P1 | L | 002 | DONE (branch `advisor/004-astro-template`; routing spike passed, fixture builds both locales, 7 site-config tests) |
+| 005  | carto skill — `skill/SKILL.md`, the generation guide | P1 | M | 002 (concept) | DONE (branch `advisor/005-carto-skill`; verbatim skill, all token greps pass; `parent:null`→omit clause corrected to shipped schema) |
 | 006  | e2e smoke — carto documents its own repo | P2 | M | 003, 004, 005 | TODO |
 
 Status values: TODO | IN PROGRESS | DONE | BLOCKED (with one-line reason) |

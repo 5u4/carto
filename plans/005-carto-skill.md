@@ -246,9 +246,11 @@ Field rules:
 - `nodes[].slug`: optional URL/display segment (default = id); same pattern;
   unique among siblings (nodes sharing the same parent). Slugs are cheap to
   change — links target the id, not the slug.
-- `nodes[].parent`: optional id of the parent node. Absent or null means root. A
-  parent id that does not exist yet is a **warning, not an error** — you may
-  generate from the middle of the tree. A cycle or a self-parent is an error.
+- `nodes[].parent`: optional; the `id` of the parent node. **Omit the key** to
+  make a node a root — do not write `parent: null` (the schema types `parent`
+  as an optional string, so `null` fails validation). A parent id that does not
+  exist yet is a **warning, not an error** — you may generate from the middle of
+  the tree. A cycle or a self-parent is an error.
 - `nodes[].sources`: the files whose behavior this page describes. Write **`file`
   only** — a path relative to the directory containing `carto.json`. Leave `hash`
   out; `carto sync` fills it. The array may be empty for a pure-orientation page.

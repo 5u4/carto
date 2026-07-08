@@ -215,6 +215,16 @@ pnpm --filter @carto/cli add citty
 **Verify**: `grep -q '"citty"' packages/cli/package.json && echo ok` → `ok`;
 `pnpm install` exits 0.
 
+Note (bin linking): a package's own `bin` is only linked into a *consumer's*
+`node_modules/.bin`, never its own, so `pnpm --filter @carto/cli exec carto --help`
+(a done-criterion below) will not find the `carto` bin out of the box. Add a
+self-referencing **devDependency** `"@carto/cli": "workspace:*"` to
+`packages/cli/package.json` so pnpm links the bin during development. It is a
+devDep (does not violate "no new runtime dep besides citty") and the package is
+private/never published. The bin target is `dist/index.js`, so the link only
+resolves after `pnpm build`; a fresh `pnpm install` before any build prints a
+benign `ENOENT` bin-link warning and a later install completes it.
+
 ### Step 2: `links.ts` — scan `carto:` link targets from mdx
 
 Create `packages/cli/src/links.ts`. A minimal Markdown-link scanner is enough —
