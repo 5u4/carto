@@ -71,10 +71,11 @@ pnpm exec carto build
 ```
 
 Renders the production site into `./dist-site/` (gitignored). Preview the
-built output with:
+built output — from the repo root, with `CARTO_ROOT` pointing at the doc root so
+Astro serves `$CARTO_ROOT/dist-site` (not the template package's own dir):
 
 ```sh
-pnpm --filter @carto/template exec astro preview
+CARTO_ROOT="$PWD" pnpm --filter @carto/template exec astro preview
 ```
 
 ## Project layout / where to look next

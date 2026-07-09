@@ -93,8 +93,10 @@ URLs come from the `carto.json` slug chain (`overview` is the root node, `core`
 and `cli` are its children), never from file paths.
 
 **Production build** (`carto build`): renders the static site into
-`./dist-site/` (gitignored). Preview a built site with
-`pnpm --filter @carto/template exec astro preview`.
+`./dist-site/` (gitignored). Preview a built site from the repo root with
+`CARTO_ROOT="$PWD" pnpm --filter @carto/template exec astro preview` (Astro reads
+`carto.json` and serves `dist-site` from `CARTO_ROOT`, so the bare `--filter`
+form without it looks in `packages/template/` and fails).
 
 **Other CLI commands** (for the usage section — behavior verified in the code):
 - `carto sync` — recompute + write every source hash; refresh `updated_at`.
@@ -168,7 +170,8 @@ facts from "Current state" (adapt wording; keep it tight and skimmable):
    `sync`, `validate`, `dev`, `build`) with one-line descriptions and the
    `carto status` non-zero-when-stale note.
 6. **Build the static site** — `pnpm exec carto build` → `./dist-site/`
-   (gitignored); preview with `pnpm --filter @carto/template exec astro preview`.
+   (gitignored); preview from the repo root with
+   `CARTO_ROOT="$PWD" pnpm --filter @carto/template exec astro preview`.
 7. **Project layout / where to look next** — a few bullets: `packages/core`,
    `packages/cli`, `packages/template`, `skill/SKILL.md` (the doc-authoring
    guide), `docs/` + `carto.json` (carto's own self-docs), `plans/` (the
