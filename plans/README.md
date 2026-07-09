@@ -29,6 +29,7 @@ vitest. Repo rule: **zero code comments** (enforced by `scripts/lint-comments.sh
 | 005  | carto skill — `skill/SKILL.md`, the generation guide | P1 | M | 002 (concept) | DONE (branch `advisor/005-carto-skill`; verbatim skill, all token greps pass; `parent:null`→omit clause corrected to shipped schema) |
 | 006  | e2e smoke — carto documents its own repo | P2 | M | 003, 004, 005, 007 | DONE (branch `advisor/006-e2e-smoke` @ 775725c; refined mid-execute to add Step 1b [root `@carto/cli` devDep] and to depend on new plan 007; 6 self-doc mdx + 3-node `carto.json` + `scripts/e2e.sh`; `pnpm e2e` green ×2 repeatable, staleness demo works, `git diff -- packages/` clean; reviewer re-ran full pipeline + typecheck/test/lint green) |
 | 007  | make `carto build`/`dev` resolve the bundled template | P1 | S | 003, 004 | DONE (branch `advisor/006-e2e-smoke`, commits 5fa31b9/82c7dc2/30af933; CLI→template runtime dep + template `./package.json` export + resolvability regression test; reviewer re-ran build/test/lint green) |
+| 008  | root README — setup, preview, CLI usage | P3 | S | none | DONE (branch `advisor/008-readme`, commit `6e03376`; documents the install→build→install bin-link trap, `carto dev` preview at http://localhost:4321/overview/, six-command table; reviewer re-verified dev serves + build routes + lint green) |
 
 Status values: TODO | IN PROGRESS | DONE | BLOCKED (with one-line reason) |
 REJECTED (with one-line rationale).
