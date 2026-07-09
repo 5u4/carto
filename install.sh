@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+: "${HOME:?HOME is not set; cannot determine install paths}"
 REPO_URL="${CARTO_REPO_URL:-https://github.com/5u4/carto.git}"
 CARTO_HOME="${CARTO_DIR:-$HOME/.carto}"
 REPO_DIR="$CARTO_HOME/repo"
@@ -16,6 +17,9 @@ require() {
 }
 
 clone_or_update() {
+  if [ -d "$REPO_DIR" ] && [ ! -d "$REPO_DIR/.git" ]; then
+    die "$REPO_DIR exists but is not a git checkout; remove it and re-run: rm -rf \"$REPO_DIR\""
+  fi
   if [ -d "$REPO_DIR/.git" ]; then
     step "Updating $REPO_DIR"
     git -C "$REPO_DIR" pull --ff-only
@@ -61,6 +65,8 @@ do_install() {
 }
 
 do_update() {
+  require git
+  require pnpm
   [ -d "$REPO_DIR/.git" ] || die "no install found at $REPO_DIR; run install first."
   clone_or_update
   build_cli
@@ -75,7 +81,7 @@ do_uninstall() {
   if pnpm uninstall --global @carto/cli >/dev/null 2>&1; then
     say "unlinked carto from pnpm global"
   fi
-  say "kept $REPO_DIR — remove it with: rm -rf \"$CARTO_HOME\""
+  say "kept the checkout at $REPO_DIR — remove it with: rm -rf \"$REPO_DIR\""
 }
 
 usage() {
