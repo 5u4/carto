@@ -99,11 +99,11 @@ synced 6 node(s)
 ## validate
 
 The full gate: schema, id/slug uniqueness, parent cycles, sync state, one `.mdx`
-per locale, and that every `carto:` link resolves
-(`packages/cli/src/commands/validate.ts:17`). Missing docs and unsynced/stale
-nodes are errors; a dangling parent is only a warning. Exits 1 with an `error:`
-line per problem; prints `validate: ok` when clean
-(`packages/cli/src/commands/validate.ts:62`).
+per locale, that `home` (if set) names a real node, and that every `carto:` link
+resolves (`packages/cli/src/commands/validate.ts:17`). Missing docs, unsynced or
+stale nodes, and an unknown `home` are errors; a dangling parent is only a
+warning. Exits 1 with an `error:` line per problem; prints `validate: ok` when
+clean (`packages/cli/src/commands/validate.ts:66`).
 
 ```
 $ carto validate

@@ -1,7 +1,7 @@
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises'
-import { dirname, join } from 'node:path'
+import { basename, dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { readManifest, resolveCartoLink, rootChain, slugOf, type Manifest, type Node } from '@carto/core'
+import { childrenOf, readManifest, resolveCartoLink, rootChain, slugOf, type Manifest, type Node } from '@carto/core'
 
 const here = dirname(fileURLToPath(import.meta.url))
 const contentDir = join(here, '..', 'src', 'content', 'docs')
@@ -11,6 +11,10 @@ async function main(): Promise<void> {
   const manifest = await readManifest(join(root, 'carto.json'))
   await rm(contentDir, { recursive: true, force: true })
   await mkdir(contentDir, { recursive: true })
+  if (childrenOf(manifest.nodes, null).length === 0) {
+    await writeEmptyState(root)
+    return
+  }
   const titles = await collectTitles(root, manifest)
   for (const node of manifest.nodes) {
     for (const locale of manifest.locales) {
@@ -22,6 +26,27 @@ async function main(): Promise<void> {
       await writeFile(target, rewritten, 'utf8')
     }
   }
+}
+
+async function writeEmptyState(root: string): Promise<void> {
+  const title = basename(root).replace(/\\/g, '\\\\').replace(/"/g, '\\"')
+  const lines = [
+    '---',
+    `title: "${title}"`,
+    '---',
+    '',
+    '# Nothing here yet',
+    '',
+    'This carto site has no pages. To add your first one, run:',
+    '',
+    '```',
+    'carto document <dir-or-files>',
+    '```',
+    '',
+    'Then run `carto dev` again.',
+    ''
+  ]
+  await writeFile(join(contentDir, 'index.mdx'), lines.join('\n'), 'utf8')
 }
 
 function targetPath(manifest: Manifest, node: Node, locale: string): string {

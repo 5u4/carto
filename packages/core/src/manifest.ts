@@ -23,13 +23,14 @@ export function parseManifest(raw: unknown): Manifest {
 }
 
 export function serializeManifest(manifest: Manifest): string {
-  const ordered = {
+  const ordered: Record<string, unknown> = {
     version: manifest.version,
     locales: manifest.locales,
     defaultLocale: manifest.defaultLocale,
-    updated_at: manifest.updated_at,
-    nodes: manifest.nodes.map((node) => orderNode(node))
+    updated_at: manifest.updated_at
   }
+  if (manifest.home !== undefined) ordered.home = manifest.home
+  ordered.nodes = manifest.nodes.map((node) => orderNode(node))
   return `${JSON.stringify(ordered, null, 2)}\n`
 }
 

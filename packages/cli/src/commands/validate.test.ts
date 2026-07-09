@@ -168,4 +168,28 @@ describe('carto validate', () => {
       expect(warnings.some((line) => line.includes('ghost-parent'))).toBe(true)
     })
   })
+
+  it('exits 1 when home points to an unknown node id', async () => {
+    await withTempCwd(async (dir) => {
+      await writeSyncedManifest(dir, { ...baseManifest(), home: 'ghost' })
+      await writeDoc(dir, 'payments', 'en', 'Payments overview.')
+      await writeDoc(dir, 'billing', 'en', 'Billing overview.')
+
+      const { exitCode, errors } = await runAndCaptureExit()
+      expect(exitCode).toBe(1)
+      expect(errors.some((line) => line.includes('home') && line.includes('ghost'))).toBe(true)
+    })
+  })
+
+  it('exits 0 when home points to an existing node', async () => {
+    await withTempCwd(async (dir) => {
+      await writeSyncedManifest(dir, { ...baseManifest(), home: 'billing' })
+      await writeDoc(dir, 'payments', 'en', 'Payments overview.')
+      await writeDoc(dir, 'billing', 'en', 'Billing overview.')
+
+      const { exitCode, logs } = await runAndCaptureExit()
+      expect(exitCode).toBeNull()
+      expect(logs).toContain('validate: ok')
+    })
+  })
 })

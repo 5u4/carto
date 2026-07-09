@@ -77,6 +77,7 @@ tracking only — **no prose**. Shape:
   "locales": ["en", "zh"],
   "defaultLocale": "en",
   "updated_at": "2026-07-08T00:00:00Z",
+  "home": "overview",
   "nodes": [
     {
       "id": "payments",
@@ -96,6 +97,11 @@ Field rules:
 - `locales`: non-empty list of unique short codes. `defaultLocale` MUST be one of
   them.
 - `updated_at`: ISO 8601. `carto sync` refreshes it, so you may leave it as-is.
+- `home`: optional node `id` the site root `/` redirects to (and each locale
+  root, e.g. `/zh/`). It may point at **any** node, not only a root. Omit it and
+  the root falls back to the first root node in array order; when there are no
+  nodes at all, the build renders an empty-state landing page instead of a
+  redirect. `carto validate` errors if `home` names an id that does not exist.
 - `nodes[].id`: **required, globally unique, immutable.** Pattern
   `^[a-z0-9][a-z0-9-]*$` — lowercase letters, digits, hyphens; no `.`, no `/`.
   This is the link target (`carto:payments`). Never rename an id.

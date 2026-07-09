@@ -32,6 +32,10 @@ export const validateCommand = defineCommand({
       ;(issue.severity === 'error' ? errors : warnings).push(line)
     }
 
+    if (manifest.home && !manifest.nodes.some((node) => node.id === manifest.home)) {
+      errors.push(`home points to unknown node id ${manifest.home}`)
+    }
+
     const report = await statusReport(manifest, root)
     for (const node of report) {
       if (node.state === 'unsynced') errors.push(`node ${node.id} is unsynced; run carto sync`)
