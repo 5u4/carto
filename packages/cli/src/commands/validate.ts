@@ -33,7 +33,7 @@ export const validateCommand = defineCommand({
     }
 
     if (manifest.home && !manifest.nodes.some((node) => node.id === manifest.home)) {
-      errors.push(`home points to unknown node id ${manifest.home}`)
+      errors.push(`home points to unknown node id "${manifest.home}"`)
     }
 
     const report = await statusReport(manifest, root)

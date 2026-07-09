@@ -5,7 +5,7 @@
     "zh"
   ],
   "defaultLocale": "en",
-  "updated_at": "2026-07-09T20:39:38.313Z",
+  "updated_at": "2026-07-09T22:57:14.461Z",
   "nodes": [
     {
       "id": "overview",
@@ -58,7 +58,7 @@
         },
         {
           "file": "packages/cli/src/commands/validate.ts",
-          "hash": "9330e30811eb4c0e"
+          "hash": "8a2b9dc57894f4c6"
         },
         {
           "file": "packages/cli/src/commands/dev.ts",

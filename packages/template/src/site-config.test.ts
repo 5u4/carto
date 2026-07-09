@@ -84,9 +84,11 @@ describe('buildRedirects', () => {
     expect(buildRedirects(m)['/zh/']).toBe(urlPath(m, 'overview', 'zh'))
   })
 
-  it('picks the first root node by array order, not children', () => {
-    const m = manifest()
-    expect(buildRedirects(m)['/']).toBe('/overview/')
+  it('picks the first root node by array order when several roots exist', () => {
+    const base = manifest()
+    const m: Manifest = { ...base, nodes: [base.nodes[1]!, base.nodes[0]!, base.nodes[2]!] }
+    expect(buildRedirects(m)['/']).toBe(urlPath(m, 'api', 'en'))
+    expect(buildRedirects(m)['/']).toBe('/backend/')
   })
 
   it('honors an explicit home field pointing at any node, root or not', () => {
