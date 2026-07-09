@@ -12,6 +12,12 @@
       "sourceType": "github",
       "skillPath": "skills/skill-creator/SKILL.md",
       "computedHash": "5ea13a6d9f0d4bb694405d79acd00cadec0d21bb138c4dd10fcf3c500cb835c2"
+    },
+    "technical-writing": {
+      "source": "gwagjiug/technical-writing",
+      "sourceType": "github",
+      "skillPath": "skills/technical-writing/SKILL.md",
+      "computedHash": "47a53856648e7e1672a859d44672da8ef0f0b5c38a8da055063873e0f7894450"
     }
   }
 }

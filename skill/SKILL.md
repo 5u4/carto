@@ -145,18 +145,18 @@ should point at the same load-bearing code.
 
 ## How to split into nodes
 
-A node is **one page = one mental model**, readable in one sitting.
+A node is **one mental model**, readable in one sitting.
 
 - A node = "one thing you'd explain on a whiteboard": a subsystem, a flow, a core
   concept. **Never one file per node** — mirroring the file tree is exactly what
   carto avoids.
-- Split a page when its `sources` list balloons or more than about 5 independent
+- Split a node when its `sources` list balloons or more than about 5 independent
   concepts pile up.
 - Shape the tree top-down: the top is orientation ("what is this, how do the
   pieces fit"); deeper nodes are subsystems, then flows. Starting from a root is
   recommended but not required — middle generation is legal (a dangling parent is
   only a warning).
-- Keep `sources` precise: register only the files whose behavior the page
+- Keep `sources` precise: register only the files whose behavior the node
   actually describes. Too broad triggers false "stale" churn; too narrow lets
   real changes go undetected. This is the staleness crosshair.
 - **Audience layering — lead with the user, not the architecture.** If the code
@@ -174,28 +174,43 @@ A node is **one page = one mental model**, readable in one sitting.
   documented thing has users; skip it only for purely internal code nobody invokes
   directly.
 
-## What each page contains (a checklist, not a template)
+**Pick each node's type — it fixes the section order.** Most carto nodes are
+Explanation; that is the "one node = one mental model" shape.
 
-Layer the content; do NOT force a rigid six-section shape — forcing all six
-invites filler. Include a layer when the "Required when" column says so:
+| Node type | Reader goal | Typical carto node | Section order |
+|---|---|---|---|
+| Explanation | build a mental model | subsystem, core concept | concept → context → mechanism → tradeoffs → example |
+| Tutorial | working result from zero | getting-started, usage | goal → prerequisites → steps → verification → next |
+| Reference | look up exact behavior | CLI/API entry node | overview → signature → parameters → returns → examples → edge cases |
 
-| Layer | Content | Required when |
-|---|---|---|
-| Intent | the problem it solves and its role in the system | always — most valuable, hardest to read from code |
-| Mental model | 3 to 5 core concepts, their relations, one mermaid diagram | always |
-| Run-through | a real input traced through the code to its output | flow and subsystem pages |
-| Worked example | a real, reproducible example a user can copy — real commands with their real output, or real inputs mapped to real outputs | user-facing pages (getting-started, usage, and any CLI/API entry page) |
-| Contract | public interface, inputs and outputs, invariants, error modes | pages with an outward face |
-| Gotchas | counterintuitive bits, edge cases, "why is this weird" | when they exist |
-| Code anchors | `path:line` on every load-bearing claim | always — jump-to-source and staleness crosshair |
+Deeper contributor nodes are almost always Explanation — resist letting them
+decay into step-by-step tutorials.
 
-**Hard floor: Intent + Mental model + Code anchors.** Add the rest as the page
-warrants — but on any **user-facing page** (a getting-started/usage page, or a
-page documenting a command/API a user calls), a **Worked example is also part of
-the floor**: show at least one real, reproducible example with real output, never
-an idealized or invented one (this is the same "real code path" discipline the
-Run-through and verification rules demand). A user page with no example has not
-met the floor.
+## What each node contains
+
+Do not force one fixed shape on every node. First pick the node's type (above) —
+that fixes the section order. Then apply four principles that hold across all
+types:
+
+- **Value first.** Open with what the reader gains: what this thing is, what you
+  can do after reading. Push background and internal architecture below the fold.
+- **Overview before detail.** The first lines state the node's value plus any
+  prerequisites or constraints; never open with deep background unless the
+  background *is* the value.
+- **Concrete over vague.** Every claim is observable — real commands, real inputs
+  and outputs, version and environment constraints — not "handles caching
+  appropriately". Replace a vague adjective with the condition that proves it.
+- **Sufficient background.** Define an unfamiliar concept the first time it
+  appears, near the point of use, not in a detached glossary.
+
+**Hard floor, regardless of type:** Intent (the problem it solves and its role in
+the system) + a mental-model view (3 to 5 core concepts, their relations, one
+mermaid diagram) + a `path:line` code anchor on every load-bearing claim. On any
+**user-facing node** (getting-started, usage, or a node documenting a command or
+API a reader calls), one **real, reproducible worked example** — real commands
+with their real output, or real inputs mapped to real outputs — is also part of
+the floor. An idealized or invented example does not count; a user node without
+one has not met the floor.
 
 ## Verification disciplines (non-negotiable)
 
@@ -203,7 +218,8 @@ met the floor.
    hints about intent, but verify every claim against actual code behavior, and
    never copy them verbatim into the docs — comments drift out of sync with code.
 2. **Every claim must be supportable by code behavior and carry a `path:line`
-   anchor.** If you cannot confirm it from the code, do not write it.
+   anchor.** If you cannot confirm it from the code, do not write it — mark the
+   gap as an explicit TODO instead of inventing a fact.
 3. **Run-throughs trace a real code path** with inputs and outputs the code can
    actually produce — no imagined or idealized examples.
 4. **Generate all locales together.** Write `defaultLocale` first, then each
