@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { urlPath, type Manifest, type Node } from '@carto/core'
-import { buildLocales, buildSidebar } from './site-config'
+import { buildLocales, buildRedirects, buildSidebar } from './site-config'
 
 function node(partial: Partial<Node> & { id: string }): Node {
   return { sources: [], ...partial }
@@ -70,5 +70,46 @@ describe('buildSidebar', () => {
     }
     const sidebar = buildSidebar(m)
     expect(sidebar).toEqual([{ label: 'solo', link: urlPath(m, 'solo', 'en') }])
+  })
+})
+
+describe('buildRedirects', () => {
+  it('redirects the default-locale root to the first root node', () => {
+    const m = manifest()
+    expect(buildRedirects(m)['/']).toBe(urlPath(m, 'overview', 'en'))
+  })
+
+  it('redirects each non-default locale root to the first root node in that locale', () => {
+    const m = manifest()
+    expect(buildRedirects(m)['/zh/']).toBe(urlPath(m, 'overview', 'zh'))
+  })
+
+  it('picks the first root node by array order when several roots exist', () => {
+    const base = manifest()
+    const m: Manifest = { ...base, nodes: [base.nodes[1]!, base.nodes[0]!, base.nodes[2]!] }
+    expect(buildRedirects(m)['/']).toBe(urlPath(m, 'api', 'en'))
+    expect(buildRedirects(m)['/']).toBe('/backend/')
+  })
+
+  it('honors an explicit home field pointing at any node, root or not', () => {
+    const m = { ...manifest(), home: 'payments' }
+    expect(buildRedirects(m)['/']).toBe(urlPath(m, 'payments', 'en'))
+    expect(buildRedirects(m)['/']).toBe('/backend/billing/')
+  })
+
+  it('falls back to the first root node when home points at an unknown id', () => {
+    const m = { ...manifest(), home: 'ghost' }
+    expect(buildRedirects(m)['/']).toBe('/overview/')
+  })
+
+  it('returns no redirects when there are no root nodes', () => {
+    const m: Manifest = {
+      version: 1,
+      locales: ['en'],
+      defaultLocale: 'en',
+      updated_at: '2026-07-08T00:00:00Z',
+      nodes: []
+    }
+    expect(buildRedirects(m)).toEqual({})
   })
 })

@@ -51,20 +51,25 @@ them to core's resolver. The user-facing behavior of all six is [](carto:cli).
 Starlight hardcodes `src/content/docs` and derives locale + URL from directory
 structure. Rather than fight it, the template **materializes**: `materialize.ts`
 reads the doc root's `carto.json` (via `CARTO_ROOT`), wipes and rebuilds
-`src/content/docs` (`packages/template/src/materialize.ts:12`), and writes each
-node's `.mdx` to a **slug-chain path** — `rootChain(...).map(slugOf).join('/')`,
-locale-prefixed for non-default locales
-(`packages/template/src/materialize.ts:27`). As it copies, `rewriteLinks`
+`src/content/docs` (`packages/template/src/materialize.ts:12`). When the manifest
+has no root nodes it writes a single empty-state `index.mdx` — titled with the
+doc root's folder name — and returns
+(`packages/template/src/materialize.ts:14`, `packages/template/src/materialize.ts:31`);
+otherwise it writes each node's `.mdx` to a **slug-chain path** —
+`rootChain(...).map(slugOf).join('/')`, locale-prefixed for non-default locales
+(`packages/template/src/materialize.ts:52`). As it copies, `rewriteLinks`
 replaces every `carto:<id>` with the resolved URL and fills empty labels with the
-target's title (`packages/template/src/materialize.ts:33`); titles are collected
-from each page's frontmatter first (`packages/template/src/materialize.ts:42`).
+target's title (`packages/template/src/materialize.ts:58`); titles are collected
+from each page's frontmatter first (`packages/template/src/materialize.ts:67`).
 
 The Astro config reads the same manifest and builds Starlight's `locales` and
 `sidebar` from it via `buildLocales` / `buildSidebar`
 (`packages/template/src/site-config.ts:3`, `packages/template/src/site-config.ts:18`);
 `entryFor` recurses the node tree into nested sidebar entries
-(`packages/template/src/site-config.ts:22`). The result reproduces exactly the
-URLs `urlPath` computes, so `carto:` links resolve to real routes.
+(`packages/template/src/site-config.ts:38`). `buildRedirects` sends the site root
+`/` (and each locale root) to the `home` node, or the first root node when
+`home` is unset (`packages/template/src/site-config.ts:22`). The result reproduces
+exactly the URLs `urlPath` computes, so `carto:` links resolve to real routes.
 
 ## How `carto dev`/`build` reach here
 
