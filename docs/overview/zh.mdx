@@ -1,0 +1,60 @@
+---
+title: 什么是 carto
+---
+
+Carto 把一个代码库变成一张**自顶向下的心智模型地图**——就像你给新同事在白板上画的那种讲解——
+并且在代码演进时让这张地图保持诚实。它刻意地**不是** API 参考，也**不是**逐行的照抄。
+它的差异化在于可持续性：每个页面都记录了它所描述源文件的内容哈希，因此工具能精确判断
+代码变更后哪些页面失效，并只重新生成那些页面（`packages/core/src/status.ts:44`）。
+
+你自带 LLM/agent。Carto 本身是三样人类永远不必手摇的东西：一个告诉 agent 如何读代码、
+写页面的写作**技能**（`skill/SKILL.md`）、一个对 agent 产出做哈希与校验的小 **CLI**，
+以及一个把结果渲染成站点的 Astro + Starlight **模板**。
+
+## 面向谁
+
+- **用户**——为代码库编写文档：先读 [](carto:getting-started)，再用 [](carto:skill)
+  和 [](carto:cli) 驱动整个循环。
+- **读者**——阅读 carto 站点：你会得到一棵可导航的子系统与流程之树，每一项都锚定到真实源码行。
+- **贡献者**——改动 carto 本身：直接跳到 [](carto:internals)。
+
+## 心智模型
+
+五个理念撑起整个系统：
+
+- **一个节点 = 一个心智模型**，而非一个文件。一个子系统、一条流程、或一个核心概念——
+  一次就能读完。照搬文件树正是 carto 要避免的。
+- **`carto.json` 是唯一的结构。** 每个文档根一份清单 = 一个站点。它只承载节点树和被追踪的
+  源文件——永远不含正文（[](carto:concepts)）。
+- **失效基于哈希，而非 git。** 每个源文件存一个 16 字符的 sha256
+  （`packages/core/src/hash.ts:5`）；`carto status` 比较存储值与实际值，把每个节点分类为
+  `fresh` / `unsynced` / `stale` / `missing`（`packages/core/src/status.ts:20`）。
+- **链接指向不可变的 id，而非路径。** 你写一个目标为 `carto:<id>` 的 Markdown 链接；渲染器根据当前的 slug 链
+  把它解析成 URL（`packages/core/src/resolver.ts:41`）。重命名一个 slug 或移动一个节点——
+  链接永不断裂。
+- **BYO-LLM（自带模型）。** agent 负责判断（读代码、写 `.mdx`、改清单）；CLI 只做必须确定性的
+  事（哈希、校验）。
+
+```mermaid
+flowchart LR
+  you["你和你的 LLM agent"] -->|调用 carto 技能| skill["carto 技能"]
+  skill -->|写入| pages["docs 页面 (.mdx)"]
+  skill -->|编辑| manifest["carto.json 清单"]
+  pages --> cli["carto CLI: sync 然后 validate"]
+  manifest --> cli
+  cli -->|build| site["Astro + Starlight 站点"]
+```
+
+## 一口气讲完生成循环
+
+读代码 → 规划节点树 → 为每个节点 × 语言写 `docs/<id>/<locale>.mdx` → 编辑 `carto.json`
+→ `carto sync`（填哈希）→ `carto validate`（校验 schema、树、链接）。在 `validate` 退出码为
+0 之前绝不停手。带可复现运行的完整走查见 [](carto:getting-started)。
+
+## 接下来去哪
+
+- [](carto:getting-started) —— 从零到一份通过校验的文档集。
+- [](carto:skill) —— 你实际调用的写作接口。
+- [](carto:cli) —— 六个命令，以及每个命令为你做什么。
+- [](carto:concepts) —— 深入清单、失效与 `carto:` 链接。
+- [](carto:internals) —— 三个包如何构建（面向贡献者）。

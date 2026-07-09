@@ -1,0 +1,122 @@
+{
+  "version": 1,
+  "locales": [
+    "en",
+    "zh"
+  ],
+  "defaultLocale": "en",
+  "updated_at": "2026-07-09T06:31:39.631Z",
+  "nodes": [
+    {
+      "id": "overview",
+      "sources": [
+        {
+          "file": "skill/SKILL.md",
+          "hash": "aa93168788e7e294"
+        }
+      ]
+    },
+    {
+      "id": "getting-started",
+      "parent": "overview",
+      "sources": [
+        {
+          "file": "skill/SKILL.md",
+          "hash": "aa93168788e7e294"
+        },
+        {
+          "file": "packages/cli/src/commands/init.ts",
+          "hash": "ce6c7c0755c70fa6"
+        }
+      ]
+    },
+    {
+      "id": "skill",
+      "parent": "overview",
+      "sources": [
+        {
+          "file": "skill/SKILL.md",
+          "hash": "aa93168788e7e294"
+        }
+      ]
+    },
+    {
+      "id": "cli",
+      "parent": "overview",
+      "sources": [
+        {
+          "file": "packages/cli/src/commands/init.ts",
+          "hash": "ce6c7c0755c70fa6"
+        },
+        {
+          "file": "packages/cli/src/commands/status.ts",
+          "hash": "4977c6ab25bcec3f"
+        },
+        {
+          "file": "packages/cli/src/commands/sync.ts",
+          "hash": "38cc6df7b2b71490"
+        },
+        {
+          "file": "packages/cli/src/commands/validate.ts",
+          "hash": "c8a6d4747723e806"
+        },
+        {
+          "file": "packages/cli/src/commands/dev.ts",
+          "hash": "eadd432bb6e3f5a1"
+        },
+        {
+          "file": "packages/cli/src/commands/build.ts",
+          "hash": "64a19d153e034072"
+        }
+      ]
+    },
+    {
+      "id": "concepts",
+      "parent": "overview",
+      "sources": [
+        {
+          "file": "packages/core/src/schema.ts",
+          "hash": "e6a983b85fcd2dd4"
+        },
+        {
+          "file": "packages/core/src/status.ts",
+          "hash": "4df2058349724871"
+        },
+        {
+          "file": "packages/core/src/hash.ts",
+          "hash": "2afef0f45e81f800"
+        },
+        {
+          "file": "packages/core/src/resolver.ts",
+          "hash": "31c33c07d42b3571"
+        },
+        {
+          "file": "packages/core/src/tree.ts",
+          "hash": "1e39e040caf4ec64"
+        }
+      ]
+    },
+    {
+      "id": "internals",
+      "parent": "overview",
+      "sources": [
+        {
+          "file": "packages/core/src/index.ts",
+          "hash": "d48977c2e4ea7d53"
+        },
+        {
+          "file": "packages/cli/src/index.ts",
+          "hash": "71e2a2c776f7684b"
+        },
+        {
+          "file": "packages/template/src/materialize.ts",
+          "hash": "0a3e86eefd6af450"
+        },
+        {
+          "file": "packages/template/src/site-config.ts",
+          "hash": "4cf955abe9bbdceb"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,71 @@
+---
+title: What is carto
+---
+
+Carto turns a codebase into a **top-down mental-model map** — the kind of
+explanation you'd draw on a whiteboard for a new joiner — and keeps that map
+honest as the code moves. It is deliberately **not** an API reference and **not**
+a line-by-line transcription. The differentiator is sustainability: every page
+records a content hash of the source files it describes, so tooling can tell
+exactly which pages went stale when code changed, and regenerate only those
+(`packages/core/src/status.ts:44`).
+
+You bring your own LLM/agent. Carto itself is three things a human never has to
+hand-crank: an authoring **skill** (`skill/SKILL.md`) that tells the agent how to
+read code and write pages, a small **CLI** that hashes and checks what the agent
+produced, and an Astro + Starlight **template** that renders it into a site.
+
+## Who this is for
+
+- **Users** documenting a codebase: read [](carto:getting-started), then drive
+  the loop with [](carto:skill) and the [](carto:cli).
+- **Readers** of a carto site: you get a navigable tree of subsystems and flows,
+  each anchored to real source lines.
+- **Contributors** hacking on carto itself: skip to [](carto:internals).
+
+## Mental model
+
+Five ideas carry the whole system:
+
+- **A node = one mental model**, not one file. A subsystem, a flow, or a core
+  concept — readable in one sitting. Mirroring the file tree is exactly what
+  carto avoids.
+- **`carto.json` is the only structure.** One manifest per doc root = one site.
+  It holds the node tree and the tracked source files — never prose
+  ([](carto:concepts)).
+- **Staleness is hash-based, not git-based.** Each source stores a 16-char
+  sha256 (`packages/core/src/hash.ts:5`); `carto status` compares stored vs.
+  actual and classifies each node `fresh` / `unsynced` / `stale` / `missing`
+  (`packages/core/src/status.ts:20`).
+- **Links target immutable ids, not paths.** You write a Markdown link whose
+  target is `carto:<id>`;
+  the renderer resolves it to a URL from the current slug chain
+  (`packages/core/src/resolver.ts:41`). Rename a slug or move a node — links
+  never break.
+- **BYO-LLM.** The agent does the judgement (read code, write `.mdx`, edit the
+  manifest); the CLI does only what must be deterministic (hash, validate).
+
+```mermaid
+flowchart LR
+  you["You plus your LLM agent"] -->|invoke the carto skill| skill["carto skill"]
+  skill -->|writes| pages["docs pages (.mdx)"]
+  skill -->|edits| manifest["carto.json manifest"]
+  pages --> cli["carto CLI: sync then validate"]
+  manifest --> cli
+  cli -->|build| site["Astro + Starlight site"]
+```
+
+## The generation loop, in one breath
+
+Read code → plan the node tree → write `docs/<id>/<locale>.mdx` for every node ×
+locale → edit `carto.json` → `carto sync` (fills hashes) → `carto validate`
+(schema, tree, links). Never stop until `validate` exits 0. The full walkthrough,
+with a reproducible run, is in [](carto:getting-started).
+
+## Where to go next
+
+- [](carto:getting-started) — zero to a validated doc set.
+- [](carto:skill) — the authoring interface you actually invoke.
+- [](carto:cli) — the six commands and what each does for you.
+- [](carto:concepts) — the manifest, staleness, and `carto:` links in depth.
+- [](carto:internals) — how the three packages are built (contributors).
