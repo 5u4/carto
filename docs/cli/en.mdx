@@ -16,8 +16,8 @@ entry point — there are no others, and no fine-grained mutation commands
   refuses otherwise (`packages/cli/src/commands/init.ts:15`). Scaffolds
   `carto.json` and `docs/`.
 - **`carto status`** — run first, every invocation. Read-only: prints one
-  `state id` line per node and exits `1` the moment any node is not `fresh`
-  (`packages/cli/src/commands/status.ts:20`), so it doubles as a CI gate.
+  `state id` line per node, then exits `1` if any node is not `fresh`
+  (`packages/cli/src/commands/status.ts:21`), so it doubles as a CI gate.
 - **`carto sync`** — run after you edit `carto.json` or a source file changes.
   The only command that writes deterministically: it recomputes every source's
   hash and refreshes `updated_at`, then prints `synced N node(s)`

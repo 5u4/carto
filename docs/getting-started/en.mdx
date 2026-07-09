@@ -15,9 +15,10 @@ result. Every command below was actually run in this repository's own worktree
   `@carto/template`).
 - **`carto init`** scaffolds an empty doc root: it refuses to run if
   `carto.json` already exists (`packages/cli/src/commands/init.ts:15`),
-  otherwise it writes a minimal `carto.json` (`version: 1`, your locales, an
-  empty `nodes` array) and creates `docs/`
-  (`packages/cli/src/commands/init.ts:33`).
+  otherwise it builds a minimal `carto.json` (`version: 1`, your locales, an
+  empty `nodes` array) at `packages/cli/src/commands/init.ts:20`, creates `docs/`
+  (`packages/cli/src/commands/init.ts:33`), and writes the manifest
+  (`packages/cli/src/commands/init.ts:34`).
 - **Invoke the skill with a scope** — hand your agent `skill/SKILL.md` plus
   either `document <dir|files>` (new coverage) or `refresh [<id>]` (existing
   nodes whose sources changed) (`skill/SKILL.md:31`).
@@ -86,7 +87,7 @@ and `build` print next, and [](carto:concepts) for what `fresh`/`stale` mean.
   root.
 - A freshly-added source is `unsynced`, not an error; `carto validate` is what
   rejects unsynced sources, forcing you to run `sync` first
-  (`skill/SKILL.md:219`).
+  (`packages/cli/src/commands/validate.ts:37`).
 
 Next: [](carto:skill) for exactly what the skill asks your agent to do, or
 [](carto:cli) for the full command reference.

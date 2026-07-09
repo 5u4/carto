@@ -20,7 +20,7 @@ them.
 - **Four staleness states**, decided by comparing a source's stored hash against
   a freshly computed sha256-truncated-to-16-hex digest of its current bytes
   (`packages/core/src/hash.ts:5`, compared against the stored value in
-  `packages/core/src/status.ts:35`): `unsynced` (no hash stored yet — the
+  `packages/core/src/status.ts:45`): `unsynced` (no hash stored yet — the
   normal state right after you add a source), `fresh` (stored hash matches the
   current file), `stale` (they differ — the file changed since the last
   `sync`), and `missing` (the file no longer exists on disk). A node's overall

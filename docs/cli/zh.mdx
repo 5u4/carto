@@ -13,9 +13,9 @@ title: Carto 命令行参考
 - **`carto init`**——每个文档根目录只运行一次，只有在 `carto.json` 不存在时才可以；
   否则拒绝运行（`packages/cli/src/commands/init.ts:15`）。搭建 `carto.json` 和
   `docs/`。
-- **`carto status`**——每次调用时最先运行。只读：为每个节点打印一行
-  `state id`，只要有任意节点不是 `fresh` 就以退出码 `1` 结束
-  （`packages/cli/src/commands/status.ts:20`），所以它也能当作 CI 门禁使用。
+- **`carto status`**——每次调用时最先运行。只读：先为每个节点打印一行
+  `state id`，然后只要有任意节点不是 `fresh` 就以退出码 `1` 结束
+  （`packages/cli/src/commands/status.ts:21`），所以它也能当作 CI 门禁使用。
 - **`carto sync`**——在你编辑 `carto.json` 或某个源文件发生变化之后运行。它是唯一会
   确定性地写入的命令：重新计算每个 source 的哈希并刷新 `updated_at`，然后打印
   `synced N node(s)`（`packages/cli/src/commands/sync.ts:14`）。

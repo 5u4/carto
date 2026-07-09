@@ -16,7 +16,7 @@ title: Carto 核心概念
   （`packages/core/src/schema.ts:12`）。
 - **四种新鲜度状态**，通过比较一个 source 存储的哈希与其当前字节内容重新计算出的
   sha256 截断 16 位十六进制摘要来判定（`packages/core/src/hash.ts:5`，与存储值的
-  比较发生在 `packages/core/src/status.ts:35`）：
+  比较发生在 `packages/core/src/status.ts:45`）：
   `unsynced`（尚未存储哈希——刚添加一个 source 之后的正常状态）、`fresh`（存储的哈希
   与当前文件一致）、`stale`（两者不一致——文件在上一次 sync 之后变化过）、`missing`
   （文件在磁盘上已不存在）。一个节点的整体状态等于其所有 source 中最差的那个

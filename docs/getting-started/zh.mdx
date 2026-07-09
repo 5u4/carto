@@ -12,9 +12,10 @@ title: 快速上手
   `PATH` 上可用的 `carto` CLI（从本仓库通过 `pnpm build` 构建，它会编译 `@carto/core`、
   `@carto/cli` 和 `@carto/template`）。
 - **`carto init`** 搭建一个空的文档根目录：如果 `carto.json` 已经存在就拒绝运行
-  （`packages/cli/src/commands/init.ts:15`），否则它会写出一份最小的 `carto.json`
-  （`version: 1`、你的 locales、一个空的 `nodes` 数组）并创建 `docs/`
-  （`packages/cli/src/commands/init.ts:33`）。
+  （`packages/cli/src/commands/init.ts:15`），否则它会构建一份最小的 `carto.json`
+  （`version: 1`、你的 locales、一个空的 `nodes` 数组）于 `packages/cli/src/commands/init.ts:20`，
+  创建 `docs/`（`packages/cli/src/commands/init.ts:33`），并写入清单
+  （`packages/cli/src/commands/init.ts:34`）。
 - **带着一个范围调用技能**——把 `skill/SKILL.md` 交给你的智能体，再加上
   `document <dir|files>`（覆盖新范围）或 `refresh [<id>]`（源文件变化过的已有节点）
   （`skill/SKILL.md:31`）。
@@ -77,7 +78,7 @@ fresh     internals
 - `carto init` 拒绝覆盖已存在的 `carto.json`
   （`packages/cli/src/commands/init.ts:16`）——每个文档根目录只运行它一次。
 - 一个刚添加的 source 是 `unsynced`，不是错误；`carto validate` 才会拒绝未同步的
-  source，从而迫使你先运行 `sync`（`skill/SKILL.md:219`）。
+  source，从而迫使你先运行 `sync`（`packages/cli/src/commands/validate.ts:37`）。
 
 下一步：关于技能到底要求你的智能体做什么，见 [](carto:skill)；完整的命令参考，
 见 [](carto:cli)。
