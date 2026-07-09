@@ -2,41 +2,48 @@
 title: Carto Overview
 ---
 
-Carto generates sustainably-evolving documentation for a codebase. Instead of
-transcribing code line by line, an agent writes a small set of `.mdx` pages
-that capture a guided mental model, and every page anchors its load-bearing
-claims back to the source files it describes. A lightweight CLI hashes those
-sources so tooling can tell exactly which pages went stale when the code
-changed, and regenerate only those — this repo documents itself as the
-working example.
+Carto helps you keep a codebase's documentation from going stale. The problem
+it solves: hand-written docs drift out of sync with the code they describe,
+and nobody notices until a new joiner is misled. Carto's answer is a doc set
+where every page carries a machine-checkable anchor back to the source it
+describes, so a CLI can tell you exactly which pages fell behind.
+
+Carto is for you if you already have an LLM or coding agent (**BYO-LLM** — carto
+ships no model of its own) and want that agent to produce, and keep honest, a
+top-down mental-model map of a codebase — not an API reference, and not a
+line-by-line transcription (`skill/SKILL.md:8`).
 
 ## Mental model
 
-Three packages cooperate, wired together by the pnpm workspace declared in
-`pnpm-workspace.yaml:1` and the root `package.json:7` build script that
-compiles all of them:
+Three things you interact with, and the loop that connects them:
 
-- `@carto/core` is the shared brain: the zod manifest schema, content hashing,
-  the node tree, the freshness classifier, and the `carto:` link resolver.
-  Nothing in it talks to the filesystem CLI-style — it is a pure library. See
-  [core internals](carto:core).
-- `@carto/cli` is the `carto` binary. It wraps `@carto/core`'s functions as six
-  citty subcommands (`init`, `status`, `sync`, `validate`, `dev`, `build`) and
-  is the only package that touches `process.cwd()` and stdout/exit codes. See
-  [the command line](carto:cli).
-- `@carto/template` is the bundled Astro and Starlight site. `carto build` and
-  `carto dev` shell out to it to render the `docs/` tree plus `carto.json`
-  into a static site.
+- **The skill** (`skill/SKILL.md`) is what you invoke your agent with. It is the
+  instructions, not a program: it tells your agent how to read code, choose a
+  node tree, and write pages (`skill/SKILL.md:15`).
+- **The pages you write**: `docs/<id>/<locale>.mdx` files, one per node per
+  locale, plus one `carto.json` manifest that lists each node's `id`, `parent`,
+  and `sources` (`skill/SKILL.md:16`).
+- **The `carto` CLI** does only what an agent can't do reliably: hash source
+  files, and validate the manifest's structure and links
+  (`skill/SKILL.md:16`). It never invents prose or structure.
+- **The rendered site**: `carto build` (or `carto dev` for a live preview) turns
+  `docs/` + `carto.json` into a static Astro/Starlight site.
 
 ```mermaid
-graph TD
-  cli["@carto/cli"] --> core["@carto/core"]
-  template["@carto/template"] --> core
+graph LR
+  you["You + your LLM/agent"] --> skill["invoke skill/SKILL.md"]
+  skill --> pages["write docs/*.mdx + edit carto.json"]
+  pages --> cli["carto sync + carto validate"]
+  cli --> site["carto build -> rendered site"]
 ```
 
-The manifest that ties everything together is `carto.json` at the repo root —
-one manifest, one doc site. Each node in it lists `sources`: real files whose
-behavior the corresponding page describes. `carto sync` hashes those files;
-`carto status` reports whether a page's sources have drifted since the last
-sync; `carto validate` checks the manifest's structure and every `carto:` link
-before `carto build` renders anything.
+The loop repeats every time code changes: `carto status` shows which nodes
+drifted, you (via your agent) refresh only those pages, then `sync` and
+`validate` again (`skill/SKILL.md:33`).
+
+Where to go next:
+
+- New to carto? Start at [](carto:getting-started) for the zero-to-result walkthrough.
+- Want to know what to actually invoke? See [](carto:skill) for the authoring skill itself.
+- Need a command reference? See [](carto:cli) for what each of the six commands does for you.
+- Need the vocabulary (manifest, staleness, links)? See [](carto:concepts).

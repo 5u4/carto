@@ -2,32 +2,43 @@
 title: Carto 总览
 ---
 
-Carto 为一个代码库生成可持续演进的文档。它不会逐行转录代码，而是由智能体撰写一小组
-`.mdx` 页面，捕捉一个引导式的心智模型；每个页面都会把关键论断锚定回它所描述的源文件。
-一个轻量级的 CLI 会对这些源文件计算哈希，因此工具可以准确判断哪些页面在代码变化后已经
-过时，并且只重新生成那些页面——这个仓库正是用来记录它自身的活例子。
+Carto 帮助你避免一个代码库的文档变得过时。它要解决的问题是：手写的文档会与它所描述的
+代码逐渐失步，而在新成员被误导之前往往没有人注意到。Carto 的解法是：文档集中的每个
+页面都携带一个可机器校验的锚点，指回它所描述的源文件，因此 CLI 可以准确告诉你哪些页面
+落后了。
+
+如果你已经拥有一个 LLM 或编码智能体（**BYO-LLM**——carto 自身不附带任何模型），并且
+希望这个智能体产出并持续维护一份自顶向下的心智模型地图——而不是 API 参考文档，也不是
+逐行转录（`skill/SKILL.md:8`）——那么 carto 就是为你准备的。
 
 ## 心智模型
 
-三个包协同工作，由 `pnpm-workspace.yaml:1` 声明的 pnpm workspace 以及编译所有包的根
-`package.json:7` build 脚本连接在一起：
+你会接触到三样东西，以及把它们连接起来的循环：
 
-- `@carto/core` 是共享的核心大脑：zod 清单模式、内容哈希、节点树、新鲜度分类器，以及
-  `carto:` 链接解析器。它内部完全不涉及 CLI 式的文件系统交互——是一个纯库。参见
-  [core internals](carto:core)。
-- `@carto/cli` 是 `carto` 可执行文件。它把 `@carto/core` 的函数包装成六个基于 citty 的
-  子命令（`init`、`status`、`sync`、`validate`、`dev`、`build`），也是唯一接触
-  `process.cwd()` 与标准输出/退出码的包。参见 [the command line](carto:cli)。
-- `@carto/template` 是内置的 Astro 与 Starlight 站点。`carto build` 与 `carto dev` 会
-  调用它，把 `docs/` 目录树与 `carto.json` 渲染成静态站点。
+- **技能**（`skill/SKILL.md`）是你用来调用智能体的东西。它是一份说明书，而不是一个
+  程序：它告诉你的智能体如何读代码、选择节点树、撰写页面（`skill/SKILL.md:15`）。
+- **你撰写的页面**：`docs/<id>/<locale>.mdx` 文件，每个节点每种 locale 一份，加上一份
+  `carto.json` 清单，列出每个节点的 `id`、`parent` 和 `sources`
+  （`skill/SKILL.md:16`）。
+- **`carto` CLI** 只做智能体无法可靠完成的事：为源文件计算哈希，校验清单的结构和链接
+  （`skill/SKILL.md:16`）。它从不发明文字或结构。
+- **渲染出的站点**：`carto build`（或用于实时预览的 `carto dev`）把 `docs/` 与
+  `carto.json` 转换成一个静态的 Astro/Starlight 站点。
 
 ```mermaid
-graph TD
-  cli["@carto/cli"] --> core["@carto/core"]
-  template["@carto/template"] --> core
+graph LR
+  you["You + your LLM/agent"] --> skill["invoke skill/SKILL.md"]
+  skill --> pages["write docs/*.mdx + edit carto.json"]
+  pages --> cli["carto sync + carto validate"]
+  cli --> site["carto build -> rendered site"]
 ```
 
-把一切串联起来的清单是仓库根目录下的 `carto.json`——一个清单对应一个文档站点。清单中的
-每个节点都列出了 `sources`：即该页面所描述行为对应的真实文件。`carto sync` 会对这些文件
-计算哈希；`carto status` 会报告某个页面的源文件自上次同步以来是否发生了漂移；`carto
-validate` 会在 `carto build` 渲染任何内容之前检查清单结构和每一个 `carto:` 链接。
+每当代码变化，这个循环就会重复：`carto status` 会显示哪些节点已经漂移，你（通过智能体）
+只刷新那些页面，然后再次运行 `sync` 和 `validate`（`skill/SKILL.md:33`）。
+
+接下来去哪里：
+
+- 第一次接触 carto？从 [](carto:getting-started) 开始，那里是从零到结果的完整走查。
+- 想知道到底要调用什么？看 [](carto:skill)，那里是撰写技能本身。
+- 需要命令参考？看 [](carto:cli)，那里说明六个命令各自为你做了什么。
+- 需要词汇表（清单、新鲜度、链接）？看 [](carto:concepts)。

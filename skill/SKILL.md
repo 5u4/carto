@@ -159,6 +159,20 @@ A node is **one page = one mental model**, readable in one sitting.
 - Keep `sources` precise: register only the files whose behavior the page
   actually describes. Too broad triggers false "stale" churn; too narrow lets
   real changes go undetected. This is the staleness crosshair.
+- **Audience layering — lead with the user, not the architecture.** If the code
+  is a tool, library, product, or anything with users, the tree MUST open with a
+  user-facing layer that answers "as a user, how do I actually use this?": what it
+  is and who it's for, how you invoke or call it, and the main loop or workflow
+  you drive. Internal architecture (how the packages/modules are built) belongs in
+  **deeper** nodes aimed at contributors — never as the top of the tree. A pure
+  package-dependency diagram is not orientation; it is architecture wearing an
+  overview's hat.
+- **Every user-facing tree needs a getting-started node.** Add a dedicated node
+  (id such as `getting-started` or `usage`) that walks a first-time user from zero
+  to a working result: prerequisites, the exact invocation, what happens at each
+  step, and one complete run they can reproduce. This node is required whenever the
+  documented thing has users; skip it only for purely internal code nobody invokes
+  directly.
 
 ## What each page contains (a checklist, not a template)
 
@@ -170,12 +184,18 @@ invites filler. Include a layer when the "Required when" column says so:
 | Intent | the problem it solves and its role in the system | always — most valuable, hardest to read from code |
 | Mental model | 3 to 5 core concepts, their relations, one mermaid diagram | always |
 | Run-through | a real input traced through the code to its output | flow and subsystem pages |
+| Worked example | a real, reproducible example a user can copy — real commands with their real output, or real inputs mapped to real outputs | user-facing pages (getting-started, usage, and any CLI/API entry page) |
 | Contract | public interface, inputs and outputs, invariants, error modes | pages with an outward face |
 | Gotchas | counterintuitive bits, edge cases, "why is this weird" | when they exist |
 | Code anchors | `path:line` on every load-bearing claim | always — jump-to-source and staleness crosshair |
 
 **Hard floor: Intent + Mental model + Code anchors.** Add the rest as the page
-warrants.
+warrants — but on any **user-facing page** (a getting-started/usage page, or a
+page documenting a command/API a user calls), a **Worked example is also part of
+the floor**: show at least one real, reproducible example with real output, never
+an idealized or invented one (this is the same "real code path" discipline the
+Run-through and verification rules demand). A user page with no example has not
+met the floor.
 
 ## Verification disciplines (non-negotiable)
 
