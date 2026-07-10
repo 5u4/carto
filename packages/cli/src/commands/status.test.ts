@@ -97,6 +97,18 @@ describe('carto status', () => {
     })
   })
 
+  it('lists the specific changed file under a stale node', async () => {
+    await withTempCwd(async (dir) => {
+      await writeFile(join(dir, 'payments.md'), 'payments content', 'utf8')
+      const synced = await syncManifest(manifestWithSource(), { rootDir: dir })
+      await writeFile(join(dir, 'carto.json'), serializeManifest(synced), 'utf8')
+      await writeFile(join(dir, 'payments.md'), 'mutated content', 'utf8')
+
+      const { logs } = await runAndCaptureExit()
+      expect(logs.some((line) => line.includes('stale') && line.includes('payments.md'))).toBe(true)
+    })
+  })
+
   it('exits 1 with an error message when carto.json is missing', async () => {
     await withTempCwd(async () => {
       const { exitCode, errors } = await runAndCaptureExit()

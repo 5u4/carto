@@ -192,4 +192,17 @@ describe('carto validate', () => {
       expect(logs).toContain('validate: ok')
     })
   })
+
+  it('names the changed file in the stale error', async () => {
+    await withTempCwd(async (dir) => {
+      await writeSyncedManifest(dir, baseManifest())
+      await writeDoc(dir, 'payments', 'en', 'Payments overview.')
+      await writeDoc(dir, 'billing', 'en', 'Billing overview.')
+      await writeFile(join(dir, 'payments.md'), 'mutated payments source', 'utf8')
+
+      const { exitCode, errors } = await runAndCaptureExit()
+      expect(exitCode).toBe(1)
+      expect(errors.some((line) => line.includes('is stale') && line.includes('payments.md'))).toBe(true)
+    })
+  })
 })
