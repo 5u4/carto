@@ -62,6 +62,26 @@ describe('injectStalenessBanner', () => {
     expect(out).toContain('<code>dir\\\\a\\"b.ts</code>')
   })
 
+  it('html-escapes special characters in file paths', () => {
+    const out = injectStalenessBanner(
+      mdx,
+      status({ state: 'stale', sources: [{ file: 'a<b>&c.ts', state: 'stale' }] })
+    )
+    expect(out).toContain('<code>a&lt;b&gt;&amp;c.ts</code>')
+  })
+
+  it('skips injection when the frontmatter already has a banner field', () => {
+    const withBanner = '---\ntitle: Payments\nbanner:\n  content: "hi"\n---\n\nBody.\n'
+    expect(injectStalenessBanner(withBanner, status({ state: 'stale', sources: [{ file: 'a.ts', state: 'stale' }] }))).toBe(withBanner)
+  })
+
+  it('preserves CRLF line endings when inserting the banner', () => {
+    const crlf = '---\r\ntitle: Payments\r\n---\r\n\r\nBody.\r\n'
+    const out = injectStalenessBanner(crlf, status({ state: 'stale', sources: [{ file: 'a.ts', state: 'stale' }] }))
+    expect(out).toContain('banner:\r\n  content:')
+    expect(out).not.toContain('banner:\n  content:')
+  })
+
   it('leaves mdx without frontmatter untouched', () => {
     const noFrontmatter = 'Just body text.\n'
     expect(injectStalenessBanner(noFrontmatter, status({ state: 'stale' }))).toBe(noFrontmatter)
