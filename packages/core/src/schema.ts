@@ -11,7 +11,8 @@ function isRelativeFile(value: string): boolean {
 
 export const sourceSchema = z.object({
   file: z.string().min(1).refine(isRelativeFile, 'file must be a relative path without ".." segments'),
-  hash: z.string().min(1).optional()
+  hash: z.string().min(1).optional(),
+  commit: z.string().min(1).optional()
 })
 
 export const nodeSchema = z.object({

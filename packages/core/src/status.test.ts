@@ -35,6 +35,27 @@ describe('classifyNode', () => {
     }
   })
 
+  it('derives freshness from hash alone, ignoring the stored commit anchor', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'carto-status-'))
+    try {
+      const file = join(dir, 'a.ts')
+      await writeFile(file, 'hello', 'utf8')
+      const anchored: Node = { id: 'payments', sources: [{ file: 'a.ts', hash: '2cf24dba5fb0a30e', commit: 'deadbeefdeadbeef' }] }
+      const fresh = await classifyNode(anchored, dir)
+      expect(fresh.state).toBe('fresh')
+      expect(fresh.sources[0]?.commit).toBe('deadbeefdeadbeef')
+      await writeFile(file, 'goodbye', 'utf8')
+      const stale = await classifyNode(anchored, dir)
+      expect(stale.state).toBe('stale')
+      const unanchored: Node = { id: 'billing', sources: [{ file: 'a.ts', hash: '2cf24dba5fb0a30e' }] }
+      const staleNoAnchor = await classifyNode(unanchored, dir)
+      expect(staleNoAnchor.state).toBe('stale')
+      expect(staleNoAnchor.sources[0]?.commit).toBeUndefined()
+    } finally {
+      await rm(dir, { recursive: true, force: true })
+    }
+  })
+
   it('classifies a deleted file as missing, and mixing fresh and missing aggregates to missing', async () => {
     const dir = await mkdtemp(join(tmpdir(), 'carto-status-'))
     try {

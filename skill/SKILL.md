@@ -32,8 +32,13 @@ result. This skill tells you how to drive the loop.
   write the pages, register the sources.
 - **refresh `[<id>]`** — regenerate existing pages after code changed. Run
   `carto status` to see which nodes are non-fresh. `refresh` with no id covers
-  every non-fresh node; `refresh <id>` targets one node and its subtree. Re-read
-  the sources and rewrite the affected pages.
+  every non-fresh node; `refresh <id>` targets one node and its subtree. For each
+  stale source, prefer a **diff-first** pass: `carto status` prints the anchor
+  commit the page was last synced at (`stale a.ts (was 44cc03e)`), so run
+  `git diff <anchor> -- <file>` to see exactly what changed and make a targeted
+  edit, instead of re-reading the whole file and rewriting the page. Fall back to
+  a full re-read when there is no anchor, the source is not in a git repo, or the
+  anchor commit is unreachable (rebased/squashed away — `git diff` errors).
 
 ## The generation loop
 
@@ -60,8 +65,8 @@ edit `carto.json` directly; `sync` and `validate` are the guardrails.
 | Command | When you run it |
 |---|---|
 | `carto init` | Once per doc root, only if `carto.json` is absent. Scaffolds `carto.json` and `docs/`. Refuses if `carto.json` exists. |
-| `carto status` | First thing every invocation. Read-only; prints each node's freshness — unsynced / stale / missing / fresh. Use it to choose refresh targets. Exits non-zero if any node is not fresh. |
-| `carto sync` | After you edit `carto.json`. The only deterministic write: recomputes and writes every source hash and refreshes `updated_at`. |
+| `carto status` | First thing every invocation. Read-only; prints each node's freshness — unsynced / stale / missing / fresh. A non-fresh source also prints the anchor commit it was last synced at (`stale a.ts (was 44cc03e)`), the base for a `git diff`. Use it to choose refresh targets. Exits non-zero if any node is not fresh. |
+| `carto sync` | After you edit `carto.json`. The only deterministic write: recomputes and writes every source hash, stamps each source with the current git `HEAD` (skipped outside a repo), and refreshes `updated_at`. |
 | `carto validate` | After `sync`. Read-only full check: schema, id uniqueness, sibling-slug uniqueness, parent cycles, one mdx per locale, every `carto:` link resolves. Fix and repeat on any error; exits non-zero on error. |
 | `carto dev` | Optional. Preview the rendered site locally. |
 | `carto build` | Optional. Produce the static site. |
@@ -115,8 +120,10 @@ Field rules:
   of the tree. A cycle or a self-parent is an error.
 - `nodes[].sources`: the files whose behavior this page describes. Write **`file`
   only** — a path relative to the directory containing `carto.json`. Leave `hash`
-  out; `carto sync` fills it. The array may be empty for a pure-orientation page.
-  Sibling display/nav order equals array order (there is no `order` field).
+  and `commit` out; `carto sync` fills both — `hash` is the content fingerprint,
+  `commit` the git `HEAD` at sync time (the diff base a later refresh compares
+  against). The array may be empty for a pure-orientation page. Sibling
+  display/nav order equals array order (there is no `order` field).
 
 Writing `file` without `hash` is the normal **unsynced** state: legal on disk,
 reported by `carto status`, and rejected by `carto validate` until you run

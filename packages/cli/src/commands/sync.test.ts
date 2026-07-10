@@ -70,6 +70,19 @@ describe('carto sync', () => {
     })
   })
 
+  it('writes no commit key when run outside a git repo', async () => {
+    await withTempCwd(async (dir) => {
+      await writeFile(join(dir, 'payments.md'), 'payments content', 'utf8')
+      await writeFile(join(dir, 'carto.json'), serializeManifest(manifestWithSource()), 'utf8')
+
+      const exit = await runAndCaptureExit()
+      expect(exit).toBeNull()
+      const manifest = JSON.parse(await readFile(join(dir, 'carto.json'), 'utf8'))
+      expect(manifest.nodes[0].sources[0]).not.toHaveProperty('commit')
+      expect(manifest.nodes[0].sources[0].hash).toHaveLength(16)
+    })
+  })
+
   it('exits non-zero and writes nothing when a source file is missing', async () => {
     await withTempCwd(async (dir) => {
       await writeFile(join(dir, 'carto.json'), serializeManifest(manifestWithSource()), 'utf8')

@@ -9,6 +9,7 @@ export interface SourceStatus {
   state: FreshnessState
   stored?: string
   actual?: string
+  commit?: string
 }
 
 export interface NodeStatus {
@@ -26,23 +27,23 @@ function isNotFound(error: unknown): boolean {
 export async function classifyNode(node: Node, rootDir: string): Promise<NodeStatus> {
   const sources: SourceStatus[] = []
   for (const source of node.sources) {
-    sources.push(await classifySource(source.file, source.hash, rootDir))
+    sources.push(await classifySource(source.file, source.hash, source.commit, rootDir))
   }
   const state = sources.reduce<FreshnessState>((worst, s) => (PRIORITY[s.state] > PRIORITY[worst] ? s.state : worst), 'fresh')
   return { id: node.id, state, sources }
 }
 
-async function classifySource(file: string, stored: string | undefined, rootDir: string): Promise<SourceStatus> {
+async function classifySource(file: string, stored: string | undefined, commit: string | undefined, rootDir: string): Promise<SourceStatus> {
   const absolute = join(rootDir, file)
   let actual: string
   try {
     actual = await hashFile(absolute)
   } catch (error) {
-    if (isNotFound(error)) return { file, state: 'missing', stored }
+    if (isNotFound(error)) return { file, state: 'missing', stored, commit }
     throw error
   }
-  if (stored === undefined) return { file, state: 'unsynced' }
-  return actual === stored ? { file, state: 'fresh', stored, actual } : { file, state: 'stale', stored, actual }
+  if (stored === undefined) return { file, state: 'unsynced', commit }
+  return actual === stored ? { file, state: 'fresh', stored, actual, commit } : { file, state: 'stale', stored, actual, commit }
 }
 
 export async function statusReport(manifest: Manifest, rootDir: string): Promise<NodeStatus[]> {
