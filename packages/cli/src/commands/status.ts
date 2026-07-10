@@ -16,6 +16,11 @@ export const statusCommand = defineCommand({
     const report = await statusReport(manifest, root)
     for (const node of report) {
       console.log(`${node.state.padEnd(9)} ${node.id}`)
+      if (node.state !== 'fresh') {
+        for (const source of node.sources) {
+          if (source.state !== 'fresh') console.log(`  ${source.state.padEnd(7)} ${source.file}`)
+        }
+      }
     }
     const anyNotFresh = report.some((node) => node.state !== 'fresh')
     process.exit(anyNotFresh ? 1 : 0)

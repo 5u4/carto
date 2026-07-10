@@ -39,8 +39,13 @@ export const validateCommand = defineCommand({
     const report = await statusReport(manifest, root)
     for (const node of report) {
       if (node.state === 'unsynced') errors.push(`node ${node.id} is unsynced; run carto sync`)
-      else if (node.state === 'stale') errors.push(`node ${node.id} is stale; run carto sync`)
-      else if (node.state === 'missing') errors.push(`node ${node.id} has a missing source file`)
+      else if (node.state === 'stale') {
+        const changed = node.sources.filter((s) => s.state === 'stale').map((s) => s.file).join(', ')
+        errors.push(`node ${node.id} is stale; changed: ${changed}; run carto sync`)
+      } else if (node.state === 'missing') {
+        const missing = node.sources.filter((s) => s.state === 'missing').map((s) => s.file).join(', ')
+        errors.push(`node ${node.id} has a missing source file: ${missing}`)
+      }
     }
 
     for (const node of manifest.nodes) {
