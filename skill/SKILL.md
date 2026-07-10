@@ -208,10 +208,18 @@ types:
   appropriately". Replace a vague adjective with the condition that proves it.
 - **Sufficient background.** Define an unfamiliar concept the first time it
   appears, near the point of use, not in a detached glossary.
+- **Prefer prose to diagrams.** Convey the mental-model view — the core concepts
+  and how they relate — as a sequential narrative or a short labelled list by
+  default. A `mermaid` diagram is optional and earns its place only when a small
+  set of nodes and edges genuinely reads clearer as a picture; keep any diagram
+  to roughly 5 to 7 nodes. Never emit a large auto-generated graph — a full
+  package/module dependency dump or an every-edge flow. Past ~10 nodes mermaid
+  degrades into an unreadable tangle and renders especially badly on the mobile
+  screens many readers use. When in doubt, write the relationships out in words.
 
 **Hard floor, regardless of type:** Intent (the problem it solves and its role in
-the system) + a mental-model view (3 to 5 core concepts, their relations, one
-mermaid diagram) + a `path:line` code anchor on every load-bearing claim. On any
+the system) + a mental-model view (3 to 5 core concepts and how they relate) +
+a `path:line` code anchor on every load-bearing claim. On any
 **user-facing node** (getting-started, usage, or a node documenting a command or
 API a reader calls), one **real, reproducible worked example** — real commands
 with their real output, or real inputs mapped to real outputs — is also part of
