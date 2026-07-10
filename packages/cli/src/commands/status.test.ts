@@ -117,7 +117,7 @@ describe('carto status', () => {
       await writeFile(join(dir, 'payments.md'), 'mutated content', 'utf8')
 
       const { logs } = await runAndCaptureExit()
-      expect(logs.some((line) => line.includes('stale') && line.includes('payments.md') && line.includes('(was abc1234)'))).toBe(true)
+      expect(logs.some((line) => line.includes('stale') && line.includes('payments.md') && line.includes('(was abc1234567890)'))).toBe(true)
     })
   })
 

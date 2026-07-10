@@ -45,7 +45,7 @@ function orderNode(node: Node): Record<string, unknown> {
 function orderSource(source: Source): Record<string, unknown> {
   const out: Record<string, unknown> = { file: source.file }
   if (source.hash !== undefined) out.hash = source.hash
-  if (source.commit !== undefined) out.commit = source.commit
+  if (source.hash !== undefined && source.commit !== undefined) out.commit = source.commit
   return out
 }
 

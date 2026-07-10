@@ -19,7 +19,7 @@ export const statusCommand = defineCommand({
       if (node.state !== 'fresh') {
         for (const source of node.sources) {
           if (source.state !== 'fresh') {
-            const anchor = source.commit ? ` (was ${source.commit.slice(0, 7)})` : ''
+            const anchor = source.commit ? ` (was ${source.commit})` : ''
             console.log(`  ${source.state.padEnd(7)} ${source.file}${anchor}`)
           }
         }

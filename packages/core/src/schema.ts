@@ -9,11 +9,16 @@ function isRelativeFile(value: string): boolean {
   return !segments.includes('..')
 }
 
-export const sourceSchema = z.object({
-  file: z.string().min(1).refine(isRelativeFile, 'file must be a relative path without ".." segments'),
-  hash: z.string().min(1).optional(),
-  commit: z.string().min(1).optional()
-})
+export const sourceSchema = z
+  .object({
+    file: z.string().min(1).refine(isRelativeFile, 'file must be a relative path without ".." segments'),
+    hash: z.string().min(1).optional(),
+    commit: z.string().min(1).optional()
+  })
+  .refine((source) => source.commit === undefined || source.hash !== undefined, {
+    path: ['commit'],
+    message: 'commit requires hash'
+  })
 
 export const nodeSchema = z.object({
   id: z.string().regex(ID_PATTERN),

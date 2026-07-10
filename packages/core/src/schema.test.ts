@@ -107,4 +107,18 @@ describe('manifestSchema', () => {
     manifest.nodes = [{ id: 'payments', sources: [{ file: 'packages/api/src/payment.ts' }] }]
     expect(manifestSchema.safeParse(manifest).success).toBe(true)
   })
+
+  it('accepts a source carrying both hash and commit', () => {
+    const manifest = baseManifest()
+    manifest.nodes = [{ id: 'payments', sources: [{ file: 'a.ts', hash: 'abc123', commit: 'deadbeef' } as never] }]
+    const result = manifestSchema.safeParse(manifest)
+    expect(result.success).toBe(true)
+  })
+
+  it('rejects a source with a commit but no hash', () => {
+    const manifest = baseManifest()
+    manifest.nodes = [{ id: 'payments', sources: [{ file: 'a.ts', commit: 'deadbeef' } as never] }]
+    const result = manifestSchema.safeParse(manifest)
+    expect(result.success).toBe(false)
+  })
 })
