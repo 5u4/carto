@@ -211,11 +211,12 @@ types:
 - **Prefer prose to diagrams.** Convey the mental-model view — the core concepts
   and how they relate — as a sequential narrative or a short labelled list by
   default. A `mermaid` diagram is optional and earns its place only when a small
-  set of nodes and edges genuinely reads clearer as a picture; keep any diagram
-  to roughly 5 to 7 nodes. Never emit a large auto-generated graph — a full
-  package/module dependency dump or an every-edge flow. Past ~10 nodes mermaid
-  degrades into an unreadable tangle and renders especially badly on the mobile
-  screens many readers use. When in doubt, write the relationships out in words.
+  set of nodes and edges genuinely reads more clearly as a picture; keep any
+  diagram to roughly 5 to 7 nodes. Never emit a large auto-generated graph — a
+  full package/module dependency dump or an every-edge flow. Past ~10 nodes a
+  mermaid diagram degrades into an unreadable tangle and renders especially
+  badly on the mobile screens many readers use. When in doubt, write the
+  relationships out in words.
 
 **Hard floor, regardless of type:** Intent (the problem it solves and its role in
 the system) + a mental-model view (3 to 5 core concepts and how they relate) +
