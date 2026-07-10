@@ -1,5 +1,6 @@
 import { defineConfig } from 'astro/config'
 import starlight from '@astrojs/starlight'
+import mermaid from 'astro-mermaid'
 import { join } from 'node:path'
 import { readManifest } from '@carto/core'
 import { buildLocales, buildRedirects, buildSidebar } from './dist/site-config.js'
@@ -15,6 +16,7 @@ export default defineConfig({
     remarkPlugins: [remarkJoinCjkLines]
   },
   integrations: [
+    mermaid({ autoTheme: true }),
     starlight({
       title: 'Carto',
       locales: buildLocales(manifest),
