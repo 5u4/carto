@@ -47,6 +47,23 @@ describe('serializeManifest', () => {
     expect(text.endsWith('\n')).toBe(true)
     expect(text.endsWith('\n\n')).toBe(false)
   })
+
+  it('serializes source keys in file, hash, commit order and omits commit when absent', () => {
+    const manifest: Manifest = {
+      version: 1,
+      locales: ['en'],
+      defaultLocale: 'en',
+      updated_at: '2026-07-08T00:00:00Z',
+      nodes: [
+        { id: 'api', sources: [{ file: 'src/a.ts', hash: 'abc123', commit: 'deadbeef' }] },
+        { id: 'web', sources: [{ file: 'src/b.ts', hash: 'def456' }] }
+      ]
+    }
+    const text = serializeManifest(manifest)
+    expect(Object.keys(JSON.parse(text).nodes[0].sources[0])).toEqual(['file', 'hash', 'commit'])
+    expect(JSON.parse(text).nodes[0].sources[0]).toEqual({ file: 'src/a.ts', hash: 'abc123', commit: 'deadbeef' })
+    expect(JSON.parse(text).nodes[1].sources[0]).toEqual({ file: 'src/b.ts', hash: 'def456' })
+  })
 })
 
 describe('readManifest / writeManifest', () => {
@@ -81,6 +98,26 @@ describe('syncManifest', () => {
       expect(synced.nodes[0]?.sources[0]?.hash).toMatch(/^[0-9a-f]{16}$/)
       const resynced = await syncManifest(synced, { rootDir: dir, now: () => '2026-07-08T00:00:00Z' })
       expect(resynced).toEqual(synced)
+    } finally {
+      await rm(dir, { recursive: true, force: true })
+    }
+  })
+
+  it('stamps the provided commit on every synced source and omits it when not provided', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'carto-sync-commit-'))
+    try {
+      await writeFile(join(dir, 'a.ts'), 'hello', 'utf8')
+      const manifest: Manifest = {
+        version: 1,
+        locales: ['en'],
+        defaultLocale: 'en',
+        updated_at: '2020-01-01T00:00:00Z',
+        nodes: [{ id: 'payments', sources: [{ file: 'a.ts', commit: 'stale-anchor' }] }]
+      }
+      const stamped = await syncManifest(manifest, { rootDir: dir, commit: 'abc1234' })
+      expect(stamped.nodes[0]?.sources[0]?.commit).toBe('abc1234')
+      const bare = await syncManifest(manifest, { rootDir: dir })
+      expect(bare.nodes[0]?.sources[0]?.commit).toBeUndefined()
     } finally {
       await rm(dir, { recursive: true, force: true })
     }

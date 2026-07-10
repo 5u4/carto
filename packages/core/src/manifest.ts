@@ -43,7 +43,10 @@ function orderNode(node: Node): Record<string, unknown> {
 }
 
 function orderSource(source: Source): Record<string, unknown> {
-  return source.hash === undefined ? { file: source.file } : { file: source.file, hash: source.hash }
+  const out: Record<string, unknown> = { file: source.file }
+  if (source.hash !== undefined) out.hash = source.hash
+  if (source.hash !== undefined && source.commit !== undefined) out.commit = source.commit
+  return out
 }
 
 export async function readManifest(path: string): Promise<Manifest> {
@@ -64,6 +67,7 @@ export async function writeManifest(path: string, manifest: Manifest): Promise<v
 export interface SyncOptions {
   rootDir: string
   now?: () => string
+  commit?: string
 }
 
 export async function syncManifest(manifest: Manifest, options: SyncOptions): Promise<Manifest> {
@@ -73,11 +77,12 @@ export async function syncManifest(manifest: Manifest, options: SyncOptions): Pr
     const sources: Source[] = []
     for (const source of node.sources) {
       try {
-        sources.push({ file: source.file, hash: await hashFile(join(options.rootDir, source.file)) })
+        const hash = await hashFile(join(options.rootDir, source.file))
+        sources.push({ file: source.file, hash, commit: options.commit })
       } catch (error) {
         if (!isNotFound(error)) throw error
         missing.push(source.file)
-        sources.push({ file: source.file, hash: source.hash })
+        sources.push({ file: source.file, hash: source.hash, commit: source.commit })
       }
     }
     nodes.push({ ...node, sources })
