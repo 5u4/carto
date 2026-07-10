@@ -16,7 +16,7 @@ export default defineConfig({
     remarkPlugins: [remarkJoinCjkLines]
   },
   integrations: [
-    mermaid({ autoTheme: true }),
+    mermaid({ autoTheme: true, enableLog: false }),
     starlight({
       title: 'Carto',
       locales: buildLocales(manifest),
