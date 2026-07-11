@@ -176,4 +176,10 @@ describe('loadUserConfig', () => {
     await writeFile(join(dir, 'carto.config.mjs'), "export default { starlight: 'nope' }", 'utf8')
     await expect(loadUserConfig(dir)).rejects.toThrow(/"starlight" must be an object/)
   })
+
+  it('throws when the file exists but has no default export', async () => {
+    dir = await mkdtemp(join(tmpdir(), 'carto-cfg-'))
+    await writeFile(join(dir, 'carto.config.mjs'), 'export const notDefault = {}', 'utf8')
+    await expect(loadUserConfig(dir)).rejects.toThrow(/must default-export an object/)
+  })
 })

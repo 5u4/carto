@@ -9,7 +9,8 @@ while IFS= read -r file; do
     *.ts|*.mjs|*.js) ;;
     *) continue ;;
   esac
-  file_hits=$(grep -nHE '(^|[^:])//|/\*|\*/' "$file" 2>/dev/null | grep -v 'SPDX-License-Identifier' | grep -vF '/* @vite-ignore */' | grep -vE '/\*\* @type \{.*\} \*/' || true)
+  stripped=$(sed -e 's#/\*\* @type {.*} \*/##g' -e 's#/\* @vite-ignore \*/##g' "$file" 2>/dev/null)
+  file_hits=$(printf '%s\n' "$stripped" | grep -nE '(^|[^:])//|/\*|\*/' | grep -v 'SPDX-License-Identifier' | awk -v f="$file" '{ print f ":" $0 }' || true)
   if [ -n "$file_hits" ]; then
     hits="${hits}${file_hits}
 "

@@ -81,7 +81,6 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
 }
 
 function validateUserConfig(value: unknown, name: string): UserConfig {
-  if (value == null) return {}
   if (!isPlainObject(value)) {
     throw new Error(`carto: ${name} must default-export an object`)
   }

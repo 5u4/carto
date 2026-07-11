@@ -35,8 +35,8 @@ export const initCommand = defineCommand({
     const configPath = join(root, 'carto.config.mjs')
     const wroteConfig = !(await exists(configPath))
     if (wroteConfig) await writeFile(configPath, configStub(), 'utf8')
-    const configNote = wroteConfig ? ' and carto.config.mjs' : ''
-    console.log(`initialized carto.json (locales: ${locales.join(', ')}), docs/${configNote}`)
+    const created = wroteConfig ? 'carto.json, docs/, carto.config.mjs' : 'carto.json, docs/'
+    console.log(`initialized ${created} (locales: ${locales.join(', ')})`)
   }
 })
 
