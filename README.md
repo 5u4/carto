@@ -79,6 +79,33 @@ Astro serves `$CARTO_ROOT/dist-site` (not the template package's own dir):
 CARTO_ROOT="$PWD" pnpm --filter @carto/template exec astro preview
 ```
 
+## Customize the site
+
+Drop a `carto.config.mjs` at your doc root (next to `carto.json`) to override
+Starlight's options. It must default-export an object with a `starlight` key,
+whose value is any [Starlight configuration](https://starlight.astro.build/reference/configuration/):
+
+```js
+import starlightThemeRapide from 'starlight-theme-rapide'
+
+export default {
+  starlight: {
+    title: 'My Docs',
+    plugins: [starlightThemeRapide()],
+    customCss: ['./src/custom.css'],
+  },
+}
+```
+
+Your options are merged into carto's Starlight config. carto keeps ownership of
+`sidebar` and `locales` — both are derived from `carto.json` and always win, so
+setting them here has no effect. Everything else (title, `customCss`, `plugins`,
+`logo`, `social`, component overrides, …) is yours.
+
+To use a community theme or any plugin, your doc root must be an npm project so
+the package resolves: run `pnpm init` there and `pnpm add starlight-theme-rapide`
+(or whichever plugin). Only `.mjs`/`.js` config files are supported.
+
 ## Testing
 
 - `pnpm test` — the fast unit suite (vitest). Deterministic, no network.

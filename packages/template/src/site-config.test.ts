@@ -1,6 +1,9 @@
-import { describe, expect, it } from 'vitest'
+import { mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import { afterEach, describe, expect, it } from 'vitest'
 import { urlPath, type Manifest, type Node } from '@carto/core'
-import { buildLocales, buildRedirects, buildSidebar } from './site-config'
+import { buildLocales, buildRedirects, buildSidebar, loadUserConfig, mergeStarlight } from './site-config'
 
 function node(partial: Partial<Node> & { id: string }): Node {
   return { sources: [], ...partial }
@@ -111,5 +114,54 @@ describe('buildRedirects', () => {
       nodes: []
     }
     expect(buildRedirects(m)).toEqual({})
+  })
+})
+
+describe('mergeStarlight', () => {
+  const owned = { locales: { root: { label: 'en', lang: 'en' } }, sidebar: [{ label: 'overview', link: '/' }] }
+
+  it('defaults the title when the user omits it', () => {
+    expect(mergeStarlight({}, owned).title).toBe('Carto')
+  })
+
+  it('lets the user override the title', () => {
+    expect(mergeStarlight({ title: 'My Docs' }, owned).title).toBe('My Docs')
+  })
+
+  it('passes user options through untouched', () => {
+    const merged = mergeStarlight({ customCss: ['./a.css'], plugins: ['p'] }, owned)
+    expect(merged.customCss).toEqual(['./a.css'])
+    expect(merged.plugins).toEqual(['p'])
+  })
+
+  it('forces owned locales and sidebar to win over user values', () => {
+    const merged = mergeStarlight({ locales: { root: { label: 'x', lang: 'x' } }, sidebar: [] }, owned)
+    expect(merged.locales).toBe(owned.locales)
+    expect(merged.sidebar).toBe(owned.sidebar)
+  })
+})
+
+describe('loadUserConfig', () => {
+  let dir: string
+
+  afterEach(async () => {
+    if (dir) await rm(dir, { recursive: true, force: true })
+  })
+
+  it('returns an empty object when no config file exists', async () => {
+    dir = await mkdtemp(join(tmpdir(), 'carto-cfg-'))
+    expect(await loadUserConfig(dir)).toEqual({})
+  })
+
+  it('loads the default export from carto.config.mjs', async () => {
+    dir = await mkdtemp(join(tmpdir(), 'carto-cfg-'))
+    await writeFile(join(dir, 'carto.config.mjs'), "export default { starlight: { title: 'Loaded' } }", 'utf8')
+    expect(await loadUserConfig(dir)).toEqual({ starlight: { title: 'Loaded' } })
+  })
+
+  it('throws a carto-prefixed error when the config file fails to import', async () => {
+    dir = await mkdtemp(join(tmpdir(), 'carto-cfg-'))
+    await writeFile(join(dir, 'carto.config.mjs'), 'throw new Error("boom")', 'utf8')
+    await expect(loadUserConfig(dir)).rejects.toThrow(/carto: failed to load carto\.config\.mjs: boom/)
   })
 })

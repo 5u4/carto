@@ -218,6 +218,8 @@ The only allowed comments:
 
 - `// SAFETY:` immediately above an `unsafe` block, justifying its soundness.
 - an `SPDX-License-Identifier` header, where one is legally required.
+- a `/* @vite-ignore */` marker on a runtime-only dynamic `import()`, where Vite
+  cannot statically analyze the specifier.
 
 A pre-commit + CI gate (`scripts/lint-comments.sh`) fails any diff that adds any
 other comment. Do not bypass it, and do not reintroduce comments that were
