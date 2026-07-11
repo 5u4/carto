@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { runCommand } from 'citty'
-import { mkdtemp, readFile, rm, stat } from 'node:fs/promises'
+import { mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { parseManifest } from '@carto/core'
@@ -60,6 +60,28 @@ describe('carto init', () => {
       expect(secondExit).toBe(1)
       const after = await readFile(join(dir, 'carto.json'), 'utf8')
       expect(after).toBe(before)
+    })
+  })
+
+  it('scaffolds a typed carto.config.mjs pointing at the Starlight config type', async () => {
+    await withTempCwd(async (dir) => {
+      const exitCode = await runAndCaptureExit()
+      expect(exitCode).toBeNull()
+      const config = await readFile(join(dir, 'carto.config.mjs'), 'utf8')
+      expect(config).toContain("import('@astrojs/starlight/types').StarlightUserConfig")
+      expect(config).toContain('export default {')
+      expect(config).toContain('starlight: {}')
+    })
+  })
+
+  it('does not overwrite an existing carto.config.mjs', async () => {
+    await withTempCwd(async (dir) => {
+      const configPath = join(dir, 'carto.config.mjs')
+      await writeFile(configPath, 'export default { starlight: { title: "Mine" } }', 'utf8')
+      const before = await readFile(configPath, 'utf8')
+      const exitCode = await runAndCaptureExit()
+      expect(exitCode).toBeNull()
+      expect(await readFile(configPath, 'utf8')).toBe(before)
     })
   })
 

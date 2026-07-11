@@ -3,11 +3,12 @@ import starlight from '@astrojs/starlight'
 import mermaid from 'astro-mermaid'
 import { join } from 'node:path'
 import { readManifest } from '@carto/core'
-import { buildLocales, buildRedirects, buildSidebar } from './dist/site-config.js'
+import { buildLocales, buildRedirects, buildSidebar, loadUserConfig, mergeStarlight } from './dist/site-config.js'
 import remarkJoinCjkLines from './dist/remark-join-cjk.js'
 
 const root = process.env.CARTO_ROOT ?? process.cwd()
 const manifest = await readManifest(join(root, 'carto.json'))
+const user = await loadUserConfig(root)
 
 export default defineConfig({
   outDir: join(root, 'dist-site'),
@@ -17,10 +18,11 @@ export default defineConfig({
   },
   integrations: [
     mermaid({ autoTheme: true, enableLog: false }),
-    starlight({
-      title: 'Carto',
-      locales: buildLocales(manifest),
-      sidebar: buildSidebar(manifest)
-    })
+    starlight(
+      mergeStarlight(user.starlight ?? {}, {
+        locales: buildLocales(manifest),
+        sidebar: buildSidebar(manifest)
+      })
+    )
   ]
 })

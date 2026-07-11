@@ -1,4 +1,7 @@
 import { childrenOf, nodesById, slugOf, urlPath, type Manifest, type Node } from '@carto/core'
+import { existsSync } from 'node:fs'
+import { join } from 'node:path'
+import { pathToFileURL } from 'node:url'
 
 export function buildLocales(manifest: Manifest): Record<string, { label: string; lang: string }> {
   const locales: Record<string, { label: string; lang: string }> = {}
@@ -40,4 +43,58 @@ function entryFor(manifest: Manifest, node: Node): SidebarEntry {
   const kids = childrenOf(manifest.nodes, node.id)
   if (kids.length === 0) return self
   return { label: slugOf(node), items: [self, ...kids.map((kid) => entryFor(manifest, kid))] }
+}
+
+export interface StarlightOptions {
+  [key: string]: unknown
+}
+
+export interface UserConfig {
+  starlight?: StarlightOptions
+}
+
+export interface OwnedStarlight {
+  locales: Record<string, { label: string; lang: string }>
+  sidebar: SidebarEntry[]
+}
+
+const userConfigNames = ['carto.config.mjs', 'carto.config.js']
+
+export async function loadUserConfig(root: string): Promise<UserConfig> {
+  for (const name of userConfigNames) {
+    const path = join(root, name)
+    if (!existsSync(path)) continue
+    let loaded: { default?: unknown }
+    try {
+      loaded = await import(/* @vite-ignore */ pathToFileURL(path).href)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      throw new Error(`carto: failed to load ${name}: ${message}`)
+    }
+    return validateUserConfig(loaded.default, name)
+  }
+  return {}
+}
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+function validateUserConfig(value: unknown, name: string): UserConfig {
+  if (!isPlainObject(value)) {
+    throw new Error(`carto: ${name} must default-export an object`)
+  }
+  if (value.starlight != null && !isPlainObject(value.starlight)) {
+    throw new Error(`carto: ${name} "starlight" must be an object`)
+  }
+  return value as UserConfig
+}
+
+export function mergeStarlight(user: StarlightOptions, owned: OwnedStarlight): StarlightOptions {
+  return {
+    title: 'Carto',
+    ...user,
+    locales: owned.locales,
+    sidebar: owned.sidebar
+  }
 }
