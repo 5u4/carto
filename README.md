@@ -60,6 +60,7 @@ Notes:
 | `carto init` | Scaffold a starter `carto.json` and `docs/` in the current directory |
 | `carto status` | Report each node's freshness; exits non-zero if any node is stale, 0 if all are fresh |
 | `carto sync` | Recompute and write every source hash; refreshes `updated_at` |
+| `carto coverage` | List files under the doc root that no node's `sources` tracks; respects `.gitignore` + `.cartoignore`; exits 0 by default, or non-zero with `--fail-on-uncovered` |
 | `carto validate` | Validate schema, id/slug uniqueness, parent cycles, and link resolution; exits non-zero on any error |
 | `carto dev` | Preview the site for the current doc root |
 | `carto build` | Build the static site for the current doc root |
