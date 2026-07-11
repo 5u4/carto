@@ -11,7 +11,7 @@ const skillPath = join(repoRoot, 'skill', 'SKILL.md')
 const fixtureSrc = join(repoRoot, 'tests', 'e2e', 'fixtures', 'blog', 'src')
 const mutation = join(repoRoot, 'tests', 'e2e', 'fixtures', 'blog', 'mutations', 'user-with-handle.ts')
 
-const runE2E = !!process.env.CARTO_E2E
+const runE2E = ['1', 'true', 'yes'].includes((process.env.CARTO_E2E ?? '').trim().toLowerCase())
 const model = process.env.E2E_MODEL ?? 'claude-haiku-4.5'
 const TURN_TIMEOUT = 300_000
 const PHASE_TIMEOUT = 900_000
