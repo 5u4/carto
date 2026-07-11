@@ -32,7 +32,11 @@ export const initCommand = defineCommand({
     }
     await mkdir(join(root, 'docs'), { recursive: true })
     await writeFile(manifestPath, serializeManifest(manifest), 'utf8')
-    console.log(`initialized carto.json (locales: ${locales.join(', ')}) and docs/`)
+    const configPath = join(root, 'carto.config.mjs')
+    const wroteConfig = !(await exists(configPath))
+    if (wroteConfig) await writeFile(configPath, configStub(), 'utf8')
+    const configNote = wroteConfig ? ' and carto.config.mjs' : ''
+    console.log(`initialized carto.json (locales: ${locales.join(', ')}), docs/${configNote}`)
   }
 })
 
@@ -43,4 +47,18 @@ async function exists(path: string): Promise<boolean> {
   } catch {
     return false
   }
+}
+
+function configStub(): string {
+  const star = '*'
+  const open = `/${star}${star}`
+  const close = `${star}/`
+  const jsdoc = `${open} @type {{ starlight?: import('@astrojs/starlight/types').StarlightUserConfig }} ${close}`
+  return [
+    jsdoc,
+    'export default {',
+    '  starlight: {}',
+    '}',
+    ''
+  ].join('\n')
 }

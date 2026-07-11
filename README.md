@@ -88,6 +88,7 @@ whose value is any [Starlight configuration](https://starlight.astro.build/refer
 ```js
 import starlightThemeRapide from 'starlight-theme-rapide'
 
+/** @type {{ starlight?: import('@astrojs/starlight/types').StarlightUserConfig }} */
 export default {
   starlight: {
     title: 'My Docs',
@@ -97,14 +98,21 @@ export default {
 }
 ```
 
+The `@type` JSDoc annotation gives you full editor autocomplete and type
+checking for the `starlight` options — it resolves to Starlight's own
+`StarlightUserConfig`. `carto init` scaffolds a `carto.config.mjs` with this
+annotation already in place.
+
 Your options are merged into carto's Starlight config. carto keeps ownership of
 `sidebar` and `locales` — both are derived from `carto.json` and always win, so
 setting them here has no effect. Everything else (title, `customCss`, `plugins`,
 `logo`, `social`, component overrides, …) is yours.
 
-To use a community theme or any plugin, your doc root must be an npm project so
-the package resolves: run `pnpm init` there and `pnpm add starlight-theme-rapide`
-(or whichever plugin). Only `.mjs`/`.js` config files are supported.
+To use a community theme or any plugin — or to get the `@type` autocomplete —
+your doc root must be an npm project so the package resolves: run `pnpm init`
+there and `pnpm add @astrojs/starlight` (plus any theme, e.g.
+`starlight-theme-rapide`). The build itself works without this; only editor
+tooling needs it. Only `.mjs`/`.js` config files are supported.
 
 ## Testing
 
