@@ -41,7 +41,15 @@ describe('coverageReport', () => {
     })
   })
 
-  it('excludes carto own outputs and vcs/dependency dirs by default', async () => {
+  it('treats a ./-prefixed source path as covering the same file', async () => {
+    await withTempDir(async (dir) => {
+      await writeFile(join(dir, 'only.ts'), 'x')
+      const report = await coverageReport(manifest([{ id: 'n', sources: [{ file: './only.ts' }] }]), dir)
+      expect(report.uncovered).toEqual([])
+    })
+  })
+
+  it("excludes carto's own outputs and vcs/dependency dirs by default", async () => {
     await withTempDir(async (dir) => {
       await writeFile(join(dir, 'carto.json'), '{}')
       await mkdir(join(dir, 'docs', 'n'), { recursive: true })

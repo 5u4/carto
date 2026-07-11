@@ -60,7 +60,7 @@ async function walk(rootDir: string, ig: Ignore): Promise<string[]> {
 export async function coverageReport(manifest: Manifest, rootDir: string): Promise<CoverageReport> {
   const ig = await buildIgnore(rootDir)
   const files = await walk(rootDir, ig)
-  const tracked = new Set(manifest.nodes.flatMap((node) => node.sources.map((source) => toPosix(source.file))))
+  const tracked = new Set(manifest.nodes.flatMap((node) => node.sources.map((source) => toPosix(relative(rootDir, join(rootDir, source.file))))))
   const uncovered = files.filter((file) => !tracked.has(file)).sort()
   return { total: files.length, covered: files.length - uncovered.length, uncovered }
 }
