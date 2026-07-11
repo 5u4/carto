@@ -17,19 +17,11 @@ title: carto 技能
 
 ## 心智模型
 
-```mermaid
-flowchart TD
-  scope["invoke(scope)"] --> mode{"新增覆盖还是刷新?"}
-  mode -->|document| read["读代码 + carto status"]
-  mode -->|refresh| read
-  read --> tree["规划节点树: id、parent、sources"]
-  tree --> mdx["为每个节点 x 语言写 .mdx"]
-  mdx --> manifest["编辑 carto.json"]
-  manifest --> sync["carto sync"]
-  sync --> validate["carto validate"]
-  validate -->|error| mdx
-  validate -->|退出码 0| stop["停止"]
-```
+你带一个范围调用技能并选定模式。两种模式都汇合到同一个核心：**读代码并运行
+`carto status`**，然后**规划节点树**（id、parent、sources）、**为每个节点 × 语言写一个
+`.mdx`**、并**编辑 `carto.json`**。接着是 CLI 闸门：**`carto sync`** 填哈希，**`carto
+validate`** 校验 schema、树与链接。validate 报错就把你送回它指名的 `.mdx` 或清单；你循环
+直到 validate 退出码为 0，然后停止。
 
 - **两种模式。** `document <dir|files>` 是新增覆盖：读代码、构想一棵节点子树、写页面、
   注册 sources。`refresh [<id>]` 在代码变化后重新生成已有页面——`carto status` 显示哪些节点
@@ -43,9 +35,10 @@ flowchart TD
   example）、Tutorial（goal → prerequisites → steps → verification → next）、或
   Reference（overview → signature → parameters → returns → examples → edge cases）。
   多数节点是 Explanation。
-- **硬性底线。** 每个节点都带 Intent + 一个心智模型视图（3–5 个概念、它们的关系、一张 mermaid
-  图）+ 在每个承重论断上的 `path:line` 锚点。每个**用户面向**节点还需要一个真实、可复现的
-  完整示例——真实命令配真实输出。
+- **硬性底线。** 每个节点都带 Intent + 一个心智模型视图（3–5 个概念及其关系，用散文或一个
+  简短的带标签列表——mermaid 图是可选的，仅当一个 5–7 节点的小图才值得画）+ 在每个承重论断
+  上的 `path:line` 锚点。每个**用户面向**节点还需要一个真实、可复现的完整示例——真实命令配
+  真实输出。
 
 ## 每个页面必须包含什么
 

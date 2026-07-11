@@ -19,22 +19,17 @@ walkthrough below is the real run that produced *this* site, with real output.
 
 ## The loop you're about to run
 
-```mermaid
-flowchart TD
-  init["carto init: scaffold carto.json and docs/"] --> read["agent reads code, runs carto status"]
-  read --> plan["plan node tree: ids, parents, sources"]
-  plan --> write["write docs/&lt;id&gt;/&lt;locale&gt;.mdx"]
-  write --> edit["edit carto.json: add nodes, file-only sources"]
-  edit --> sync["carto sync: fills every hash"]
-  sync --> validate["carto validate"]
-  validate -->|error| write
-  validate -->|ok| done["done"]
-```
+The loop is a straight line with one back-edge. `carto init` scaffolds the doc
+root; the agent reads code and runs `carto status`; you plan the node tree (ids,
+parents, sources); write `docs/<id>/<locale>.mdx` for each node × locale; edit
+`carto.json` with file-only sources; run `carto sync` to fill every hash; then
+`carto validate`. Validate either sends you back to fix a page, or exits 0 and
+you're done.
 
 Three concepts to hold: a **node** is one page with an immutable `id`; a
 **source** is a file whose behavior a node describes (the staleness crosshair);
 a **locale** is one language — every node needs one `.mdx` per declared locale or
-`validate` fails (`packages/cli/src/commands/validate.ts:45`).
+`validate` fails (`packages/cli/src/commands/validate.ts:55`).
 
 ## Steps
 

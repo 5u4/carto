@@ -17,21 +17,14 @@ title: 快速开始
 
 ## 你即将运行的循环
 
-```mermaid
-flowchart TD
-  init["carto init: 搭建 carto.json 和 docs/"] --> read["agent 读代码，运行 carto status"]
-  read --> plan["规划节点树: id、parent、sources"]
-  plan --> write["写 docs/&lt;id&gt;/&lt;locale&gt;.mdx"]
-  write --> edit["编辑 carto.json: 添加节点，只写 file 的 sources"]
-  edit --> sync["carto sync: 填入每个 hash"]
-  sync --> validate["carto validate"]
-  validate -->|error| write
-  validate -->|ok| done["完成"]
-```
+这个循环是一条直线加一条回边。`carto init` 搭好文档根；agent 读代码并运行 `carto status`；
+你规划节点树（id、parent、sources）；为每个节点 × 语言写 `docs/<id>/<locale>.mdx`；用只写
+`file` 的 sources 编辑 `carto.json`；运行 `carto sync` 填入每个哈希；然后 `carto validate`。
+validate 要么把你送回去修某个页面，要么退出码为 0，你就完成了。
 
 需要掌握三个概念：一个**节点**是一个页面，带一个不可变的 `id`；一个**源文件**是节点所描述
 行为所在的文件（失效的十字准星）；一个**语言（locale）**是一种语言——每个节点在每个已声明的
-语言下都需要一个 `.mdx`，否则 `validate` 失败（`packages/cli/src/commands/validate.ts:45`）。
+语言下都需要一个 `.mdx`，否则 `validate` 失败（`packages/cli/src/commands/validate.ts:55`）。
 
 ## 步骤
 
