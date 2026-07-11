@@ -21,19 +21,12 @@ the code it points at: the hash catches it.
 
 ## Mental model
 
-```mermaid
-flowchart TD
-  scope["invoke(scope)"] --> mode{"new coverage or refresh?"}
-  mode -->|document| read["read code + carto status"]
-  mode -->|refresh| read
-  read --> tree["plan node tree: ids, parents, sources"]
-  tree --> mdx["write .mdx per node x locale"]
-  mdx --> manifest["edit carto.json"]
-  manifest --> sync["carto sync"]
-  sync --> validate["carto validate"]
-  validate -->|error| mdx
-  validate -->|exit 0| stop["stop"]
-```
+You invoke the skill with a scope and pick a mode. Both modes converge on the
+same core: **read the code and run `carto status`**, then **plan the node tree**
+(ids, parents, sources), **write one `.mdx` per node × locale**, and **edit
+`carto.json`**. Then the CLI gate: **`carto sync`** fills hashes, **`carto
+validate`** checks schema, tree, and links. A validate error sends you back to
+the `.mdx` or manifest it names; you loop until validate exits 0, then stop.
 
 - **Two modes.** `document <dir|files>` is new coverage: read the code, invent a
   node subtree, write the pages, register the sources. `refresh [<id>]`
@@ -53,9 +46,11 @@ flowchart TD
   next), or Reference (overview → signature → parameters → returns → examples →
   edge cases). Most nodes are Explanation.
 - **The hard floor.** Every node carries Intent + a mental-model view (3–5
-  concepts, their relations, one mermaid diagram) + a `path:line` anchor on every
-  load-bearing claim. Every **user-facing** node additionally needs one real,
-  reproducible worked example — real commands with real output.
+  concepts and how they relate, as prose or a short labelled list — a mermaid
+  diagram is optional and only earns its place for a small 5–7 node graph) + a
+  `path:line` anchor on every load-bearing claim. Every **user-facing** node
+  additionally needs one real, reproducible worked example — real commands with
+  real output.
 
 ## What each page must contain
 

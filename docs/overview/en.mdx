@@ -45,15 +45,11 @@ Five ideas carry the whole system:
 - **BYO-LLM.** The agent does the judgement (read code, write `.mdx`, edit the
   manifest); the CLI does only what must be deterministic (hash, validate).
 
-```mermaid
-flowchart LR
-  you["You plus your LLM agent"] -->|invoke the carto skill| skill["carto skill"]
-  skill -->|writes| pages["docs pages (.mdx)"]
-  skill -->|edits| manifest["carto.json manifest"]
-  pages --> cli["carto CLI: sync then validate"]
-  manifest --> cli
-  cli -->|build| site["Astro + Starlight site"]
-```
+The pieces connect in a straight line. **You plus your LLM agent** invoke the
+carto skill; the agent **writes** the docs pages (`.mdx`) and **edits** the
+`carto.json` manifest. Those two outputs feed the **carto CLI**, which runs
+`sync` then `validate` to hash and check them. `carto build` then renders the
+manifest and pages into an **Astro + Starlight site**.
 
 ## The generation loop, in one breath
 

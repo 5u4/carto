@@ -9,18 +9,14 @@ structure, the **freshness** model that makes staleness detectable, and the
 
 ## Mental model
 
-```mermaid
-flowchart TD
-  manifest["carto.json: nodes + sources"] --> node["node: id, slug, parent, sources"]
-  node --> source["source: file + hash"]
-  source --> hash["sha256[0:16] of file bytes"]
-  hash --> state["freshness: fresh / unsynced / stale / missing"]
-  node --> link["carto:&lt;id&gt; link -> url from slug chain"]
-```
-
-Four ideas: a **node** is one page with an immutable identity; a **source** ties
-a node to a file via a content hash; **freshness** is that hash compared to
-reality; a **`carto:` link** points at a node's `id`, never its location.
+Four ideas nest inside each other. The **manifest** (`carto.json`) holds a list
+of **nodes**; each node carries `id`, `slug`, `parent`, and a list of
+**sources**. A source ties the node to a file by a **content hash** (plus the
+git commit it was synced at). Comparing that stored hash to the file's current
+bytes yields the node's **freshness** — `fresh` / `unsynced` / `stale` /
+`missing`. Orthogonal to all of it, a **`carto:` link** addresses a node by its
+immutable `id`, and the renderer turns that into a URL from the node's slug
+chain — so a link never points at a location that can move.
 
 ## The manifest
 
@@ -47,12 +43,16 @@ A node has four fields (`packages/core/src/schema.ts:17`):
   middle of the tree.
 - **`sources`** — the files whose behavior this page describes. Write **`file`
   only**, a path relative to `carto.json`'s directory, with no `..` segments
-  (`packages/core/src/schema.ts:5`); `carto sync` fills `hash`. The array may be
+  (`packages/core/src/schema.ts:5`); `carto sync` fills both `hash` (the content
+  fingerprint) and `commit` (the git `HEAD` at sync time). The schema rejects a
+  `commit` without a `hash` (`packages/core/src/schema.ts:18`). The array may be
   empty for a pure-orientation page.
 
 `sources` is the **staleness crosshair**: too broad triggers false "stale"
 churn; too narrow lets real changes slip by. Register only the load-bearing
-files a node actually explains.
+files a node actually explains. Its inverse is coverage — `coverageReport` walks
+the doc root, subtracts every tracked source, and returns the untracked
+remainder (`packages/core/src/coverage.ts:60`), which `carto coverage` prints.
 
 ## Freshness = hash vs. reality
 
@@ -63,14 +63,14 @@ status` recomputes and compares. Comparison yields one of four states
 
 - **fresh** — stored hash == actual hash.
 - **unsynced** — the source has no stored hash yet (you added a `file` but
-  haven't run `sync`) (`packages/core/src/status.ts:44`).
+  haven't run `sync`) (`packages/core/src/status.ts:45`).
 - **stale** — stored hash != actual hash: the file changed since the last sync.
 - **missing** — the file no longer exists on disk
-  (`packages/core/src/status.ts:41`).
+  (`packages/core/src/status.ts:42`).
 
 A node's state is the **worst** of its sources, ordered
-`fresh < unsynced < stale < missing` (`packages/core/src/status.ts:20`, reduced
-at `packages/core/src/status.ts:31`). Because it's hash-based, not git-based, it
+`fresh < unsynced < stale < missing` (`packages/core/src/status.ts:21`, reduced
+at `packages/core/src/status.ts:32`). Because it's hash-based, not git-based, it
 catches any edit regardless of VCS — but a newly *added* file inside a subsystem
 is invisible until you register it and re-sync.
 

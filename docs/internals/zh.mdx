@@ -9,58 +9,54 @@ Astro + Starlight 能原生路由的布局。
 
 ## 心智模型
 
-```mermaid
-flowchart TD
-  core["@carto/core: schema, hash, tree, resolver, status"]
-  cli["@carto/cli: 六个 citty 命令"]
-  template["@carto/template: materialize + Astro 配置"]
-  cli -->|import| core
-  template -->|import| core
-  cli -->|spawn pnpm run dev/build:site| template
-  template -->|materialize.js| content["src/content/docs/&lt;slug-chain&gt;.mdx"]
-  content --> astro["Astro + Starlight 构建"]
-```
-
-三个包，一个依赖方向：一切都指向 `core`。`cli` 和 `template` 不重新实现 core 的任何
-schema/hash/URL/resolver 逻辑——它们调用它。唯一的跨包运行时调用是 `cli` spawn `template`
-的 package 脚本。
+三个包指向一个方向：一切都依赖 **`@carto/core`**。`@carto/cli` import core 并把它包进 citty
+命令；`@carto/template` import core 并用它来 materialize + 配置 Astro 站点。`cli` 和
+`template` 不重新实现 core 的任何 schema/hash/URL/resolver 逻辑——它们调用它。运行时唯一的
+跨包调用是 `cli` spawn `template` 的 package 脚本（`dev` / `build:site`）；`template` 的
+`materialize.js` 随后写出 `src/content/docs/<slug-chain>.mdx`，再由 Astro + Starlight 构建
+成站点。
 
 ## `@carto/core` —— 库
 
-一个扁平的桶文件（`packages/core/src/index.ts:2`）重导出五个模块：zod `schema`、`hash`
+一个扁平的桶文件（`packages/core/src/index.ts:2`）重导出七个模块：zod `schema`、`hash`
 （sha256/16）、`manifest`（read/write/`syncManifest`）、`tree`（`slugOf`、`childrenOf`、
 `rootChain`、`urlPath`、`checkTree`）、`resolver`（`parseCartoLink`/`resolveCartoLink`）、
-以及 `status`（四态分类器）。这是其他包所依赖的每条规则的唯一定义；它编码的模型是
-[](carto:concepts)。
+`status`（四态分类器）、以及 `coverage`（`coverageReport`，未追踪文件遍历）。这是其他包所
+依赖的每条规则的唯一定义；它编码的模型是 [](carto:concepts)。
 
 ## `@carto/cli` —— citty 接线
 
-`packages/cli/src/index.ts:10` 构建一个带六个子命令的 `defineCommand` 并交给 `runMain`
-（`packages/cli/src/index.ts:22`）。`packages/cli/src/commands/` 下的每个命令文件都很薄：
-它从 `process.cwd()` 读 `carto.json`、调用一个 core 函数、打印一行、设置退出码。`validate`
-加入了唯一的 CLI 本地逻辑——`extractCartoTargets`（`packages/cli/src/links.ts:1`）扫描每个
-`.mdx` 中的 `carto:` 目标，并把它们喂给 core 的解析器。这六个命令的用户面向行为是
-[](carto:cli)。
+`packages/cli/src/index.ts:11` 构建一个带七个子命令的 `defineCommand` 并交给 `runMain`
+（`packages/cli/src/index.ts:24`）。`packages/cli/src/commands/` 下的每个命令文件都很薄：
+它从 `process.cwd()` 读 `carto.json`、调用一个 core 函数、打印一行、设置退出码。两个带
+CLI 本地逻辑：`validate` 的 `extractCartoTargets`（`packages/cli/src/links.ts:1`）扫描每个
+`.mdx` 中的 `carto:` 目标并喂给 core 的解析器，而 `sync` 用 `headCommit` 读 git `HEAD`
+来给源文件盖戳（`packages/cli/src/git.ts:3`）。这七个命令的用户面向行为是 [](carto:cli)。
 
 ## `@carto/template` —— 先物料化再路由
 
 Starlight 硬编码 `src/content/docs`，并从目录结构推导 locale 与 URL。与其对抗，模板选择
 **物料化（materialize）**：`materialize.ts` 读取文档根的 `carto.json`（通过 `CARTO_ROOT`），
-清空并重建 `src/content/docs`（`packages/template/src/materialize.ts:12`）。当清单没有根节点时，
+清空并重建 `src/content/docs`（`packages/template/src/materialize.ts:13`）。当清单没有根节点时，
 它写一张空态 `index.mdx`——以文档根的文件夹名作标题——然后返回
-（`packages/template/src/materialize.ts:14`、`packages/template/src/materialize.ts:31`）；
+（`packages/template/src/materialize.ts:15`、`packages/template/src/materialize.ts:34`）；
 否则把每个节点的 `.mdx` 写到一个 **slug 链路径**——`rootChain(...).map(slugOf).join('/')`，
-非默认语言带语言前缀（`packages/template/src/materialize.ts:52`）。复制的同时，`rewriteLinks`
+非默认语言带语言前缀（`packages/template/src/materialize.ts:56`）。复制的同时，`rewriteLinks`
 把每个 `carto:<id>` 替换为解析后的 URL 并用目标标题填充空标签
-（`packages/template/src/materialize.ts:58`）；标题先从每个页面的 frontmatter 收集
-（`packages/template/src/materialize.ts:67`）。
+（`packages/template/src/materialize.ts:61`）；标题先从每个页面的 frontmatter 收集
+（`packages/template/src/materialize.ts:70`）。随后 `injectStalenessBanner` 在节点为 `stale`
+或 `missing` 时给页面 frontmatter 前置一个 `banner.content`，让渲染后的站点显眼地警示哪些
+源文件漂移了（`packages/template/src/materialize.ts:26`、`packages/template/src/staleness-banner.ts:3`）。
 
 Astro 配置读取同一份清单，并通过 `buildLocales` / `buildSidebar` 从中构建 Starlight 的
 `locales` 与 `sidebar`（`packages/template/src/site-config.ts:3`、
 `packages/template/src/site-config.ts:18`）；`entryFor` 把节点树递归成嵌套的侧边栏条目
 （`packages/template/src/site-config.ts:38`）。`buildRedirects` 把站点根 `/`（以及每个语言根）
 送往 `home` 节点，未设 `home` 时送往第一个根节点（`packages/template/src/site-config.ts:22`）。
-其结果精确重现 `urlPath` 所计算的 URL，因此 `carto:` 链接解析到真实路由。
+其结果精确重现 `urlPath` 所计算的 URL，因此 `carto:` 链接解析到真实路由。它还注册一个 remark
+插件 `remarkJoinCjkLines`，去掉 Markdown 在 CJK 源码换行处本会插入的多余空格
+（`packages/template/astro.config.mjs:16`、`packages/template/src/remark-join-cjk.ts:39`）。
+该包的对外表面是一个两行桶文件，重导出 site-config 辅助函数（`packages/template/src/index.ts:2`）。
 
 ## `carto dev`/`build` 如何触达这里
 

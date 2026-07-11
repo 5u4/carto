@@ -7,5 +7,10 @@ packages/template/tests/
 tsconfig*.json
 *.config.*
 scripts/
+tests/e2e/fixtures/
+.env.example
+/pnpm-workspace.yaml
+/wrangler.jsonc
+/install.sh
 /README.md
 /AGENTS.md

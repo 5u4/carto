@@ -10,57 +10,56 @@ id-based docs into the layout Astro + Starlight route natively.
 
 ## Mental model
 
-```mermaid
-flowchart TD
-  core["@carto/core: schema, hash, tree, resolver, status"]
-  cli["@carto/cli: six citty commands"]
-  template["@carto/template: materialize + Astro config"]
-  cli -->|imports| core
-  template -->|imports| core
-  cli -->|spawns pnpm run dev/build:site| template
-  template -->|materialize.js| content["src/content/docs/&lt;slug-chain&gt;.mdx"]
-  content --> astro["Astro + Starlight build"]
-```
-
-Three packages, one dependency direction: everything points at `core`. `cli` and
+Three packages point in one direction: everything depends on **`@carto/core`**.
+`@carto/cli` imports core and wraps it in citty commands; `@carto/template`
+imports core and uses it to materialize + configure the Astro site. `cli` and
 `template` reimplement none of core's schema/hash/URL/resolver logic — they call
-it. The only cross-package runtime call is `cli` spawning `template`'s package
-scripts.
+it. At runtime the only cross-package call is `cli` spawning `template`'s package
+scripts (`dev` / `build:site`); `template`'s `materialize.js` then writes
+`src/content/docs/<slug-chain>.mdx`, which the Astro + Starlight build turns into
+the site.
 
 ## `@carto/core` — the library
 
-A flat barrel (`packages/core/src/index.ts:2`) re-exporting five modules: the zod
-`schema`, `hash` (sha256/16), `manifest` (read/write/`syncManifest`), `tree`
+A flat barrel (`packages/core/src/index.ts:2`) re-exporting seven modules: the
+zod `schema`, `hash` (sha256/16), `manifest` (read/write/`syncManifest`), `tree`
 (`slugOf`, `childrenOf`, `rootChain`, `urlPath`, `checkTree`), `resolver`
-(`parseCartoLink`/`resolveCartoLink`), and `status` (the four-state
-classifier). This is the single definition of every rule the other packages
-depend on; the model it encodes is [](carto:concepts).
+(`parseCartoLink`/`resolveCartoLink`), `status` (the four-state classifier), and
+`coverage` (`coverageReport`, the untracked-files walk). This is the single
+definition of every rule the other packages depend on; the model it encodes is
+[](carto:concepts).
 
 ## `@carto/cli` — citty wiring
 
-`packages/cli/src/index.ts:10` builds one `defineCommand` with six subcommands
-and hands it to `runMain` (`packages/cli/src/index.ts:22`). Each command file
+`packages/cli/src/index.ts:11` builds one `defineCommand` with seven subcommands
+and hands it to `runMain` (`packages/cli/src/index.ts:24`). Each command file
 under `packages/cli/src/commands/` is thin: it reads `carto.json` from
-`process.cwd()`, calls a core function, prints a line, and sets an exit code.
-`validate` adds the only CLI-local logic — `extractCartoTargets`
+`process.cwd()`, calls a core function, prints a line, and sets an exit code. Two
+carry CLI-local logic: `validate`'s `extractCartoTargets`
 (`packages/cli/src/links.ts:1`) scans each `.mdx` for `carto:` targets and feeds
-them to core's resolver. The user-facing behavior of all six is [](carto:cli).
+them to core's resolver, and `sync` reads the git `HEAD` to stamp sources via
+`headCommit` (`packages/cli/src/git.ts:3`). The user-facing behavior of all
+seven is [](carto:cli).
 
 ## `@carto/template` — materialize then route
 
 Starlight hardcodes `src/content/docs` and derives locale + URL from directory
 structure. Rather than fight it, the template **materializes**: `materialize.ts`
 reads the doc root's `carto.json` (via `CARTO_ROOT`), wipes and rebuilds
-`src/content/docs` (`packages/template/src/materialize.ts:12`). When the manifest
+`src/content/docs` (`packages/template/src/materialize.ts:13`). When the manifest
 has no root nodes it writes a single empty-state `index.mdx` — titled with the
 doc root's folder name — and returns
-(`packages/template/src/materialize.ts:14`, `packages/template/src/materialize.ts:31`);
+(`packages/template/src/materialize.ts:15`, `packages/template/src/materialize.ts:34`);
 otherwise it writes each node's `.mdx` to a **slug-chain path** —
 `rootChain(...).map(slugOf).join('/')`, locale-prefixed for non-default locales
-(`packages/template/src/materialize.ts:52`). As it copies, `rewriteLinks`
+(`packages/template/src/materialize.ts:56`). As it copies, `rewriteLinks`
 replaces every `carto:<id>` with the resolved URL and fills empty labels with the
-target's title (`packages/template/src/materialize.ts:58`); titles are collected
-from each page's frontmatter first (`packages/template/src/materialize.ts:67`).
+target's title (`packages/template/src/materialize.ts:61`); titles are collected
+from each page's frontmatter first (`packages/template/src/materialize.ts:70`).
+Then `injectStalenessBanner` prepends a `banner.content` to the page's
+frontmatter whenever the node is `stale` or `missing`, so the rendered site
+visibly warns which source files drifted
+(`packages/template/src/materialize.ts:26`, `packages/template/src/staleness-banner.ts:3`).
 
 The Astro config reads the same manifest and builds Starlight's `locales` and
 `sidebar` from it via `buildLocales` / `buildSidebar`
@@ -69,7 +68,12 @@ The Astro config reads the same manifest and builds Starlight's `locales` and
 (`packages/template/src/site-config.ts:38`). `buildRedirects` sends the site root
 `/` (and each locale root) to the `home` node, or the first root node when
 `home` is unset (`packages/template/src/site-config.ts:22`). The result reproduces
-exactly the URLs `urlPath` computes, so `carto:` links resolve to real routes.
+exactly the URLs `urlPath` computes, so `carto:` links resolve to real routes. It
+also registers one remark plugin, `remarkJoinCjkLines`, which strips the spurious
+space Markdown would otherwise insert where a CJK line wraps in source
+(`packages/template/astro.config.mjs:16`, `packages/template/src/remark-join-cjk.ts:39`).
+The package's public surface is a two-line barrel re-exporting the site-config
+helpers (`packages/template/src/index.ts:2`).
 
 ## How `carto dev`/`build` reach here
 
