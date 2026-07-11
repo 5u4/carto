@@ -78,6 +78,34 @@ Astro serves `$CARTO_ROOT/dist-site` (not the template package's own dir):
 CARTO_ROOT="$PWD" pnpm --filter @carto/template exec astro preview
 ```
 
+## Testing
+
+- `pnpm test` — the fast unit suite (vitest). Deterministic, no network.
+- `pnpm e2e` — deterministic pipeline smoke test (`scripts/e2e.sh`): drives the
+  `carto` binary through sync → status → validate → build and asserts staleness
+  detection. No LLM.
+- `pnpm test:e2e` — the **real agent** end-to-end test
+  (`tests/e2e/agent.e2e.test.ts`). It spins up a temp doc root, then runs a live
+  agent (`omp`, headless) that reads a tiny `user`/`post`/`feed` codebase and
+  drives the full carto authoring loop: generate all pages from zero, then
+  refresh after a source file changes. Each phase asserts `carto validate` is
+  green, `carto build` renders, known source symbols reach the built HTML, and
+  every `carto:` link resolves.
+
+This test is **ignored by default** — it costs money and takes minutes. It is
+skipped unless `CARTO_E2E` is set, which is loaded from a git-ignored
+`.env.e2e`. To run it:
+
+```sh
+cp .env.example .env.e2e   # then set CARTO_E2E=1 and E2E_MODEL
+pnpm build                 # the carto bin must exist (see Setup)
+pnpm test:e2e
+```
+
+`.env.example` is the tracked template; `.env.e2e` is your local, ignored copy.
+`E2E_MODEL` picks the agent model (default `claude-haiku-4.5` — the fixture is
+deliberately simple so a small, cheap model can document it).
+
 ## Project layout / where to look next
 
 - `packages/core` — schema, hashing, node tree, `carto:` link resolver
