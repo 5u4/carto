@@ -64,15 +64,31 @@ export async function loadUserConfig(root: string): Promise<UserConfig> {
   for (const name of userConfigNames) {
     const path = join(root, name)
     if (!existsSync(path)) continue
+    let loaded: { default?: unknown }
     try {
-      const module = await import(/* @vite-ignore */ pathToFileURL(path).href)
-      return (module.default ?? {}) as UserConfig
+      loaded = await import(/* @vite-ignore */ pathToFileURL(path).href)
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
       throw new Error(`carto: failed to load ${name}: ${message}`)
     }
+    return validateUserConfig(loaded.default, name)
   }
   return {}
+}
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+function validateUserConfig(value: unknown, name: string): UserConfig {
+  if (value == null) return {}
+  if (!isPlainObject(value)) {
+    throw new Error(`carto: ${name} must default-export an object`)
+  }
+  if (value.starlight != null && !isPlainObject(value.starlight)) {
+    throw new Error(`carto: ${name} "starlight" must be an object`)
+  }
+  return value as UserConfig
 }
 
 export function mergeStarlight(user: StarlightOptions, owned: OwnedStarlight): StarlightOptions {

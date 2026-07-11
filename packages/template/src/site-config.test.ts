@@ -142,7 +142,7 @@ describe('mergeStarlight', () => {
 })
 
 describe('loadUserConfig', () => {
-  let dir: string
+  let dir: string | undefined
 
   afterEach(async () => {
     if (dir) await rm(dir, { recursive: true, force: true })
@@ -163,5 +163,17 @@ describe('loadUserConfig', () => {
     dir = await mkdtemp(join(tmpdir(), 'carto-cfg-'))
     await writeFile(join(dir, 'carto.config.mjs'), 'throw new Error("boom")', 'utf8')
     await expect(loadUserConfig(dir)).rejects.toThrow(/carto: failed to load carto\.config\.mjs: boom/)
+  })
+
+  it('throws when the default export is not an object', async () => {
+    dir = await mkdtemp(join(tmpdir(), 'carto-cfg-'))
+    await writeFile(join(dir, 'carto.config.mjs'), 'export default 42', 'utf8')
+    await expect(loadUserConfig(dir)).rejects.toThrow(/must default-export an object/)
+  })
+
+  it('throws when starlight is not an object', async () => {
+    dir = await mkdtemp(join(tmpdir(), 'carto-cfg-'))
+    await writeFile(join(dir, 'carto.config.mjs'), "export default { starlight: 'nope' }", 'utf8')
+    await expect(loadUserConfig(dir)).rejects.toThrow(/"starlight" must be an object/)
   })
 })
