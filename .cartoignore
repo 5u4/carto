@@ -7,3 +7,5 @@ packages/template/tests/
 tsconfig*.json
 *.config.*
 scripts/
+/README.md
+/AGENTS.md
