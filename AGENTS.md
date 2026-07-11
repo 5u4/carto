@@ -220,6 +220,8 @@ The only allowed comments:
 - an `SPDX-License-Identifier` header, where one is legally required.
 - a `/* @vite-ignore */` marker on a runtime-only dynamic `import()`, where Vite
   cannot statically analyze the specifier.
+- a `/** @type {...} */` JSDoc annotation, used to type a `.mjs`/`.js` value
+  where a top-level `import type` is unavailable.
 
 A pre-commit + CI gate (`scripts/lint-comments.sh`) fails any diff that adds any
 other comment. Do not bypass it, and do not reintroduce comments that were

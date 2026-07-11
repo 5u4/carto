@@ -9,7 +9,7 @@ while IFS= read -r file; do
     *.ts|*.mjs|*.js) ;;
     *) continue ;;
   esac
-  file_hits=$(grep -nHE '(^|[^:])//|/\*|\*/' "$file" 2>/dev/null | grep -v 'SPDX-License-Identifier' | grep -vF '/* @vite-ignore */' || true)
+  file_hits=$(grep -nHE '(^|[^:])//|/\*|\*/' "$file" 2>/dev/null | grep -v 'SPDX-License-Identifier' | grep -vF '/* @vite-ignore */' | grep -vE '/\*\* @type \{.*\} \*/' || true)
   if [ -n "$file_hits" ]; then
     hits="${hits}${file_hits}
 "

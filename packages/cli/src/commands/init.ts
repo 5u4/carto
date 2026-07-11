@@ -50,12 +50,8 @@ async function exists(path: string): Promise<boolean> {
 }
 
 function configStub(): string {
-  const star = '*'
-  const open = `/${star}${star}`
-  const close = `${star}/`
-  const jsdoc = `${open} @type {{ starlight?: import('@astrojs/starlight/types').StarlightUserConfig }} ${close}`
   return [
-    jsdoc,
+    "/** @type {{ starlight?: import('@astrojs/starlight/types').StarlightUserConfig }} */",
     'export default {',
     '  starlight: {}',
     '}',
