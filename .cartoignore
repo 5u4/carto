@@ -1,0 +1,9 @@
+package.json
+pnpm-lock.yaml
+skills-lock.json
+.agents/
+*.test.ts
+packages/template/tests/
+tsconfig*.json
+*.config.*
+scripts/

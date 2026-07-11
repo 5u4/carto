@@ -40,6 +40,10 @@ result. This skill tells you how to drive the loop.
   a full re-read when there is no anchor, the source is not in a git repo, or the
   anchor commit is unreachable (rebased/squashed away — `git diff` errors).
 
+To find code that no page covers yet — the files new work adds — run
+`carto coverage`. It only reports orphans; deciding to document them stays a
+deliberate `document` call, never automatic.
+
 ## The generation loop
 
 Every invocation, given a scope:
@@ -57,7 +61,7 @@ invoke(scope)
 
 Never leave an invocation until `carto validate` exits 0.
 
-## The carto CLI (exactly six commands)
+## The carto CLI (exactly seven commands)
 
 There are **no** fine-grained mutation commands (no add-node, no set-parent). You
 edit `carto.json` directly; `sync` and `validate` are the guardrails.
@@ -67,6 +71,7 @@ edit `carto.json` directly; `sync` and `validate` are the guardrails.
 | `carto init` | Once per doc root, only if `carto.json` is absent. Scaffolds `carto.json` and `docs/`. Refuses if `carto.json` exists. |
 | `carto status` | First thing every invocation. Read-only; prints each node's freshness — unsynced / stale / missing / fresh. A non-fresh source also prints the full anchor commit it was last synced at (`stale a.ts (was 44cc03e…)`), the base for a `git diff`. Use it to choose refresh targets. Exits non-zero if any node is not fresh. |
 | `carto sync` | After you edit `carto.json`. The only deterministic write: recomputes and writes every source hash, stamps each source with the current git `HEAD` (skipped outside a repo), and refreshes `updated_at`. |
+| `carto coverage` | Optional, detection-only. Lists files under the doc root that no node's `sources` tracks — the orphans that new code introduces. Read-only, never generates; exits 0 by default (`--fail-on-uncovered` makes it a CI gate). Respects `.gitignore` and `.cartoignore`; carto's own outputs (`carto.json`, `docs/`, `dist-site/`), `.git/`, `node_modules/`, and the ignore files themselves are always excluded. |
 | `carto validate` | After `sync`. Read-only full check: schema, id uniqueness, sibling-slug uniqueness, parent cycles, one mdx per locale, every `carto:` link resolves. Fix and repeat on any error; exits non-zero on error. |
 | `carto dev` | Optional. Preview the rendered site locally. |
 | `carto build` | Optional. Produce the static site. |
