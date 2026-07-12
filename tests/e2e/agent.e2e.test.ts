@@ -36,6 +36,9 @@ function agent(prompt: string, cwd: string, sessionDir: string, cont: boolean): 
   const args = [
     '-p',
     '--auto-approve',
+    '--no-skills',
+    '--no-rules',
+    '--no-extensions',
     '--model',
     model,
     '--session-dir',
