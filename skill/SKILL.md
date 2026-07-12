@@ -239,6 +239,33 @@ with their real output, or real inputs mapped to real outputs — is also part o
 the floor. An idealized or invented example does not count; a user node without
 one has not met the floor.
 
+## Starlight syntax worth reaching for
+
+Pages render as MDX through Starlight, so plain Markdown is not your only
+tool. Reach for the following when they genuinely serve the mental model.
+The same restraint that governs mermaid applies: prose is the default,
+structure earns its place — this is seasoning, not the meal.
+
+- **Asides (callouts)** — `:::note`, `:::tip`, `:::caution`, `:::danger`,
+  optionally titled `:::caution[Gotcha]`. The natural home for a constraint,
+  an invariant, or a footgun you want to flag without derailing the prose.
+  No import needed.
+- **Code-block titles and highlights** (Expressive Code, on by default) —
+  open a fenced code block with `title="src/foo.ts"` after the language, and
+  draw the eye to the load-bearing lines with `{4-7}` or a term with `"handleX"`.
+  This is the visual partner of a `path:line` anchor: name the block with the file,
+  highlight the exact lines your prose points at.
+- **`<Steps>`** — wraps an ordered list into a numbered walkthrough, which is
+  what a getting-started or usage node's steps want to be. Import it from
+  `@astrojs/starlight/components`.
+- **`<details><summary>`** — collapse secondary detail so the page leads with
+  value and keeps the digression out of the reader's way. Plain HTML, no
+  import.
+
+Components are safe, but keep every `carto:` link in a plain Markdown link
+target as described above — a `carto:` target placed inside a JSX prop is
+invisible to the validator and the build-time rewriter.
+
 ## Verification disciplines (non-negotiable)
 
 1. **Comments, docstrings, and names are assumptions, not evidence.** Use them as
