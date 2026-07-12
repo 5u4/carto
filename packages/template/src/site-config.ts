@@ -42,13 +42,13 @@ function resolveHomeId(manifest: Manifest): string | undefined {
 
 function labelFor(manifest: Manifest, node: Node, titles: Map<string, string>): Pick<SidebarEntry, 'label' | 'translations'> {
   const label = titles.get(`${node.id}:${manifest.defaultLocale}`) ?? slugOf(node)
-  const translations: Record<string, string> = {}
+  let translations: Record<string, string> | undefined
   for (const locale of manifest.locales) {
     if (locale === manifest.defaultLocale) continue
     const translated = titles.get(`${node.id}:${locale}`)
-    if (translated) translations[locale] = translated
+    if (translated) (translations ??= {})[locale] = translated
   }
-  return Object.keys(translations).length > 0 ? { label, translations } : { label }
+  return translations ? { label, translations } : { label }
 }
 
 function entryFor(manifest: Manifest, node: Node, titles: Map<string, string>): SidebarEntry {
