@@ -7,7 +7,8 @@ export const initCommand = defineCommand({
   meta: { name: 'init', description: 'Scaffold carto.json and docs/ in the current directory' },
   args: {
     locales: { type: 'string', description: 'Comma-separated locales', default: 'en' },
-    defaultLocale: { type: 'string', description: 'Default locale', default: 'en' }
+    defaultLocale: { type: 'string', description: 'Default locale', default: 'en' },
+    codeRoot: { type: 'string', description: 'Code root to document, relative to this doc root (default ".")' }
   },
   async run({ args }) {
     const root = process.cwd()
@@ -22,6 +23,7 @@ export const initCommand = defineCommand({
       locales,
       defaultLocale: args.defaultLocale,
       updated_at: new Date().toISOString(),
+      ...(args.codeRoot ? { codeRoot: args.codeRoot } : {}),
       nodes: []
     }
     try {

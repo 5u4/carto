@@ -6,6 +6,7 @@ import {
   checkTree,
   statusReport,
   resolveCartoLink,
+  codeRootDir,
   ManifestError,
   type Manifest,
   type TreeIssue,
@@ -36,7 +37,7 @@ export const validateCommand = defineCommand({
       errors.push(`home points to unknown node id "${manifest.home}"`)
     }
 
-    const report = await statusReport(manifest, root)
+    const report = await statusReport(manifest, codeRootDir(manifest, root))
     for (const node of report) {
       if (node.state === 'unsynced') errors.push(`node ${node.id} is unsynced; run carto sync`)
       else if (node.state === 'stale') {

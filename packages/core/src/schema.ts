@@ -33,6 +33,7 @@ export const manifestSchema = z
     locales: z.array(z.string().min(1)).min(1),
     defaultLocale: z.string().min(1),
     updated_at: z.string().min(1),
+    codeRoot: z.string().min(1).optional(),
     home: z.string().regex(ID_PATTERN).optional(),
     nodes: z.array(nodeSchema)
   })
