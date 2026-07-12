@@ -21,15 +21,18 @@ chain — so a link never points at a location that can move.
 ## The manifest
 
 One `carto.json` per doc root = one site. It carries structure and source
-tracking only — **no prose**. The schema (`packages/core/src/schema.ts:24`)
+tracking only — **no prose**. The schema (`packages/core/src/schema.ts:30`)
 requires `version: 1`, a non-empty unique `locales` list with `defaultLocale` a
 member of it, and a `nodes` array. An optional top-level `home` names the node
 id the site root `/` redirects to; omit it and the root falls back to the first
-root node. Cross-field rules are checked in a `superRefine`: duplicate locales, a
-`defaultLocale` outside `locales`, and duplicate node ids all fail
-(`packages/core/src/schema.ts:33`).
+root node. An optional `codeRoot` points `sources` at a code tree separate from
+the doc root (`packages/core/src/schema.ts:36`), resolved relative to the
+manifest and defaulting to `.` (`packages/core/src/manifest.ts:6`). Cross-field
+rules are checked in a `superRefine`: duplicate locales, a `defaultLocale`
+outside `locales`, and duplicate node ids all fail
+(`packages/core/src/schema.ts:40`).
 
-A node has four fields (`packages/core/src/schema.ts:17`):
+A node has four fields (`packages/core/src/schema.ts:23`):
 
 - **`id`** — required, globally unique, immutable. Pattern
   `^[a-z0-9][a-z0-9-]*$` (`packages/core/src/schema.ts:3`) — lowercase, digits,

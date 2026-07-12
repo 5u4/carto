@@ -35,20 +35,21 @@ a **locale** is one language — every node needs one `.mdx` per declared locale
 
 ### 1. Scaffold the doc root
 
-`carto init` writes an empty `carto.json` and a `docs/` directory into the
-current directory. It refuses to clobber an existing manifest
-(`packages/cli/src/commands/init.ts:15`):
+`carto init` writes an empty `carto.json`, a `docs/` directory, and a
+`carto.config.mjs` Starlight-override stub into the current directory. It refuses
+to clobber an existing manifest (`packages/cli/src/commands/init.ts:16`):
 
 ```
 $ carto init
-initialized carto.json (locales: en) and docs/
+initialized carto.json, docs/, carto.config.mjs (locales: en)
 
 $ carto init
 carto.json already exists; refusing to overwrite
 ```
 
-Pass `--locales en,zh` to declare more than one language up front
-(`packages/cli/src/commands/init.ts:19`).
+Pass `--locales en,zh` to declare more than one language up front, or
+`--codeRoot ../src` to point sources at a code tree outside the doc root
+(`packages/cli/src/commands/init.ts:9`).
 
 ### 2. Let the agent plan and write
 

@@ -21,7 +21,7 @@ signal failure by exit code, so they drop straight into CI.
 
 | Command | Does for you | Exit |
 |---|---|---|
-| `init` | Scaffold `carto.json` + `docs/` | 1 if `carto.json` exists |
+| `init` | Scaffold `carto.json` + `docs/` + `carto.config.mjs` | 1 if `carto.json` exists |
 | `status` | Report each node's freshness | non-zero if any node not fresh |
 | `sync` | Write every source hash | 1 if a source file is missing |
 | `coverage` | List files no node source tracks | 0, or 1 with `--fail-on-uncovered` |
@@ -50,14 +50,16 @@ COMMANDS
 
 ## init
 
-Scaffolds an empty `carto.json` and a `docs/` directory. Refuses to overwrite an
-existing manifest — the guard is an `access` check that exits 1
-(`packages/cli/src/commands/init.ts:15`). `--locales en,zh` declares the locale
-list; `--defaultLocale` picks the default (`packages/cli/src/commands/init.ts:19`).
+Scaffolds an empty `carto.json`, a `docs/` directory, and a `carto.config.mjs`
+Starlight-override stub (only if absent). Refuses to overwrite an existing
+manifest — the guard is an `exists` check that exits 1
+(`packages/cli/src/commands/init.ts:16`). `--locales en,zh` declares the locale
+list, `--defaultLocale` picks the default, and `--codeRoot` points sources at a
+code tree resolved relative to the doc root (`packages/cli/src/commands/init.ts:8`).
 
 ```
 $ carto init
-initialized carto.json (locales: en) and docs/
+initialized carto.json, docs/, carto.config.mjs (locales: en)
 
 $ carto init
 carto.json already exists; refusing to overwrite

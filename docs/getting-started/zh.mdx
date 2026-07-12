@@ -30,18 +30,20 @@ validate 要么把你送回去修某个页面，要么退出码为 0，你就完
 
 ### 1. 搭建文档根
 
-`carto init` 在当前目录写入一个空的 `carto.json` 和一个 `docs/` 目录。它拒绝覆盖已存在的
-清单（`packages/cli/src/commands/init.ts:15`）：
+`carto init` 在当前目录写入一个空的 `carto.json`、一个 `docs/` 目录，以及一个
+`carto.config.mjs` Starlight 覆盖 stub。它拒绝覆盖已存在的清单
+（`packages/cli/src/commands/init.ts:16`）：
 
 ```
 $ carto init
-initialized carto.json (locales: en) and docs/
+initialized carto.json, docs/, carto.config.mjs (locales: en)
 
 $ carto init
 carto.json already exists; refusing to overwrite
 ```
 
-传 `--locales en,zh` 可在一开始就声明多种语言（`packages/cli/src/commands/init.ts:19`）。
+传 `--locales en,zh` 可在一开始就声明多种语言，或传 `--codeRoot ../src` 让 sources
+指向文档根之外的代码树（`packages/cli/src/commands/init.ts:9`）。
 
 ### 2. 让 agent 规划并写作
 

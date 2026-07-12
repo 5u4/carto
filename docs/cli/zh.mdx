@@ -18,7 +18,7 @@ title: CLI 参考
 
 | 命令 | 为你做什么 | 退出码 |
 |---|---|---|
-| `init` | 搭建 `carto.json` + `docs/` | 若 `carto.json` 已存在则为 1 |
+| `init` | 搭建 `carto.json` + `docs/` + `carto.config.mjs` | 若 `carto.json` 已存在则为 1 |
 | `status` | 报告每个节点的新鲜度 | 有任一节点非 fresh 则非零 |
 | `sync` | 写入每个源文件哈希 | 有源文件缺失则为 1 |
 | `coverage` | 列出没有任何节点 source 追踪的文件 | 0，或配合 `--fail-on-uncovered` 为 1 |
@@ -47,13 +47,15 @@ COMMANDS
 
 ## init
 
-搭建一个空的 `carto.json` 和一个 `docs/` 目录。拒绝覆盖已存在的清单——护栏是一个 `access`
-检查，命中则退出 1（`packages/cli/src/commands/init.ts:15`）。`--locales en,zh` 声明语言列表；
-`--defaultLocale` 选定默认语言（`packages/cli/src/commands/init.ts:19`）。
+搭建一个空的 `carto.json`、一个 `docs/` 目录，以及一个 `carto.config.mjs` Starlight
+覆盖 stub（仅当其不存在时）。拒绝覆盖已存在的清单——护栏是一个 `exists` 检查，命中则
+退出 1（`packages/cli/src/commands/init.ts:16`）。`--locales en,zh` 声明语言列表，
+`--defaultLocale` 选定默认语言，`--codeRoot` 让 sources 指向一个相对文档根解析的代码树
+（`packages/cli/src/commands/init.ts:8`）。
 
 ```
 $ carto init
-initialized carto.json (locales: en) and docs/
+initialized carto.json, docs/, carto.config.mjs (locales: en)
 
 $ carto init
 carto.json already exists; refusing to overwrite
