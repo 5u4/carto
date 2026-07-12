@@ -1,0 +1,5 @@
+.sl-banner {
+  max-width: var(--sl-content-width);
+  margin-inline: var(--sl-content-margin-inline, auto);
+  border-radius: 0.5rem;
+}

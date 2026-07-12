@@ -91,9 +91,11 @@ function validateUserConfig(value: unknown, name: string): UserConfig {
 }
 
 export function mergeStarlight(user: StarlightOptions, owned: OwnedStarlight): StarlightOptions {
+  const userCss = Array.isArray(user.customCss) ? user.customCss : []
   return {
     title: 'Carto',
     ...user,
+    customCss: [...userCss, './src/carto.css'],
     locales: owned.locales,
     sidebar: owned.sidebar
   }

@@ -128,10 +128,14 @@ describe('mergeStarlight', () => {
     expect(mergeStarlight({ title: 'My Docs' }, owned).title).toBe('My Docs')
   })
 
-  it('passes user options through untouched', () => {
+  it('appends carto css after user customCss and preserves other options', () => {
     const merged = mergeStarlight({ customCss: ['./a.css'], plugins: ['p'] }, owned)
-    expect(merged.customCss).toEqual(['./a.css'])
+    expect(merged.customCss).toEqual(['./a.css', './src/carto.css'])
     expect(merged.plugins).toEqual(['p'])
+  })
+
+  it('injects carto css even when the user sets no customCss', () => {
+    expect(mergeStarlight({}, owned).customCss).toEqual(['./src/carto.css'])
   })
 
   it('forces owned locales and sidebar to win over user values', () => {
