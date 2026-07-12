@@ -262,17 +262,9 @@ structure earns its place — this is seasoning, not the meal.
   value and keeps the digression out of the reader's way. Plain HTML, no
   import.
 
-Skip the decorative components — `<Card>`, `<CardGrid>`, `<LinkCard>`,
-`<Badge>`, `<Icon>`, `<Tabs>`. They dress up landing pages but do little for a
-reader building a mental model, and they inflate the diff.
-
-Keep every `carto:` link a plain Markdown link — `[label](carto:id)` or
-`[](carto:id)`. Both the link validator (packages/cli/src/links.ts:3) and the
-build-time rewriter (packages/template/src/materialize.ts:61) find carto links
-by matching the `](carto:…)` pattern alone, so a `carto:` target tucked inside
-a JSX prop is invisible to validation and never rewritten into a real URL.
-MDX components themselves are fine — only the `carto:` target is constrained: it
-must sit in a plain Markdown link target, never in a JSX prop.
+Components are safe, but keep every `carto:` link in a plain Markdown link
+target as described above — a `carto:` target placed inside a JSX prop is
+invisible to the validator and the build-time rewriter.
 
 ## Verification disciplines (non-negotiable)
 
