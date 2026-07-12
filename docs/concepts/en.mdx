@@ -27,7 +27,7 @@ member of it, and a `nodes` array. An optional top-level `home` names the node
 id the site root `/` redirects to; omit it and the root falls back to the first
 root node. An optional `codeRoot` points `sources` at a code tree separate from
 the doc root (`packages/core/src/schema.ts:36`), resolved relative to the
-manifest and defaulting to `.` (`packages/core/src/manifest.ts:6`). Cross-field
+manifest and defaulting to `.` (`packages/core/src/manifest.ts:7`). Cross-field
 rules are checked in a `superRefine`: duplicate locales, a `defaultLocale`
 outside `locales`, and duplicate node ids all fail
 (`packages/core/src/schema.ts:40`).

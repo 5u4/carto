@@ -56,7 +56,7 @@ otherwise it writes each node's `.mdx` to a **slug-chain path** —
 replaces every `carto:<id>` with the resolved URL and fills empty labels with the
 target's title (`packages/template/src/materialize.ts:62`); those titles come from
 `collectTitles`, which now lives in `site-config.ts` and reads each page's
-frontmatter (`packages/template/src/site-config.ts:62`, imported at
+frontmatter (`packages/template/src/site-config.ts:62`, called at
 `packages/template/src/materialize.ts:20`).
 Then `injectStalenessBanner` prepends a `banner.content` to the page's
 frontmatter whenever the node is `stale` or `missing`, so the rendered site

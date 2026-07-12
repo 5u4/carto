@@ -45,7 +45,7 @@ Starlight 硬编码 `src/content/docs`，并从目录结构推导 locale 与 URL
 把每个 `carto:<id>` 替换为解析后的 URL 并用目标标题填充空标签
 （`packages/template/src/materialize.ts:62`）；这些标题来自 `collectTitles`，它现在位于
 `site-config.ts`，读取每个页面的 frontmatter（`packages/template/src/site-config.ts:62`，
-在 `packages/template/src/materialize.ts:20` 被 import）。随后 `injectStalenessBanner` 在节点为
+在 `packages/template/src/materialize.ts:20` 被调用）。随后 `injectStalenessBanner` 在节点为
 `stale` 或 `missing` 时给页面 frontmatter 前置一个 `banner.content`，让渲染后的站点显眼地
 警示哪些源文件漂移了（`packages/template/src/materialize.ts:27`、`packages/template/src/staleness-banner.ts:3`）。
 

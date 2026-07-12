@@ -22,7 +22,7 @@ title: 核心概念
 `defaultLocale` 是其成员、以及一个 `nodes` 数组。可选的顶层 `home` 指定站点根 `/` 跳转到的
 节点 id；省略它则根路径回退到第一个根节点。可选的 `codeRoot` 让 `sources` 指向一个独立于
 文档根的代码树（`packages/core/src/schema.ts:36`），相对清单解析，默认为 `.`
-（`packages/core/src/manifest.ts:6`）。跨字段规则在 `superRefine` 中检查：重复的
+（`packages/core/src/manifest.ts:7`）。跨字段规则在 `superRefine` 中检查：重复的
 locale、`locales` 之外的 `defaultLocale`、以及重复的节点 id 都会失败
 （`packages/core/src/schema.ts:40`）。
 
