@@ -3,6 +3,7 @@ import { basename, dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { childrenOf, codeRootDir, readManifest, resolveCartoLink, rootChain, slugOf, statusReport, type Manifest, type Node, type NodeStatus } from '@carto/core'
 import { injectStalenessBanner } from './staleness-banner.js'
+import { collectTitles } from './site-config.js'
 
 const here = dirname(fileURLToPath(import.meta.url))
 const contentDir = join(here, '..', 'src', 'content', 'docs')
@@ -65,35 +66,6 @@ function rewriteLinks(mdx: string, manifest: Manifest, locale: string, titles: M
     const text = label.length > 0 ? label : (titles.get(`${result.id}:${locale}`) ?? result.id)
     return `${open}${text}${mid}${result.url}${close}`
   })
-}
-
-async function collectTitles(root: string, manifest: Manifest): Promise<Map<string, string>> {
-  const titles = new Map<string, string>()
-  for (const node of manifest.nodes) {
-    for (const locale of manifest.locales) {
-      const source = join(root, 'docs', node.id, `${locale}.mdx`)
-      const raw = await readFile(source, 'utf8')
-      const title = extractTitle(raw)
-      if (title) titles.set(`${node.id}:${locale}`, title)
-    }
-  }
-  return titles
-}
-
-function extractTitle(mdx: string): string | undefined {
-  const match = mdx.match(/^---\r?\n([\s\S]*?)\r?\n---/)
-  if (!match) return undefined
-  const frontmatter = match[1] ?? ''
-  const titleLine = frontmatter.split(/\r?\n/).find((line) => /^title:/.test(line))
-  if (!titleLine) return undefined
-  const value = titleLine.slice(titleLine.indexOf(':') + 1).trim()
-  return stripQuotes(value)
-}
-
-function stripQuotes(value: string): string {
-  if (value.length >= 2 && value.startsWith('"') && value.endsWith('"')) return value.slice(1, -1)
-  if (value.length >= 2 && value.startsWith("'") && value.endsWith("'")) return value.slice(1, -1)
-  return value
 }
 
 await main()

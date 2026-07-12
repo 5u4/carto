@@ -1,9 +1,9 @@
-import { mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import { urlPath, type Manifest, type Node } from '@carto/core'
-import { buildLocales, buildRedirects, buildSidebar, loadUserConfig, mergeStarlight } from './site-config'
+import { buildLocales, buildRedirects, buildSidebar, collectTitles, loadUserConfig, mergeStarlight } from './site-config'
 
 function node(partial: Partial<Node> & { id: string }): Node {
   return { sources: [], ...partial }
@@ -73,6 +73,36 @@ describe('buildSidebar', () => {
     }
     const sidebar = buildSidebar(m)
     expect(sidebar).toEqual([{ label: 'solo', link: urlPath(m, 'solo', 'en') }])
+  })
+
+  it('uses the default-locale title as label when titles are provided', () => {
+    const titles = new Map([
+      ['overview:en', 'What is carto'],
+      ['api:en', 'Backend API']
+    ])
+    const sidebar = buildSidebar(manifest(), titles)
+    expect(sidebar.map((entry) => entry.label)).toEqual(['What is carto', 'Backend API'])
+  })
+
+  it('falls back to the slug when a node has no title', () => {
+    const titles = new Map([['overview:en', 'What is carto']])
+    const [, api] = buildSidebar(manifest(), titles)
+    expect(api?.label).toBe('backend')
+  })
+
+  it('carries non-default-locale titles as sidebar translations', () => {
+    const titles = new Map([
+      ['overview:en', 'What is carto'],
+      ['overview:zh', 'carto 是什么']
+    ])
+    const [overview] = buildSidebar(manifest(), titles)
+    expect(overview?.translations).toEqual({ zh: 'carto 是什么' })
+  })
+
+  it('omits translations when only the default locale has a title', () => {
+    const titles = new Map([['overview:en', 'What is carto']])
+    const [overview] = buildSidebar(manifest(), titles)
+    expect(overview?.translations).toBeUndefined()
   })
 })
 
@@ -181,5 +211,48 @@ describe('loadUserConfig', () => {
     dir = await mkdtemp(join(tmpdir(), 'carto-cfg-'))
     await writeFile(join(dir, 'carto.config.mjs'), 'export const notDefault = {}', 'utf8')
     await expect(loadUserConfig(dir)).rejects.toThrow(/must default-export an object/)
+  })
+})
+
+describe('collectTitles', () => {
+  let dir: string | undefined
+
+  afterEach(async () => {
+    if (dir) await rm(dir, { recursive: true, force: true })
+  })
+
+  async function writeDoc(root: string, id: string, locale: string, frontmatter: string): Promise<void> {
+    await mkdir(join(root, 'docs', id), { recursive: true })
+    await writeFile(join(root, 'docs', id, `${locale}.mdx`), frontmatter, 'utf8')
+  }
+
+  it('maps id:locale to the frontmatter title for each present locale', async () => {
+    dir = await mkdtemp(join(tmpdir(), 'carto-titles-'))
+    await writeDoc(dir, 'overview', 'en', '---\ntitle: What is carto\n---\nbody')
+    await writeDoc(dir, 'overview', 'zh', "---\ntitle: '什么是 carto'\n---\nbody")
+    const m: Manifest = {
+      version: 1,
+      locales: ['en', 'zh'],
+      defaultLocale: 'en',
+      updated_at: '2026-07-08T00:00:00Z',
+      nodes: [node({ id: 'overview' })]
+    }
+    const titles = await collectTitles(dir, m)
+    expect(titles.get('overview:en')).toBe('What is carto')
+    expect(titles.get('overview:zh')).toBe('什么是 carto')
+  })
+
+  it('omits an entry when the frontmatter has no title', async () => {
+    dir = await mkdtemp(join(tmpdir(), 'carto-titles-'))
+    await writeDoc(dir, 'overview', 'en', '---\ndescription: no title here\n---\nbody')
+    const m: Manifest = {
+      version: 1,
+      locales: ['en'],
+      defaultLocale: 'en',
+      updated_at: '2026-07-08T00:00:00Z',
+      nodes: [node({ id: 'overview' })]
+    }
+    const titles = await collectTitles(dir, m)
+    expect(titles.has('overview:en')).toBe(false)
   })
 })
