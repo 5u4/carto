@@ -251,9 +251,9 @@ structure earns its place — this is seasoning, not the meal.
   an invariant, or a footgun you want to flag without derailing the prose.
   No import needed.
 - **Code-block titles and highlights** (Expressive Code, on by default) —
-  head a snippet with its file via ` ```ts title="src/foo.ts" `, and draw the
-  eye to the load-bearing lines with `{4-7}` or a term with `"handleX"`. This
-  is the visual partner of a `path:line` anchor: name the block with the file,
+  open a fenced code block with `title="src/foo.ts"` after the language, and
+  draw the eye to the load-bearing lines with `{4-7}` or a term with `"handleX"`.
+  This is the visual partner of a `path:line` anchor: name the block with the file,
   highlight the exact lines your prose points at.
 - **`<Steps>`** — wraps an ordered list into a numbered walkthrough, which is
   what a getting-started or usage node's steps want to be. Import it from
@@ -271,7 +271,8 @@ Keep every `carto:` link a plain Markdown link — `[label](carto:id)` or
 build-time rewriter (packages/template/src/materialize.ts:61) find carto links
 by matching the `](carto:…)` pattern alone, so a `carto:` target tucked inside
 a JSX prop is invisible to validation and never rewritten into a real URL.
-Components are safe; carto links inside component props are not.
+MDX components themselves are fine — only the `carto:` target is constrained: it
+must sit in a plain Markdown link target, never in a JSX prop.
 
 ## Verification disciplines (non-negotiable)
 
