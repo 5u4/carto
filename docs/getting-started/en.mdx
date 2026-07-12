@@ -35,9 +35,10 @@ a **locale** is one language — every node needs one `.mdx` per declared locale
 
 ### 1. Scaffold the doc root
 
-`carto init` writes an empty `carto.json`, a `docs/` directory, and a
-`carto.config.mjs` Starlight-override stub into the current directory. It refuses
-to clobber an existing manifest (`packages/cli/src/commands/init.ts:16`):
+`carto init` writes an empty `carto.json` and a `docs/` directory into the
+current directory, plus a `carto.config.mjs` Starlight-override stub when one is
+not already present. It refuses to clobber an existing manifest
+(`packages/cli/src/commands/init.ts:16`):
 
 ```
 $ carto init

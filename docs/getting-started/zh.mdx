@@ -30,8 +30,8 @@ validate 要么把你送回去修某个页面，要么退出码为 0，你就完
 
 ### 1. 搭建文档根
 
-`carto init` 在当前目录写入一个空的 `carto.json`、一个 `docs/` 目录，以及一个
-`carto.config.mjs` Starlight 覆盖 stub。它拒绝覆盖已存在的清单
+`carto init` 在当前目录写入一个空的 `carto.json` 和一个 `docs/` 目录，并在尚不存在
+`carto.config.mjs` 时额外写入一个 Starlight 覆盖 stub。它拒绝覆盖已存在的清单
 （`packages/cli/src/commands/init.ts:16`）：
 
 ```
