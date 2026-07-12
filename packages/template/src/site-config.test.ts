@@ -74,6 +74,36 @@ describe('buildSidebar', () => {
     const sidebar = buildSidebar(m)
     expect(sidebar).toEqual([{ label: 'solo', link: urlPath(m, 'solo', 'en') }])
   })
+
+  it('uses the default-locale title as label when titles are provided', () => {
+    const titles = new Map([
+      ['overview:en', 'What is carto'],
+      ['api:en', 'Backend API']
+    ])
+    const sidebar = buildSidebar(manifest(), titles)
+    expect(sidebar.map((entry) => entry.label)).toEqual(['What is carto', 'Backend API'])
+  })
+
+  it('falls back to the slug when a node has no title', () => {
+    const titles = new Map([['overview:en', 'What is carto']])
+    const [, api] = buildSidebar(manifest(), titles)
+    expect(api?.label).toBe('backend')
+  })
+
+  it('carries non-default-locale titles as sidebar translations', () => {
+    const titles = new Map([
+      ['overview:en', 'What is carto'],
+      ['overview:zh', 'carto 是什么']
+    ])
+    const [overview] = buildSidebar(manifest(), titles)
+    expect(overview?.translations).toEqual({ zh: 'carto 是什么' })
+  })
+
+  it('omits translations when only the default locale has a title', () => {
+    const titles = new Map([['overview:en', 'What is carto']])
+    const [overview] = buildSidebar(manifest(), titles)
+    expect(overview?.translations).toBeUndefined()
+  })
 })
 
 describe('buildRedirects', () => {
