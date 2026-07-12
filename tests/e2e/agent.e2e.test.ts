@@ -83,6 +83,7 @@ describe.skipIf(!runE2E)('agent e2e: document a mini codebase with carto', () =>
       const docRoot = join(root, 'docs-root')
       const sessionDir = join(docRoot, '.session')
       try {
+        mkdirSync(join(codeRoot, 'src'), { recursive: true })
         cpSync(fixtureSrc, join(codeRoot, 'src'), { recursive: true })
         mkdirSync(docRoot, { recursive: true })
 

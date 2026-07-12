@@ -1,7 +1,7 @@
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { basename, dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { childrenOf, readManifest, resolveCartoLink, rootChain, slugOf, statusReport, type Manifest, type Node, type NodeStatus } from '@carto/core'
+import { childrenOf, codeRootDir, readManifest, resolveCartoLink, rootChain, slugOf, statusReport, type Manifest, type Node, type NodeStatus } from '@carto/core'
 import { injectStalenessBanner } from './staleness-banner.js'
 
 const here = dirname(fileURLToPath(import.meta.url))
@@ -17,7 +17,7 @@ async function main(): Promise<void> {
     return
   }
   const titles = await collectTitles(root, manifest)
-  const freshness = new Map((await statusReport(manifest, root)).map((s): [string, NodeStatus] => [s.id, s]))
+  const freshness = new Map((await statusReport(manifest, codeRootDir(manifest, root))).map((s): [string, NodeStatus] => [s.id, s]))
   for (const node of manifest.nodes) {
     for (const locale of manifest.locales) {
       const source = join(root, 'docs', node.id, `${locale}.mdx`)
