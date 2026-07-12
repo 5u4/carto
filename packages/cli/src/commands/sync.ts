@@ -1,6 +1,6 @@
 import { defineCommand } from 'citty'
 import { join } from 'node:path'
-import { readManifest, syncManifest, writeManifest, ManifestError } from '@carto/core'
+import { readManifest, syncManifest, writeManifest, codeRootDir, ManifestError } from '@carto/core'
 import { headCommit } from '../git.js'
 
 export const syncCommand = defineCommand({
@@ -10,7 +10,8 @@ export const syncCommand = defineCommand({
     const path = join(root, 'carto.json')
     try {
       const manifest = await readManifest(path)
-      const synced = await syncManifest(manifest, { rootDir: root, commit: headCommit(root) })
+      const codeRoot = codeRootDir(manifest, root)
+      const synced = await syncManifest(manifest, { rootDir: codeRoot, commit: headCommit(codeRoot) })
       await writeManifest(path, synced)
       console.log(`synced ${synced.nodes.length} node(s)`)
     } catch (error) {

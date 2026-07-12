@@ -57,10 +57,12 @@ async function walk(rootDir: string, ig: Ignore): Promise<string[]> {
   return files
 }
 
-export async function coverageReport(manifest: Manifest, rootDir: string): Promise<CoverageReport> {
-  const ig = await buildIgnore(rootDir)
-  const files = await walk(rootDir, ig)
-  const tracked = new Set(manifest.nodes.flatMap((node) => node.sources.map((source) => toPosix(relative(rootDir, join(rootDir, source.file))))))
+export async function coverageReport(manifest: Manifest, codeRoot: string, docRoot?: string): Promise<CoverageReport> {
+  const ig = await buildIgnore(codeRoot)
+  const nestedDoc = docRoot === undefined ? undefined : toPosix(relative(codeRoot, docRoot))
+  if (nestedDoc !== undefined && nestedDoc !== '' && !nestedDoc.startsWith('..')) ig.add(`/${nestedDoc}/`)
+  const files = await walk(codeRoot, ig)
+  const tracked = new Set(manifest.nodes.flatMap((node) => node.sources.map((source) => toPosix(relative(codeRoot, join(codeRoot, source.file))))))
   const uncovered = files.filter((file) => !tracked.has(file)).sort()
   return { total: files.length, covered: files.length - uncovered.length, uncovered }
 }

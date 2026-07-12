@@ -87,4 +87,15 @@ describe('coverageReport', () => {
       expect(report.uncovered).toEqual(['keep.ts'])
     })
   })
+
+  it('scans the code root and excludes a doc root nested inside it', async () => {
+    await withTempDir(async (dir) => {
+      await mkdir(join(dir, '.carto', 'docs', 'n'), { recursive: true })
+      await writeFile(join(dir, '.carto', 'carto.json'), '{}')
+      await writeFile(join(dir, '.carto', 'docs', 'n', 'en.mdx'), 'doc')
+      await writeFile(join(dir, 'real.ts'), 'src')
+      const report = await coverageReport(manifest([]), dir, join(dir, '.carto'))
+      expect(report.uncovered).toEqual(['real.ts'])
+    })
+  })
 })

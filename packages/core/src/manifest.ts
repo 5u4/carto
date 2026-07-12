@@ -1,7 +1,11 @@
 import { readFile, writeFile } from 'node:fs/promises'
-import { join } from 'node:path'
+import { join, resolve } from 'node:path'
 import { manifestSchema, type Manifest, type Node, type Source } from './schema.js'
 import { hashFile } from './hash.js'
+
+export function codeRootDir(manifest: Manifest, docRoot: string): string {
+  return resolve(docRoot, manifest.codeRoot ?? '.')
+}
 
 export class ManifestError extends Error {
   constructor(message: string) {
@@ -29,6 +33,7 @@ export function serializeManifest(manifest: Manifest): string {
     defaultLocale: manifest.defaultLocale,
     updated_at: manifest.updated_at
   }
+  if (manifest.codeRoot !== undefined) ordered.codeRoot = manifest.codeRoot
   if (manifest.home !== undefined) ordered.home = manifest.home
   ordered.nodes = manifest.nodes.map((node) => orderNode(node))
   return `${JSON.stringify(ordered, null, 2)}\n`

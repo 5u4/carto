@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { ManifestError, parseManifest, readManifest, serializeManifest, syncManifest, writeManifest } from './manifest'
+import { ManifestError, codeRootDir, parseManifest, readManifest, serializeManifest, syncManifest, writeManifest } from './manifest'
 import type { Manifest } from './schema'
 
 function validManifest(): Manifest {
@@ -155,5 +155,19 @@ describe('syncManifest', () => {
     } finally {
       await rm(dir, { recursive: true, force: true })
     }
+  })
+})
+
+describe('codeRootDir', () => {
+  it('returns the doc root unchanged when codeRoot is absent', () => {
+    expect(codeRootDir(validManifest(), '/docs/root')).toBe('/docs/root')
+  })
+
+  it('resolves a relative codeRoot against the doc root', () => {
+    expect(codeRootDir({ ...validManifest(), codeRoot: '..' }, '/repo/.carto')).toBe('/repo')
+  })
+
+  it('honors an absolute codeRoot verbatim', () => {
+    expect(codeRootDir({ ...validManifest(), codeRoot: '/srv/repo' }, '/home/user/.carto/x')).toBe('/srv/repo')
   })
 })
