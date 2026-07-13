@@ -48,7 +48,9 @@ COMMANDS
 ## init
 
 搭建一个空的 `carto.json`、一个 `docs/` 目录，以及一个 `carto.config.mjs` Starlight
-覆盖 stub（仅当其不存在时）。拒绝覆盖已存在的清单——护栏是一个 `exists` 检查，命中则
+覆盖 stub（仅当其不存在时）。搭建出的清单已经带有一个空的 `federated: []` 数组，
+可随时填入一个 `file` 条目（或一个仅有 schema 的 `git` 条目），让页面链接到另一个文档集
+（[](carto:concepts)）。拒绝覆盖已存在的清单——护栏是一个 `exists` 检查，命中则
 退出 1（`packages/cli/src/commands/init.ts:16`）。`--locales en,zh` 声明语言列表，
 `--defaultLocale` 选定默认语言，`--codeRoot` 让 sources 指向一个相对文档根解析的代码树
 （`packages/cli/src/commands/init.ts:11`）。
@@ -86,7 +88,7 @@ fresh     internals
 并刷新 `updated_at`（`packages/cli/src/commands/sync.ts:13`）。这个提交戳正是后续
 `carto status` 报告的 diff 基准；在 git 仓库之外它会被直接省略
 （`packages/cli/src/git.ts:5`）。在任何 `carto.json` 编辑之后、以及代码变化之后运行它。
-若某个已注册的源文件不存在，它会中止（`packages/core/src/manifest.ts:91`）。
+若某个已注册的源文件不存在，它会中止（`packages/core/src/manifest.ts:104`）。
 
 ```
 $ carto sync
@@ -112,10 +114,12 @@ all files covered
 ## validate
 
 完整的闸门：schema、id/slug 唯一性、parent 环、同步状态、每种语言一个 `.mdx`、`home`（若设置）
-指向一个真实节点，以及每个 `carto:` 链接是否可解析
-（`packages/cli/src/commands/validate.ts:17`）。缺失的文档、unsynced/stale 的节点，以及未知的
-`home` 都是错误；悬空的 parent 只是警告。有问题时以退出码 1 结束，并为每个问题打印一行
-`error:`；干净时打印 `validate: ok`（`packages/cli/src/commands/validate.ts:66`）。
+指向一个真实节点，以及每个 `carto:` 链接是否可解析——包括 `carto:<alias>/<id>` 联邦链接，
+其检查方式是先加载整张引用图（`packages/cli/src/commands/validate.ts:32`），
+再对图中每个链接做解析（`packages/cli/src/commands/validate.ts:71`）。缺失的文档、
+unsynced/stale 的节点，以及未知的 `home` 都是错误；悬空的 parent 只是警告。有问题时以
+退出码 1 结束，并为每个问题打印一行 `error:`；干净时打印 `validate: ok`
+（`packages/cli/src/commands/validate.ts:82`）。
 
 ```
 $ carto validate

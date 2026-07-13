@@ -23,6 +23,7 @@ export const initCommand = defineCommand({
       locales,
       defaultLocale: args.defaultLocale,
       updated_at: new Date().toISOString(),
+      federated: [],
       ...(args.codeRoot ? { codeRoot: args.codeRoot } : {}),
       nodes: []
     }

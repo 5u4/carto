@@ -6,7 +6,7 @@ import { coverageReport } from './coverage'
 import type { Manifest } from './schema'
 
 function manifest(nodes: Manifest['nodes']): Manifest {
-  return { version: 1, locales: ['en'], defaultLocale: 'en', updated_at: '2026-01-01T00:00:00Z', nodes }
+  return { version: 1, locales: ['en'], defaultLocale: 'en', updated_at: '2026-01-01T00:00:00Z', federated: [], nodes }
 }
 
 async function withTempDir<T>(fn: (dir: string) => Promise<T>): Promise<T> {

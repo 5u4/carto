@@ -32,6 +32,7 @@ describe('urlPath', () => {
       locales: ['en', 'zh'],
       defaultLocale: 'en',
       updated_at: '2026-07-08T00:00:00Z',
+      federated: [],
       nodes: [
         node({ id: 'api', slug: 'backend' }),
         node({ id: 'payments', slug: 'billing', parent: 'api' })

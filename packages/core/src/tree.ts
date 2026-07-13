@@ -27,10 +27,10 @@ export function rootChain(nodes: Node[], id: string): Node[] {
   return chain
 }
 
-export function urlPath(manifest: Manifest, id: string, locale: string): string {
-  const prefix = locale === manifest.defaultLocale ? '' : `/${locale}`
+export function urlPath(manifest: Manifest, id: string, locale: string, docPrefix = '', siteDefaultLocale = manifest.defaultLocale): string {
+  const localePrefix = locale === siteDefaultLocale ? '' : `/${locale}`
   const segments = rootChain(manifest.nodes, id).map((node) => slugOf(node))
-  return `${prefix}/${segments.join('/')}/`
+  return `${localePrefix}${docPrefix}/${segments.join('/')}/`
 }
 
 export type TreeIssue =

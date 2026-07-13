@@ -18,11 +18,14 @@ Astro + Starlight 能原生路由的布局。
 
 ## `@carto/core` —— 库
 
-一个扁平的桶文件（`packages/core/src/index.ts:2`）重导出七个模块：zod `schema`、`hash`
-（sha256/16）、`manifest`（read/write/`syncManifest`）、`tree`（`slugOf`、`childrenOf`、
-`rootChain`、`urlPath`、`checkTree`）、`resolver`（`parseCartoLink`/`resolveCartoLink`）、
-`status`（四态分类器）、以及 `coverage`（`coverageReport`，未追踪文件遍历）。这是其他包所
-依赖的每条规则的唯一定义；它编码的模型是 [](carto:concepts)。
+一个扁平的桶文件（`packages/core/src/index.ts:2`）重导出八个模块：zod `schema`
+（现在包含 `federated` 数组）、`hash`（sha256/16）、`manifest`（read/write/
+`syncManifest`）、`tree`（`slugOf`、`childrenOf`、`rootChain`、`urlPath`、
+`checkTree`）、`resolver`（`parseCartoLink`/`resolveCartoLink`，具备联邦感知能力）、
+`graph`（`loadGraph`，把一份清单整个 `federated` 引用图展平成一张按哈希索引的
+文档集映射）、`status`（四态分类器）、以及 `coverage`（`coverageReport`，未追踪
+文件遍历）。这是其他包所依赖的每条规则的唯一定义；它编码的模型是
+[](carto:concepts)。
 
 ## `@carto/cli` —— citty 接线
 
@@ -35,36 +38,67 @@ CLI 本地逻辑：`validate` 的 `extractCartoTargets`（`packages/cli/src/link
 
 ## `@carto/template` —— 先物料化再路由
 
-Starlight 硬编码 `src/content/docs`，并从目录结构推导 locale 与 URL。与其对抗，模板选择
-**物料化（materialize）**：`materialize.ts` 读取文档根的 `carto.json`（通过 `CARTO_ROOT`），
-清空并重建 `src/content/docs`（`packages/template/src/materialize.ts:13`）。当清单没有根节点时，
-它写一张空态 `index.mdx`——以文档根的文件夹名作标题——然后返回
-（`packages/template/src/materialize.ts:15`、`packages/template/src/materialize.ts:34`）；
-否则把每个节点的 `.mdx` 写到一个 **slug 链路径**——`rootChain(...).map(slugOf).join('/')`，
-非默认语言带语言前缀（`packages/template/src/materialize.ts:56`）。复制的同时，`rewriteLinks`
-把每个 `carto:<id>` 替换为解析后的 URL 并用目标标题填充空标签
-（`packages/template/src/materialize.ts:62`）；这些标题来自 `collectTitles`，它现在位于
-`site-config.ts`，读取每个页面的 frontmatter（`packages/template/src/site-config.ts:62`，
-在 `packages/template/src/materialize.ts:20` 被调用）。随后 `injectStalenessBanner` 在节点为
-`stale` 或 `missing` 时给页面 frontmatter 前置一个 `banner.content`，让渲染后的站点显眼地
-警示哪些源文件漂移了（`packages/template/src/materialize.ts:27`、`packages/template/src/staleness-banner.ts:3`）。
+Starlight 硬编码 `src/content/docs`，并从目录结构推导 locale 与 URL。与其对抗，
+模板选择**物料化（materialize）**：`materialize.ts` 的 `main` 读取 `CARTO_ROOT`，
+并通过 `loadGraph` 加载整个联邦图——根文档集加上它（传递地）联邦的每一个文档集
+（`packages/template/src/materialize.ts:26`、
+`packages/template/src/materialize.ts:28`），随后清空并重建 `src/content/docs`
+（`packages/template/src/materialize.ts:29`、
+`packages/template/src/materialize.ts:30`）。
 
-Astro 配置读取同一份清单，并通过 `buildLocales` / `buildSidebar` 从中构建 Starlight 的
-`locales` 与 `sidebar`（`packages/template/src/site-config.ts:7`、
-`packages/template/src/site-config.ts:23`）；`buildSidebar` 接收收集到的标题，因此每个条目的
-标签就是该页面每种语言的 frontmatter `title`——非默认语言随一个 `translations` 映射一同带上——
-页面没有标题时回退到 slug（`packages/template/src/site-config.ts:43`），`entryFor` 把节点树
-递归成嵌套条目（`packages/template/src/site-config.ts:54`）。`buildRedirects` 把站点根 `/`
-（以及每个语言根）送往 `home` 节点，未设 `home` 时送往第一个根节点
-（`packages/template/src/site-config.ts:27`）。在配置 Starlight 之前，配置先调用 `loadUserConfig`
-读取文档根下可选的 `carto.config.mjs`，再由 `mergeStarlight` 把用户的 `starlight` 覆盖铺在
-carto 自有的 `locales` 与 `sidebar` 之下——后者始终胜出（`packages/template/astro.config.mjs:11`、
-`packages/template/astro.config.mjs:23`；`packages/template/src/site-config.ts:104`、
-`packages/template/src/site-config.ts:134`）。其结果精确重现 `urlPath` 所计算的 URL，因此
-`carto:` 链接解析到真实路由。它还注册一个 remark 插件 `remarkJoinCjkLines`，去掉 Markdown
-在 CJK 源码换行处本会插入的多余空格（`packages/template/astro.config.mjs:18`、
-`packages/template/src/remark-join-cjk.ts:39`）。该包的对外表面是一个两行桶文件，重导出
-site-config 辅助函数（`packages/template/src/index.ts:2`）。
+当根文档集自身没有节点**且**清单未声明任何 `federated` 条目时，它写一张空态
+`index.mdx`——以文档根的文件夹名作标题——然后返回
+（`packages/template/src/materialize.ts:31`、
+`packages/template/src/materialize.ts:33`，函数位于
+`packages/template/src/materialize.ts:69`）；否则它遍历图中的每个文档集，通过
+`targetPath` 把每个节点的 `.mdx` 写到带该文档集前缀的 **slug 链路径**——
+`<docSet.prefix>/<rootChain(...).map(slugOf).join('/')>`，非默认语言带语言前缀
+（`packages/template/src/materialize.ts:90`）。
+
+复制的同时，`rewriteLinks` 把每个 `carto:<id>` **以及联邦形式的
+`carto:<alias>/<id>`** 目标替换为解析后的 URL——通过携带由图中各文档集构建出的
+`FederationContext` 调用 `resolveCartoLink`（`packages/template/src/materialize.ts:97`，
+解析调用位于 `packages/template/src/materialize.ts:106`），并用 `titleFor`
+（`packages/template/src/materialize.ts:113`）填充空标签；这些标题来自
+`collectGraphTitles`，它遍历图中每个文档集并读取每个页面的 frontmatter
+（`packages/template/src/site-config.ts:96`，在
+`packages/template/src/materialize.ts:37` 被调用）——单一清单版本的
+`collectTitles`（`packages/template/src/site-config.ts:90`）仍然按文档集在背后
+支撑它，也仍是非联邦内部用途的入口。
+
+新鲜度同样是图感知的：`collectFreshness` 对每个文档集用它自己的 `codeRootDir`
+运行它自己的 `statusReport`，以 `<docSet.hash>:<node.id>` 为键
+（`packages/template/src/materialize.ts:38`，函数位于
+`packages/template/src/materialize.ts:59`）——联邦文档集的过期状态绝不会用错
+`codeRoot` 来计算。随后 `injectStalenessBanner` 在节点为 `stale` 或 `missing` 时
+给页面 frontmatter 前置一个 `banner.content`，让渲染后的站点显眼地警示哪些源
+文件漂移了（`packages/template/src/materialize.ts:50`、
+`packages/template/src/staleness-banner.ts:3`）。
+
+Astro 配置加载同一份图，并通过 `buildLocales` / `buildGraphSidebar` 从中构建
+Starlight 的 `locales` 与 `sidebar`（`packages/template/src/site-config.ts:7`、
+`packages/template/src/site-config.ts:33`）；`buildGraphSidebar` 先用
+`buildSidebar` 渲染根文档集的侧边栏，再为每个联邦文档集追加一个由
+`docSetLabel` 标注的折叠区块（`packages/template/src/site-config.ts:44`）——
+`buildSidebar` 底层仍做逐清单的递归，因此每个条目的标签就是该页面每种语言的
+frontmatter `title`——非默认语言随一个 `translations` 映射一同带上——页面没有
+标题时回退到 slug（`packages/template/src/site-config.ts:71`），`entryFor` 把
+节点树递归成嵌套条目（`packages/template/src/site-config.ts:82`）。
+`buildGraphRedirects` 通过 `buildRedirects` 把站点根 `/`（以及每个语言根）送往
+根文档集的 `home` 节点，未设 `home` 时送往其第一个根节点
+（`packages/template/src/site-config.ts:62`、
+`packages/template/src/site-config.ts:51`）。在配置 Starlight 之前，配置先调用
+`loadUserConfig` 读取文档根下可选的 `carto.config.mjs`，再由 `mergeStarlight`
+把用户的 `starlight` 覆盖铺在 carto 自有的 `locales` 与 `sidebar` 之下——后者
+始终胜出（`packages/template/astro.config.mjs:11`、
+`packages/template/astro.config.mjs:23`；
+`packages/template/src/site-config.ts:144`、
+`packages/template/src/site-config.ts:174`）。其结果精确重现 `urlPath` 所计算的
+URL，因此内部链接与联邦链接都能解析到真实路由。它还注册一个 remark 插件
+`remarkJoinCjkLines`，去掉 Markdown 在 CJK 源码换行处本会插入的多余空格
+（`packages/template/astro.config.mjs:18`、
+`packages/template/src/remark-join-cjk.ts:39`）。该包的对外表面是一个两行桶
+文件，重导出 site-config 辅助函数（`packages/template/src/index.ts:2`）。
 
 ## `carto dev`/`build` 如何触达这里
 

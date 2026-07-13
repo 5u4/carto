@@ -66,6 +66,7 @@ function baseManifest(): Manifest {
     locales: ['en'],
     defaultLocale: 'en',
     updated_at: '2026-01-01T00:00:00.000Z',
+    federated: [],
     nodes: [
       { id: 'payments', sources: [{ file: 'payments.md' }] },
       { id: 'billing', sources: [{ file: 'billing.md' }] }
@@ -112,6 +113,7 @@ describe('carto validate', () => {
         locales: ['en'],
         defaultLocale: 'en',
         updated_at: '2026-01-01T00:00:00.000Z',
+        federated: [],
         nodes: [
           { id: 'payments', sources: [] },
           { id: 'payments', sources: [] }
@@ -155,6 +157,7 @@ describe('carto validate', () => {
         locales: ['en'],
         defaultLocale: 'en',
         updated_at: '2026-01-01T00:00:00.000Z',
+        federated: [],
         nodes: [{ id: 'payments', parent: 'ghost-parent', sources: [{ file: 'payments.md' }] }]
       }
       await writeFile(join(dir, 'payments.md'), 'payments source', 'utf8')
