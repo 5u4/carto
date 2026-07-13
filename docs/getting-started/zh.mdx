@@ -24,7 +24,7 @@ validate 要么把你送回去修某个页面，要么退出码为 0，你就完
 
 需要掌握三个概念：一个**节点**是一个页面，带一个不可变的 `id`；一个**源文件**是节点所描述
 行为所在的文件（失效的十字准星）；一个**语言（locale）**是一种语言——每个节点在每个已声明的
-语言下都需要一个 `.mdx`，否则 `validate` 失败（`packages/cli/src/commands/validate.ts:55`）。
+语言下都需要一个 `.mdx`，否则 `validate` 失败（`packages/cli/src/commands/validate.ts:65`）。
 
 ## 步骤
 
@@ -56,7 +56,7 @@ carto.json already exists; refusing to overwrite
 
 `carto sync` 计算并写入每个源文件的哈希，并刷新 `updated_at`
 （`packages/cli/src/commands/sync.ts:12`）。`carto validate` 随后校验 schema、树、同步状态，
-以及每个 `carto:` 链接是否可解析（`packages/cli/src/commands/validate.ts:17`）。
+以及每个 `carto:` 链接是否可解析（`packages/cli/src/commands/validate.ts:19`）。
 
 ## 完整示例——为本仓库编写文档
 

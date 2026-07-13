@@ -18,15 +18,16 @@ title: 核心概念
 ## 清单
 
 每个文档根一份 `carto.json` = 一个站点。它只承载结构和源追踪——**不含正文**。schema
-（`packages/core/src/schema.ts:30`）要求 `version: 1`、一个非空且唯一的 `locales` 列表且
+（`packages/core/src/schema.ts:46`）要求 `version: 1`、一个非空且唯一的 `locales` 列表且
 `defaultLocale` 是其成员、以及一个 `nodes` 数组。可选的顶层 `home` 指定站点根 `/` 跳转到的
 节点 id；省略它则根路径回退到第一个根节点。可选的 `codeRoot` 让 `sources` 指向一个独立于
-文档根的代码树（`packages/core/src/schema.ts:36`），相对清单解析，默认为 `.`
-（`packages/core/src/manifest.ts:7`）。跨字段规则在 `superRefine` 中检查：重复的
-locale、`locales` 之外的 `defaultLocale`、以及重复的节点 id 都会失败
-（`packages/core/src/schema.ts:40`）。
+文档根的代码树（`packages/core/src/schema.ts:52`），相对清单解析，默认为 `.`
+（`packages/core/src/manifest.ts:6`）。可选的 `federated` 数组接入其他文档集以支持跨站点
+链接——见 [](carto:concepts#federation)。跨字段规则在 `superRefine` 中检查：重复的
+locale、`locales` 之外的 `defaultLocale`、重复的节点 id，以及保留或重复的联邦别名都会失败
+（`packages/core/src/schema.ts:57`）。
 
-一个节点有四个字段（`packages/core/src/schema.ts:23`）：
+一个节点有四个字段（`packages/core/src/schema.ts:39`）：
 
 - **`id`** —— 必填、全局唯一、不可变。模式 `^[a-z0-9][a-z0-9-]*$`
   （`packages/core/src/schema.ts:3`）——小写、数字、连字符；无 `.`、无 `/`。这是链接目标。
@@ -88,16 +89,31 @@ fresh     concepts
 
 - `carto:<id>` —— 按 id 指向一个节点。
 - `carto:<id>#<anchor>` —— 指向该节点内的一个标题锚点。
-- 一个目标为 `carto:<id>` 的**空标签**——构建时填入目标在当前语言下的标题。
+- `carto:<alias>/<id>` —— 指向**联邦**文档集中的一个节点（见下文）。
+- 目标为以上任意一种形式的**空标签**——构建时填入目标在当前语言下的标题。
 
-解析器解析目标，拒绝保留的联邦 `/` 形式（不支持），并在清单中查找该 id
-（`packages/core/src/resolver.ts:41`）；未知 id 在 `carto validate` 时是错误。URL 本身是
-从根到节点的 slug 链，非默认语言带语言前缀（`packages/core/src/tree.ts:30`）——这正是为什么
-移动一个节点永不断裂链接。
+解析器解析目标（`packages/core/src/resolver.ts:52`）并在清单中查找该 id；未知 id 在
+`carto validate` 时是错误。URL 本身是从根到节点的 slug 链，非默认语言带语言前缀
+（`packages/core/src/tree.ts:30`）——这正是为什么移动一个节点永不断裂链接。
 
 **代码锚点不同。** 正文中的 `path:line` 提及（如 `packages/core/src/hash.ts:5`）把读者指向
-源码。在 MVP 中它渲染为纯文本——无永久链接——并且与 `sources`（机器追踪的失效集）**分离**。
+源码。它渲染为纯文本——无永久链接——并且与 `sources`（机器追踪的失效集）**分离**。
 实践中两者指向同一段承重代码。
+
+## 联邦（Federation）
+
+一个文档集可以通过清单的 `federated` 数组引用**其他**文档集
+（`packages/core/src/schema.ts:37`）。每个条目给出一个 `alias`、一个 `type`
+（`file` 带一个相对 `path`，或 schema 中保留的 `git`），对 `file` 类型而言，
+指向另一个文档根。页面随后用 `carto:<alias>/<id>` 跨站点链接，解析器把它改写为目标
+文档集的页面（`packages/core/src/resolver.ts:63`）。
+
+构建时 carto 会加载整个引用图（`packages/core/src/graph.ts`）：它把每个文档集都展平进
+一个以每个条目的内容哈希为键的映射，这既去重了被引用两次的文档集，也让引用环终止。
+每个文档集挂载在一个 URL 前缀下——根挂载在 `/self` 下，每个被引用的文档集挂载在
+`/<alias>-<hash>/` 下——因此 id 在各文档集之间永不冲突。别名是声明它的清单本地的
+（每个清单内唯一，且 `self` 是保留字）；被引用的文档集永远不需要知道谁在联邦它，
+仍然拥有自己的 `sync`/`status`。
 
 ## 另见
 

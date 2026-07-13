@@ -51,7 +51,7 @@ async function withTempCwd<T>(fn: (dir: string) => Promise<T>): Promise<T> {
 }
 
 function manifest(nodes: Manifest['nodes']): Manifest {
-  return { version: 1, locales: ['en'], defaultLocale: 'en', updated_at: '2026-01-01T00:00:00.000Z', nodes }
+  return { version: 1, locales: ['en'], defaultLocale: 'en', updated_at: '2026-01-01T00:00:00.000Z', federated: [], nodes }
 }
 
 describe('carto coverage', () => {

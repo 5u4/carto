@@ -21,18 +21,19 @@ chain — so a link never points at a location that can move.
 ## The manifest
 
 One `carto.json` per doc root = one site. It carries structure and source
-tracking only — **no prose**. The schema (`packages/core/src/schema.ts:30`)
+tracking only — **no prose**. The schema (`packages/core/src/schema.ts:46`)
 requires `version: 1`, a non-empty unique `locales` list with `defaultLocale` a
 member of it, and a `nodes` array. An optional top-level `home` names the node
 id the site root `/` redirects to; omit it and the root falls back to the first
 root node. An optional `codeRoot` points `sources` at a code tree separate from
-the doc root (`packages/core/src/schema.ts:36`), resolved relative to the
-manifest and defaulting to `.` (`packages/core/src/manifest.ts:7`). Cross-field
-rules are checked in a `superRefine`: duplicate locales, a `defaultLocale`
-outside `locales`, and duplicate node ids all fail
-(`packages/core/src/schema.ts:40`).
+the doc root (`packages/core/src/schema.ts:52`), resolved relative to the
+manifest and defaulting to `.` (`packages/core/src/manifest.ts:6`). An optional
+`federated` array wires in other doc-sets for cross-site links — see
+[](carto:concepts#federation). Cross-field rules are checked in a `superRefine`:
+duplicate locales, a `defaultLocale` outside `locales`, duplicate node ids, and a
+reserved or duplicated federated alias all fail (`packages/core/src/schema.ts:57`).
 
-A node has four fields (`packages/core/src/schema.ts:23`):
+A node has four fields (`packages/core/src/schema.ts:39`):
 
 - **`id`** — required, globally unique, immutable. Pattern
   `^[a-z0-9][a-z0-9-]*$` (`packages/core/src/schema.ts:3`) — lowercase, digits,
@@ -104,21 +105,39 @@ write a Markdown link whose target is `carto:<id>`:
 
 - `carto:<id>` — a node by id.
 - `carto:<id>#<anchor>` — a heading anchor within that node.
-- an **empty label** with target `carto:<id>` — the build fills in the target's
+- `carto:<alias>/<id>` — a node in a **federated** doc-set (see below).
+- an **empty label** with any of the above — the build fills in the target's
   title in the current locale.
 
-The resolver parses the target, rejects the reserved federation `/` form as
-unsupported, and looks the id up in the manifest
-(`packages/core/src/resolver.ts:41`); an unknown id is an error at
-`carto validate` time. The URL itself is the slug chain from root to node,
-prefixed by locale for non-default locales (`packages/core/src/tree.ts:30`) —
-which is why moving a node never breaks a link.
+The resolver parses the target (`packages/core/src/resolver.ts:52`) and looks the
+id up in the manifest; an unknown id is an error at `carto validate` time. The URL
+itself is the slug chain from root to node, prefixed by locale for non-default
+locales (`packages/core/src/tree.ts:30`) — which is why moving a node never breaks
+a link.
 
 **Code anchors are different.** A `path:line` mention in prose (like
 `packages/core/src/hash.ts:5`) points a reader at source. It renders as plain
-text in the MVP — no permalink — and is **separate** from `sources`, which is the
+text — no permalink — and is **separate** from `sources`, which is the
 machine-tracked staleness set. In practice both point at the same load-bearing
 code.
+
+## Federation
+
+A doc-set can reference **other** doc-sets through the manifest's `federated`
+array (`packages/core/src/schema.ts:37`). Each entry gives an `alias`, a `type`
+(`file` with a relative `path`, or the schema-reserved `git`), and — for `file` —
+points at another doc root. Pages then link across with `carto:<alias>/<id>`,
+which the resolver rewrites to the target doc-set's page
+(`packages/core/src/resolver.ts:63`).
+
+At build time carto loads the whole reference graph
+(`packages/core/src/graph.ts`): it flattens every doc-set into a map keyed by a
+content hash of each entry, which both dedupes a doc-set referenced twice and
+makes reference cycles terminate. Each doc-set mounts under a URL prefix — the
+root under `/self`, every referenced doc-set under `/<alias>-<hash>/` — so ids
+never collide across doc-sets. Aliases are local to the manifest that declares
+them (unique per manifest, and `self` is reserved); a referenced doc-set never
+needs to know who federates it, and still owns its own `sync`/`status`.
 
 ## See also
 

@@ -1,6 +1,6 @@
 import { readFile, writeFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
-import { manifestSchema, type Manifest, type Node, type Source } from './schema.js'
+import { manifestSchema, type Manifest, type Node, type Source, type Federated } from './schema.js'
 import { hashFile } from './hash.js'
 
 export function codeRootDir(manifest: Manifest, docRoot: string): string {
@@ -35,6 +35,7 @@ export function serializeManifest(manifest: Manifest): string {
   }
   if (manifest.codeRoot !== undefined) ordered.codeRoot = manifest.codeRoot
   if (manifest.home !== undefined) ordered.home = manifest.home
+  if (manifest.federated.length > 0) ordered.federated = manifest.federated.map((entry) => orderFederated(entry))
   ordered.nodes = manifest.nodes.map((node) => orderNode(node))
   return `${JSON.stringify(ordered, null, 2)}\n`
 }
@@ -51,6 +52,13 @@ function orderSource(source: Source): Record<string, unknown> {
   const out: Record<string, unknown> = { file: source.file }
   if (source.hash !== undefined) out.hash = source.hash
   if (source.hash !== undefined && source.commit !== undefined) out.commit = source.commit
+  return out
+}
+
+function orderFederated(entry: Federated): Record<string, unknown> {
+  if (entry.type === 'file') return { alias: entry.alias, type: entry.type, path: entry.path }
+  const out: Record<string, unknown> = { alias: entry.alias, type: entry.type, url: entry.url, ref: entry.ref }
+  if (entry.subdir !== undefined) out.subdir = entry.subdir
   return out
 }
 

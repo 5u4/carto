@@ -51,11 +51,14 @@ COMMANDS
 ## init
 
 Scaffolds an empty `carto.json`, a `docs/` directory, and a `carto.config.mjs`
-Starlight-override stub (only if absent). Refuses to overwrite an existing
-manifest — the guard is an `exists` check that exits 1
-(`packages/cli/src/commands/init.ts:16`). `--locales en,zh` declares the locale
-list, `--defaultLocale` picks the default, and `--codeRoot` points sources at a
-code tree resolved relative to the doc root (`packages/cli/src/commands/init.ts:11`).
+Starlight-override stub (only if absent). The scaffolded manifest already
+carries an empty `federated: []` array, ready for a `file` entry (or a
+schema-only `git` entry) that lets pages link across to another doc-set
+([](carto:concepts)). Refuses to overwrite an existing manifest — the guard is
+an `exists` check that exits 1 (`packages/cli/src/commands/init.ts:16`).
+`--locales en,zh` declares the locale list, `--defaultLocale` picks the
+default, and `--codeRoot` points sources at a code tree resolved relative to
+the doc root (`packages/cli/src/commands/init.ts:11`).
 
 ```
 $ carto init
@@ -92,7 +95,7 @@ each source with the current git `HEAD`, and refreshes `updated_at`
 `carto status` reports as the diff base; outside a git repo it's simply omitted
 (`packages/cli/src/git.ts:5`). Run it after any `carto.json` edit and after code
 changes. It aborts if a registered source file doesn't exist
-(`packages/core/src/manifest.ts:91`).
+(`packages/core/src/manifest.ts:104`).
 
 ```
 $ carto sync
@@ -119,12 +122,15 @@ all files covered
 
 ## validate
 
-The full gate: schema, id/slug uniqueness, parent cycles, sync state, one `.mdx`
-per locale, that `home` (if set) names a real node, and that every `carto:` link
-resolves (`packages/cli/src/commands/validate.ts:17`). Missing docs, unsynced or
+The full gate: schema, id/slug uniqueness, parent cycles, sync state, one
+`.mdx` per locale, that `home` (if set) names a real node, and that every
+`carto:` link resolves — including a `carto:<alias>/<id>` federation link,
+checked by loading the whole reference graph
+(`packages/cli/src/commands/validate.ts:32`) and resolving every link against
+it (`packages/cli/src/commands/validate.ts:71`). Missing docs, unsynced or
 stale nodes, and an unknown `home` are errors; a dangling parent is only a
-warning. Exits 1 with an `error:` line per problem; prints `validate: ok` when
-clean (`packages/cli/src/commands/validate.ts:66`).
+warning. Exits 1 with an `error:` line per problem; prints `validate: ok`
+when clean (`packages/cli/src/commands/validate.ts:82`).
 
 ```
 $ carto validate

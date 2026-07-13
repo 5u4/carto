@@ -2,9 +2,14 @@ import { z } from 'zod'
 
 export const ID_PATTERN = /^[a-z0-9][a-z0-9-]*$/
 
-function isRelativeFile(value: string): boolean {
+function isRelativePath(value: string): boolean {
   if (value.startsWith('/') || value.startsWith('\\')) return false
   if (value.length >= 2 && value[1] === ':') return false
+  return true
+}
+
+function isRelativeFile(value: string): boolean {
+  if (!isRelativePath(value)) return false
   const segments = value.split('/').flatMap((part) => part.split('\\'))
   return !segments.includes('..')
 }
@@ -19,6 +24,22 @@ export const sourceSchema = z
     path: ['commit'],
     message: 'commit requires hash'
   })
+
+export const federatedFileSchema = z.object({
+  alias: z.string().regex(ID_PATTERN),
+  type: z.literal('file'),
+  path: z.string().min(1).refine(isRelativePath, 'path must be a relative path (no absolute or drive-rooted paths)')
+})
+
+export const federatedGitSchema = z.object({
+  alias: z.string().regex(ID_PATTERN),
+  type: z.literal('git'),
+  url: z.string().min(1),
+  ref: z.string().min(1),
+  subdir: z.string().min(1).optional()
+})
+
+export const federatedSchema = z.discriminatedUnion('type', [federatedFileSchema, federatedGitSchema])
 
 export const nodeSchema = z.object({
   id: z.string().regex(ID_PATTERN),
@@ -35,6 +56,7 @@ export const manifestSchema = z
     updated_at: z.string().min(1),
     codeRoot: z.string().min(1).optional(),
     home: z.string().regex(ID_PATTERN).optional(),
+    federated: z.array(federatedSchema).default([]),
     nodes: z.array(nodeSchema)
   })
   .superRefine((manifest, ctx) => {
@@ -55,8 +77,21 @@ export const manifestSchema = z
       }
       seenIds.add(node.id)
     })
+    const seenAliases = new Set<string>()
+    manifest.federated.forEach((entry, index) => {
+      if (entry.alias === 'self') {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['federated', index, 'alias'], message: 'alias "self" is reserved' })
+      }
+      if (seenAliases.has(entry.alias)) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['federated', index, 'alias'], message: `duplicate federated alias ${entry.alias}` })
+      }
+      seenAliases.add(entry.alias)
+    })
   })
 
 export type Source = z.infer<typeof sourceSchema>
+export type FederatedFile = z.infer<typeof federatedFileSchema>
+export type FederatedGit = z.infer<typeof federatedGitSchema>
+export type Federated = z.infer<typeof federatedSchema>
 export type Node = z.infer<typeof nodeSchema>
 export type Manifest = z.infer<typeof manifestSchema>

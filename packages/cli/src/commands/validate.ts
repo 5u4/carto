@@ -7,8 +7,10 @@ import {
   statusReport,
   resolveCartoLink,
   codeRootDir,
+  loadGraph,
   ManifestError,
   type Manifest,
+  type FederationContext,
   type TreeIssue,
   type ResolveError
 } from '@carto/core'
@@ -23,6 +25,14 @@ export const validateCommand = defineCommand({
       manifest = await readManifest(join(root, 'carto.json'))
     } catch (error) {
       fail(error instanceof ManifestError ? error.message : String(error))
+      return
+    }
+    let federation: FederationContext | undefined
+    try {
+      const graph = await loadGraph(root)
+      if (graph.federated) federation = { byHash: graph.byHash, aliasToHash: graph.root.aliasToHash, siteDefaultLocale: graph.root.manifest.defaultLocale }
+    } catch (error) {
+      fail(error instanceof Error ? error.message : String(error))
       return
     }
     const errors: string[] = []
@@ -58,7 +68,7 @@ export const validateCommand = defineCommand({
         }
         const text = await readFile(mdx, 'utf8')
         for (const target of extractCartoTargets(text)) {
-          const result = resolveCartoLink(target, { manifest, locale })
+          const result = resolveCartoLink(target, { manifest, locale, federation })
           if (!result.ok) errors.push(`docs/${node.id}/${locale}.mdx: ${describeError(target, result.error)}`)
         }
       }
@@ -103,7 +113,11 @@ function describeError(target: string, error: ResolveError): string {
     case 'unknown-id':
       return `unknown carto: link ${target}`
     case 'federation-unsupported':
-      return `federation link ${target} is not supported (v2)`
+      return `federation link ${target} needs a federated entry for alias "${error.alias}"`
+    case 'unknown-alias':
+      return `unknown federation alias "${error.alias}" in ${target}`
+    case 'unknown-federated-id':
+      return `federation link ${target}: id "${error.id}" not found in doc-set "${error.alias}"`
     case 'malformed':
       return `malformed carto: link ${target}`
     case 'not-a-carto-link':

@@ -121,4 +121,40 @@ describe('manifestSchema', () => {
     const result = manifestSchema.safeParse(manifest)
     expect(result.success).toBe(false)
   })
+
+  it('accepts a manifest with a file federated entry', () => {
+    const manifest = { ...baseManifest(), federated: [{ alias: 'web', type: 'file', path: '../web' }] }
+    expect(manifestSchema.safeParse(manifest).success).toBe(true)
+  })
+
+  it('rejects an absolute federated file path', () => {
+    const manifest = { ...baseManifest(), federated: [{ alias: 'web', type: 'file', path: '/etc/secrets' }] }
+    expect(manifestSchema.safeParse(manifest).success).toBe(false)
+  })
+
+  it('rejects a drive-rooted federated file path', () => {
+    const manifest = { ...baseManifest(), federated: [{ alias: 'web', type: 'file', path: 'C:\\docs' }] }
+    expect(manifestSchema.safeParse(manifest).success).toBe(false)
+  })
+
+  it('rejects the reserved federated alias "self"', () => {
+    const manifest = { ...baseManifest(), federated: [{ alias: 'self', type: 'file', path: '../web' }] }
+    expect(manifestSchema.safeParse(manifest).success).toBe(false)
+  })
+
+  it('rejects duplicate federated aliases within a manifest', () => {
+    const manifest = {
+      ...baseManifest(),
+      federated: [
+        { alias: 'web', type: 'file', path: '../a' },
+        { alias: 'web', type: 'file', path: '../b' }
+      ]
+    }
+    expect(manifestSchema.safeParse(manifest).success).toBe(false)
+  })
+
+  it('rejects a git federated entry without a ref', () => {
+    const manifest = { ...baseManifest(), federated: [{ alias: 'web', type: 'git', url: 'https://x.git' }] }
+    expect(manifestSchema.safeParse(manifest).success).toBe(false)
+  })
 })

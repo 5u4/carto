@@ -2,8 +2,8 @@ import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
-import { urlPath, type Manifest, type Node } from '@carto/core'
-import { buildLocales, buildRedirects, buildSidebar, collectTitles, loadUserConfig, mergeStarlight } from './site-config'
+import { urlPath, type Graph, type DocSet, type Manifest, type Node } from '@carto/core'
+import { buildLocales, buildRedirects, buildGraphSidebar, buildSidebar, collectTitles, loadUserConfig, mergeStarlight } from './site-config'
 
 function node(partial: Partial<Node> & { id: string }): Node {
   return { sources: [], ...partial }
@@ -15,6 +15,7 @@ function manifest(): Manifest {
     locales: ['en', 'zh'],
     defaultLocale: 'en',
     updated_at: '2026-07-08T00:00:00Z',
+    federated: [],
     nodes: [
       node({ id: 'overview' }),
       node({ id: 'api', slug: 'backend' }),
@@ -69,6 +70,7 @@ describe('buildSidebar', () => {
       locales: ['en'],
       defaultLocale: 'en',
       updated_at: '2026-07-08T00:00:00Z',
+      federated: [],
       nodes: [node({ id: 'solo' })]
     }
     const sidebar = buildSidebar(m)
@@ -141,6 +143,7 @@ describe('buildRedirects', () => {
       locales: ['en'],
       defaultLocale: 'en',
       updated_at: '2026-07-08T00:00:00Z',
+      federated: [],
       nodes: []
     }
     expect(buildRedirects(m)).toEqual({})
@@ -235,6 +238,7 @@ describe('collectTitles', () => {
       locales: ['en', 'zh'],
       defaultLocale: 'en',
       updated_at: '2026-07-08T00:00:00Z',
+      federated: [],
       nodes: [node({ id: 'overview' })]
     }
     const titles = await collectTitles(dir, m)
@@ -250,9 +254,48 @@ describe('collectTitles', () => {
       locales: ['en'],
       defaultLocale: 'en',
       updated_at: '2026-07-08T00:00:00Z',
+      federated: [],
       nodes: [node({ id: 'overview' })]
     }
     const titles = await collectTitles(dir, m)
     expect(titles.has('overview:en')).toBe(false)
+  })
+})
+
+describe('buildGraphSidebar', () => {
+  function docSet(partial: Partial<DocSet> & { hash: string; prefix: string; manifest: Manifest }): DocSet {
+    return { docRoot: '/tmp', aliasToHash: new Map(), ...partial }
+  }
+
+  it('links a federated child at the site default locale, not the child default', () => {
+    const root = docSet({
+      hash: 'aaaa',
+      prefix: '/self',
+      manifest: {
+        version: 1,
+        locales: ['en'],
+        defaultLocale: 'en',
+        updated_at: '2026-07-08T00:00:00Z',
+        federated: [],
+        nodes: [node({ id: 'overview' })]
+      }
+    })
+    const child = docSet({
+      hash: 'bbbb',
+      prefix: '/glossary-bbbb',
+      manifest: {
+        version: 1,
+        locales: ['fr'],
+        defaultLocale: 'fr',
+        updated_at: '2026-07-08T00:00:00Z',
+        federated: [],
+        nodes: [node({ id: 'terms', slug: 'terms' })]
+      }
+    })
+    const graph: Graph = { federated: true, root, byHash: new Map([['aaaa', root], ['bbbb', child]]) }
+    const sidebar = buildGraphSidebar(graph)
+    const childGroup = sidebar.find((entry) => entry.items?.some((i) => i.link === '/glossary-bbbb/terms/'))
+    expect(childGroup, 'federated child must link without a /fr locale prefix').toBeTruthy()
+    expect(JSON.stringify(sidebar)).not.toContain('/fr/')
   })
 })

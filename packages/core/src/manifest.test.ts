@@ -11,6 +11,7 @@ function validManifest(): Manifest {
     locales: ['en'],
     defaultLocale: 'en',
     updated_at: '2026-07-08T00:00:00Z',
+    federated: [],
     nodes: [{ id: 'payments', sources: [] }]
   }
 }
@@ -33,6 +34,7 @@ describe('serializeManifest', () => {
       locales: ['en', 'zh'],
       defaultLocale: 'en',
       updated_at: '2026-07-08T00:00:00Z',
+      federated: [],
       nodes: [
         { id: 'api', slug: 'backend', sources: [{ file: 'src/a.ts', hash: 'abc123' }] },
         { id: 'payments', parent: 'api', sources: [{ file: 'src/b.ts' }] }
@@ -54,6 +56,7 @@ describe('serializeManifest', () => {
       locales: ['en'],
       defaultLocale: 'en',
       updated_at: '2026-07-08T00:00:00Z',
+      federated: [],
       nodes: [
         { id: 'api', sources: [{ file: 'src/a.ts', hash: 'abc123', commit: 'deadbeef' }] },
         { id: 'web', sources: [{ file: 'src/b.ts', hash: 'def456' }] }
@@ -91,6 +94,7 @@ describe('syncManifest', () => {
         locales: ['en'],
         defaultLocale: 'en',
         updated_at: '2020-01-01T00:00:00Z',
+        federated: [],
         nodes: [{ id: 'payments', sources: [{ file: 'a.ts' }] }]
       }
       const synced = await syncManifest(manifest, { rootDir: dir, now: () => '2026-07-08T00:00:00Z' })
@@ -112,6 +116,7 @@ describe('syncManifest', () => {
         locales: ['en'],
         defaultLocale: 'en',
         updated_at: '2020-01-01T00:00:00Z',
+        federated: [],
         nodes: [{ id: 'payments', sources: [{ file: 'a.ts', commit: 'stale-anchor' }] }]
       }
       const stamped = await syncManifest(manifest, { rootDir: dir, commit: 'abc1234' })
@@ -131,6 +136,7 @@ describe('syncManifest', () => {
         locales: ['en'],
         defaultLocale: 'en',
         updated_at: '2020-01-01T00:00:00Z',
+        federated: [],
         nodes: [{ id: 'payments', sources: [{ file: 'ghost.ts' }] }]
       }
       await expect(syncManifest(manifest, { rootDir: dir })).rejects.toThrow(ManifestError)
@@ -149,6 +155,7 @@ describe('syncManifest', () => {
         locales: ['en'],
         defaultLocale: 'en',
         updated_at: '2020-01-01T00:00:00Z',
+        federated: [],
         nodes: [{ id: 'payments', sources: [{ file: '.' }] }]
       }
       await expect(syncManifest(manifest, { rootDir: dir })).rejects.not.toBeInstanceOf(ManifestError)

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { spawnSync } from 'node:child_process'
-import { cpSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync } from 'node:fs'
+import { cpSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { join } from 'node:path'
 
@@ -77,7 +77,7 @@ function readAll(dir: string, ext: string): string {
 
 describe.skipIf(!runE2E)('agent e2e: document a mini codebase with carto', () => {
   it(
-    'generates docs from zero, then refreshes after a source change',
+    'generates docs from zero, refreshes after a source change, then federates a second doc-set',
     () => {
       const workDir = join(repoRoot, 'tests', 'e2e', '.work')
       mkdirSync(workDir, { recursive: true })
@@ -146,6 +146,57 @@ describe.skipIf(!runE2E)('agent e2e: document a mini codebase with carto', () =>
         expect(html2).toContain('authorId')
         expect(html2).toContain('buildFeed')
         expect(/href=["']carto:/i.test(html2), 'unresolved carto: link href in built HTML after refresh').toBe(false)
+
+        const glossaryRoot = join(root, 'glossary')
+        mkdirSync(join(glossaryRoot, 'docs', 'terms'), { recursive: true })
+        writeFileSync(
+          join(glossaryRoot, 'carto.json'),
+          `${JSON.stringify(
+            {
+              version: 1,
+              locales: ['en', 'zh'],
+              defaultLocale: 'en',
+              updated_at: '2026-01-01T00:00:00Z',
+              home: 'terms',
+              nodes: [{ id: 'terms', slug: 'terms', sources: [] }]
+            },
+            null,
+            2
+          )}\n`,
+          'utf8'
+        )
+        writeFileSync(join(glossaryRoot, 'docs', 'terms', 'en.mdx'), '---\ntitle: "Glossary"\n---\n\n# Glossary\n\nA **feed** is a ranked list of posts.\n', 'utf8')
+        writeFileSync(join(glossaryRoot, 'docs', 'terms', 'zh.mdx'), '---\ntitle: "术语表"\n---\n\n# 术语表\n\n**feed** 是一组排序后的帖子。\n', 'utf8')
+
+        const federate = agent(
+          'There is a second, separate carto doc-set at ../glossary (it has its own carto.json and docs/, with one node whose id is "terms"). Federate it into THIS doc-set: add a `federated` array entry to this directory\'s carto.json with alias "glossary", type "file", and path "../glossary". Then, in one existing .mdx page of this doc-set (both the en and zh locale files), add a carto federation link to the glossary using the form carto:glossary/terms. After editing, run carto sync, then carto validate, then carto build. Do not stop until carto validate exits 0 and carto build succeeds.',
+          docRoot,
+          sessionDir,
+          true
+        )
+        expect(federate.status, `agent federate crashed: ${federate.stderr}`).toBe(0)
+
+        const manifestFed = JSON.parse(readFileSync(join(docRoot, 'carto.json'), 'utf8'))
+        expect(manifestFed.federated, 'carto.json must declare a federated glossary entry').toContainEqual({
+          alias: 'glossary',
+          type: 'file',
+          path: '../glossary'
+        })
+
+        const validate3 = carto(['validate'], docRoot)
+        expect(validate3.status, `validate not green after federate:\n${validate3.stdout}\n${validate3.stderr}`).toBe(0)
+
+        const build3 = carto(['build'], docRoot)
+        expect(build3.status, `build failed after federate:\n${build3.stdout}\n${build3.stderr}`).toBe(0)
+
+        const distFiles = walk(join(docRoot, 'dist-site'))
+        expect(distFiles.some((f) => /glossary-[0-9a-f]{8}/.test(f)), 'built site must mount the federated glossary under its alias-hash prefix').toBe(true)
+        expect(distFiles.some((f) => /[\\/]self[\\/]/.test(f)), 'own pages must be mounted under the /self prefix once federation is active').toBe(true)
+
+        const html3 = readAll(join(docRoot, 'dist-site'), '.html')
+        expect(html3).toContain('Glossary')
+        expect(/href=["']carto:/i.test(html3), 'unresolved carto: link href in built HTML after federate').toBe(false)
+        expect(/href=["'][^"']*glossary-[0-9a-f]{8}\/terms/i.test(html3), 'cross-doc-set link must resolve to the prefixed glossary url').toBe(true)
       } finally {
         rmSync(root, { recursive: true, force: true })
       }

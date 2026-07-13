@@ -112,6 +112,23 @@ Field rules:
   the root falls back to the first root node in array order; when there are no
   nodes at all, the build renders an empty-state landing page instead of a
   redirect. `carto validate` errors if `home` names an id that does not exist.
+- `federated`: optional array wiring in other doc-sets so pages can link across
+  them with `carto:<alias>/<id>`. Omit it for an ordinary single doc-set (the
+  default) — nothing changes. Each entry is `{ "alias", "type", ... }`:
+  - `type: "file"` — `{ "alias": "web", "type": "file", "path": "../web-docs" }`;
+    `path` is relative to this `carto.json`'s directory and points at another doc
+    root (a directory holding its own `carto.json` + `docs/`).
+  - `type: "git"` — `{ "alias", "type": "git", "url", "ref", "subdir"? }`; the
+    shape is accepted but **not yet implemented** (the build errors). Use `file`.
+  - `alias`: same id pattern as node ids; the label authors write in
+    `carto:<alias>/<id>`. Must be unique within this manifest, and `self` is
+    reserved (the build mounts your own pages under `/self/`). Aliases are local
+    to the manifest that declares them — a referenced doc-set never needs to know
+    who federates it.
+  - The build loads the whole federation graph, dedupes a doc-set referenced more
+    than once, and mounts each under a URL prefix `/<alias>-<hash>/`. Cross-links,
+    the sidebar, staleness banners, and locale fallback all work across doc-sets;
+    each doc-set still owns its own `sync`/`status`.
 - `nodes[].id`: **required, globally unique, immutable.** Pattern
   `^[a-z0-9][a-z0-9-]*$` — lowercase letters, digits, hyphens; no `.`, no `/`.
   This is the link target (`carto:payments`). Never rename an id.
@@ -149,10 +166,13 @@ write a normal Markdown link whose target is `carto:<id>`:
 - `carto:<id>#<anchor>` — link to a heading anchor within that node.
 - `[](carto:<id>)` — empty label: the build fills in the target node's title in
   the current locale.
-- Do NOT use `carto:<alias>/<id>` (the `/` federation form) — it is reserved for
-  v2 and `carto validate` rejects it as an error.
+- `carto:<alias>/<id>` — **federation link** to a node in another doc-set that this
+  manifest references under `<alias>` in its `federated` array (see the field
+  rules above). The build rewrites it to the target doc-set's prefixed URL; the
+  empty-label form fills in the target node's title. `carto validate` errors if
+  the alias is not declared or the id does not exist in that doc-set.
 - Because ids forbid `.` and `/`, the separators are unambiguous: `#` is an
-  in-page anchor, `/` is the reserved federation boundary.
+  in-page anchor, `/` is the federation boundary between alias and id.
 
 **Code anchors are a different concept.** To point a reader at source, write a
 plain-text `path:line` mention in prose, for example
@@ -291,6 +311,8 @@ invisible to the validator and the build-time rewriter.
   merge the nodes.
 - **unresolved `carto:` link** — fix the id in the link, or add the missing node.
 - **missing locale mdx** — write the absent `docs/<id>/<locale>.mdx`.
-- **federation `/` link** — remove it; not supported in the MVP.
+- **federation `/` link error** — the alias is not declared in this manifest's
+  `federated` array, or the id does not exist in the referenced doc-set. Add the
+  `federated` entry, or fix the alias/id.
 
 Fix, re-run `carto sync` then `carto validate`, and repeat until it exits 0.

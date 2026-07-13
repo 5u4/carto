@@ -38,10 +38,11 @@ Five ideas carry the whole system:
   actual and classifies each node `fresh` / `unsynced` / `stale` / `missing`
   (`packages/core/src/status.ts:20`).
 - **Links target immutable ids, not paths.** You write a Markdown link whose
-  target is `carto:<id>`;
-  the renderer resolves it to a URL from the current slug chain
-  (`packages/core/src/resolver.ts:41`). Rename a slug or move a node — links
-  never break.
+  target is `carto:<id>`; the renderer resolves it to a URL from the current
+  slug chain (`packages/core/src/resolver.ts:52`). Rename a slug or move a
+  node — links never break. The same link syntax also resolves
+  `carto:<alias>/<id>` across a doc-set declared in `federated`
+  ([](carto:concepts)).
 - **BYO-LLM.** The agent does the judgement (read code, write `.mdx`, edit the
   manifest); the CLI does only what must be deterministic (hash, validate).
 

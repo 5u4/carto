@@ -29,7 +29,7 @@ you're done.
 Three concepts to hold: a **node** is one page with an immutable `id`; a
 **source** is a file whose behavior a node describes (the staleness crosshair);
 a **locale** is one language — every node needs one `.mdx` per declared locale or
-`validate` fails (`packages/cli/src/commands/validate.ts:55`).
+`validate` fails (`packages/cli/src/commands/validate.ts:65`).
 
 ## Steps
 
@@ -65,7 +65,7 @@ those). See [](carto:concepts) for the manifest shape.
 `carto sync` computes and writes every source hash and refreshes `updated_at`
 (`packages/cli/src/commands/sync.ts:12`). `carto validate` then checks schema,
 tree, sync state, and that every `carto:` link resolves
-(`packages/cli/src/commands/validate.ts:17`).
+(`packages/cli/src/commands/validate.ts:19`).
 
 ## Worked example — documenting this repo
 
