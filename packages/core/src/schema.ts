@@ -2,9 +2,14 @@ import { z } from 'zod'
 
 export const ID_PATTERN = /^[a-z0-9][a-z0-9-]*$/
 
-function isRelativeFile(value: string): boolean {
+function isRelativePath(value: string): boolean {
   if (value.startsWith('/') || value.startsWith('\\')) return false
   if (value.length >= 2 && value[1] === ':') return false
+  return true
+}
+
+function isRelativeFile(value: string): boolean {
+  if (!isRelativePath(value)) return false
   const segments = value.split('/').flatMap((part) => part.split('\\'))
   return !segments.includes('..')
 }
@@ -23,7 +28,7 @@ export const sourceSchema = z
 export const federatedFileSchema = z.object({
   alias: z.string().regex(ID_PATTERN),
   type: z.literal('file'),
-  path: z.string().min(1)
+  path: z.string().min(1).refine(isRelativePath, 'path must be a relative path (no absolute or drive-rooted paths)')
 })
 
 export const federatedGitSchema = z.object({

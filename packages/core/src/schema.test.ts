@@ -127,6 +127,16 @@ describe('manifestSchema', () => {
     expect(manifestSchema.safeParse(manifest).success).toBe(true)
   })
 
+  it('rejects an absolute federated file path', () => {
+    const manifest = { ...baseManifest(), federated: [{ alias: 'web', type: 'file', path: '/etc/secrets' }] }
+    expect(manifestSchema.safeParse(manifest).success).toBe(false)
+  })
+
+  it('rejects a drive-rooted federated file path', () => {
+    const manifest = { ...baseManifest(), federated: [{ alias: 'web', type: 'file', path: 'C:\\docs' }] }
+    expect(manifestSchema.safeParse(manifest).success).toBe(false)
+  })
+
   it('rejects the reserved federated alias "self"', () => {
     const manifest = { ...baseManifest(), federated: [{ alias: 'self', type: 'file', path: '../web' }] }
     expect(manifestSchema.safeParse(manifest).success).toBe(false)
