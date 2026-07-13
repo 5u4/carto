@@ -54,26 +54,38 @@ otherwise it writes each node's `.mdx` to a **slug-chain path** —
 `rootChain(...).map(slugOf).join('/')`, locale-prefixed for non-default locales
 (`packages/template/src/materialize.ts:56`). As it copies, `rewriteLinks`
 replaces every `carto:<id>` with the resolved URL and fills empty labels with the
-target's title (`packages/template/src/materialize.ts:61`); titles are collected
-from each page's frontmatter first (`packages/template/src/materialize.ts:70`).
+target's title (`packages/template/src/materialize.ts:62`); those titles come from
+`collectTitles`, which now lives in `site-config.ts` and reads each page's
+frontmatter (`packages/template/src/site-config.ts:62`, called at
+`packages/template/src/materialize.ts:20`).
 Then `injectStalenessBanner` prepends a `banner.content` to the page's
 frontmatter whenever the node is `stale` or `missing`, so the rendered site
 visibly warns which source files drifted
-(`packages/template/src/materialize.ts:26`, `packages/template/src/staleness-banner.ts:3`).
+(`packages/template/src/materialize.ts:27`, `packages/template/src/staleness-banner.ts:3`).
 
 The Astro config reads the same manifest and builds Starlight's `locales` and
 `sidebar` from it via `buildLocales` / `buildSidebar`
-(`packages/template/src/site-config.ts:3`, `packages/template/src/site-config.ts:18`);
-`entryFor` recurses the node tree into nested sidebar entries
-(`packages/template/src/site-config.ts:38`). `buildRedirects` sends the site root
-`/` (and each locale root) to the `home` node, or the first root node when
-`home` is unset (`packages/template/src/site-config.ts:22`). The result reproduces
-exactly the URLs `urlPath` computes, so `carto:` links resolve to real routes. It
-also registers one remark plugin, `remarkJoinCjkLines`, which strips the spurious
-space Markdown would otherwise insert where a CJK line wraps in source
-(`packages/template/astro.config.mjs:16`, `packages/template/src/remark-join-cjk.ts:39`).
-The package's public surface is a two-line barrel re-exporting the site-config
-helpers (`packages/template/src/index.ts:2`).
+(`packages/template/src/site-config.ts:7`, `packages/template/src/site-config.ts:23`);
+`buildSidebar` takes the collected titles, so each entry's label is the page's
+frontmatter `title` per locale — non-default locales ride along in a
+`translations` map — falling back to the slug when a page has none
+(`packages/template/src/site-config.ts:43`), and `entryFor` recurses the node
+tree into nested entries (`packages/template/src/site-config.ts:54`).
+`buildRedirects` sends the site root `/` (and each locale root) to the `home`
+node, or the first root node when `home` is unset
+(`packages/template/src/site-config.ts:27`). Before configuring Starlight the
+config calls `loadUserConfig` to pick up an optional `carto.config.mjs` at the
+doc root, then `mergeStarlight` layers the user's `starlight` overrides under
+carto's own `locales` and `sidebar`, which always win
+(`packages/template/astro.config.mjs:11`, `packages/template/astro.config.mjs:23`;
+`packages/template/src/site-config.ts:104`, `packages/template/src/site-config.ts:134`).
+The result reproduces exactly the URLs `urlPath` computes, so `carto:` links
+resolve to real routes. It also registers one remark plugin, `remarkJoinCjkLines`,
+which strips the spurious space Markdown would otherwise insert where a CJK line
+wraps in source (`packages/template/astro.config.mjs:18`,
+`packages/template/src/remark-join-cjk.ts:39`). The package's public surface is a
+two-line barrel re-exporting the site-config helpers
+(`packages/template/src/index.ts:2`).
 
 ## How `carto dev`/`build` reach here
 

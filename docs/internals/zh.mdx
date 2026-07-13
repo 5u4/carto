@@ -43,20 +43,28 @@ Starlight 硬编码 `src/content/docs`，并从目录结构推导 locale 与 URL
 否则把每个节点的 `.mdx` 写到一个 **slug 链路径**——`rootChain(...).map(slugOf).join('/')`，
 非默认语言带语言前缀（`packages/template/src/materialize.ts:56`）。复制的同时，`rewriteLinks`
 把每个 `carto:<id>` 替换为解析后的 URL 并用目标标题填充空标签
-（`packages/template/src/materialize.ts:61`）；标题先从每个页面的 frontmatter 收集
-（`packages/template/src/materialize.ts:70`）。随后 `injectStalenessBanner` 在节点为 `stale`
-或 `missing` 时给页面 frontmatter 前置一个 `banner.content`，让渲染后的站点显眼地警示哪些
-源文件漂移了（`packages/template/src/materialize.ts:26`、`packages/template/src/staleness-banner.ts:3`）。
+（`packages/template/src/materialize.ts:62`）；这些标题来自 `collectTitles`，它现在位于
+`site-config.ts`，读取每个页面的 frontmatter（`packages/template/src/site-config.ts:62`，
+在 `packages/template/src/materialize.ts:20` 被调用）。随后 `injectStalenessBanner` 在节点为
+`stale` 或 `missing` 时给页面 frontmatter 前置一个 `banner.content`，让渲染后的站点显眼地
+警示哪些源文件漂移了（`packages/template/src/materialize.ts:27`、`packages/template/src/staleness-banner.ts:3`）。
 
 Astro 配置读取同一份清单，并通过 `buildLocales` / `buildSidebar` 从中构建 Starlight 的
-`locales` 与 `sidebar`（`packages/template/src/site-config.ts:3`、
-`packages/template/src/site-config.ts:18`）；`entryFor` 把节点树递归成嵌套的侧边栏条目
-（`packages/template/src/site-config.ts:38`）。`buildRedirects` 把站点根 `/`（以及每个语言根）
-送往 `home` 节点，未设 `home` 时送往第一个根节点（`packages/template/src/site-config.ts:22`）。
-其结果精确重现 `urlPath` 所计算的 URL，因此 `carto:` 链接解析到真实路由。它还注册一个 remark
-插件 `remarkJoinCjkLines`，去掉 Markdown 在 CJK 源码换行处本会插入的多余空格
-（`packages/template/astro.config.mjs:16`、`packages/template/src/remark-join-cjk.ts:39`）。
-该包的对外表面是一个两行桶文件，重导出 site-config 辅助函数（`packages/template/src/index.ts:2`）。
+`locales` 与 `sidebar`（`packages/template/src/site-config.ts:7`、
+`packages/template/src/site-config.ts:23`）；`buildSidebar` 接收收集到的标题，因此每个条目的
+标签就是该页面每种语言的 frontmatter `title`——非默认语言随一个 `translations` 映射一同带上——
+页面没有标题时回退到 slug（`packages/template/src/site-config.ts:43`），`entryFor` 把节点树
+递归成嵌套条目（`packages/template/src/site-config.ts:54`）。`buildRedirects` 把站点根 `/`
+（以及每个语言根）送往 `home` 节点，未设 `home` 时送往第一个根节点
+（`packages/template/src/site-config.ts:27`）。在配置 Starlight 之前，配置先调用 `loadUserConfig`
+读取文档根下可选的 `carto.config.mjs`，再由 `mergeStarlight` 把用户的 `starlight` 覆盖铺在
+carto 自有的 `locales` 与 `sidebar` 之下——后者始终胜出（`packages/template/astro.config.mjs:11`、
+`packages/template/astro.config.mjs:23`；`packages/template/src/site-config.ts:104`、
+`packages/template/src/site-config.ts:134`）。其结果精确重现 `urlPath` 所计算的 URL，因此
+`carto:` 链接解析到真实路由。它还注册一个 remark 插件 `remarkJoinCjkLines`，去掉 Markdown
+在 CJK 源码换行处本会插入的多余空格（`packages/template/astro.config.mjs:18`、
+`packages/template/src/remark-join-cjk.ts:39`）。该包的对外表面是一个两行桶文件，重导出
+site-config 辅助函数（`packages/template/src/index.ts:2`）。
 
 ## `carto dev`/`build` 如何触达这里
 

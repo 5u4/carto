@@ -5,15 +5,15 @@
     "zh"
   ],
   "defaultLocale": "en",
-  "updated_at": "2026-07-11T02:44:28.212Z",
+  "updated_at": "2026-07-13T01:06:36.677Z",
   "nodes": [
     {
       "id": "overview",
       "sources": [
         {
           "file": "skill/SKILL.md",
-          "hash": "d6007d318134bccd",
-          "commit": "ac4b4ea5e358f6d8874cfc576bf6ada483e580db"
+          "hash": "b9c39b1a67763c59",
+          "commit": "14485309b0f0dc838ef8b4b0ff20f30070399255"
         }
       ]
     },
@@ -23,13 +23,13 @@
       "sources": [
         {
           "file": "skill/SKILL.md",
-          "hash": "d6007d318134bccd",
-          "commit": "ac4b4ea5e358f6d8874cfc576bf6ada483e580db"
+          "hash": "b9c39b1a67763c59",
+          "commit": "14485309b0f0dc838ef8b4b0ff20f30070399255"
         },
         {
           "file": "packages/cli/src/commands/init.ts",
-          "hash": "ce6c7c0755c70fa6",
-          "commit": "ac4b4ea5e358f6d8874cfc576bf6ada483e580db"
+          "hash": "883b1b8716cf3384",
+          "commit": "14485309b0f0dc838ef8b4b0ff20f30070399255"
         }
       ]
     },
@@ -39,8 +39,8 @@
       "sources": [
         {
           "file": "skill/SKILL.md",
-          "hash": "d6007d318134bccd",
-          "commit": "ac4b4ea5e358f6d8874cfc576bf6ada483e580db"
+          "hash": "b9c39b1a67763c59",
+          "commit": "14485309b0f0dc838ef8b4b0ff20f30070399255"
         }
       ]
     },
@@ -50,38 +50,38 @@
       "sources": [
         {
           "file": "packages/cli/src/commands/init.ts",
-          "hash": "ce6c7c0755c70fa6",
-          "commit": "ac4b4ea5e358f6d8874cfc576bf6ada483e580db"
+          "hash": "883b1b8716cf3384",
+          "commit": "14485309b0f0dc838ef8b4b0ff20f30070399255"
         },
         {
           "file": "packages/cli/src/commands/status.ts",
-          "hash": "67509f455da517ca",
-          "commit": "ac4b4ea5e358f6d8874cfc576bf6ada483e580db"
+          "hash": "e77de84f1d05cd56",
+          "commit": "14485309b0f0dc838ef8b4b0ff20f30070399255"
         },
         {
           "file": "packages/cli/src/commands/sync.ts",
-          "hash": "e1e70088b60cc13a",
-          "commit": "ac4b4ea5e358f6d8874cfc576bf6ada483e580db"
+          "hash": "ae4f7463e94df99a",
+          "commit": "14485309b0f0dc838ef8b4b0ff20f30070399255"
         },
         {
           "file": "packages/cli/src/commands/coverage.ts",
-          "hash": "6d5c809b7a31d8fd",
-          "commit": "ac4b4ea5e358f6d8874cfc576bf6ada483e580db"
+          "hash": "1817c839cd0e4e80",
+          "commit": "14485309b0f0dc838ef8b4b0ff20f30070399255"
         },
         {
           "file": "packages/cli/src/commands/validate.ts",
-          "hash": "42507c3c8bd13d83",
-          "commit": "ac4b4ea5e358f6d8874cfc576bf6ada483e580db"
+          "hash": "3164b463e2a0ac3e",
+          "commit": "14485309b0f0dc838ef8b4b0ff20f30070399255"
         },
         {
           "file": "packages/cli/src/commands/dev.ts",
           "hash": "eadd432bb6e3f5a1",
-          "commit": "ac4b4ea5e358f6d8874cfc576bf6ada483e580db"
+          "commit": "14485309b0f0dc838ef8b4b0ff20f30070399255"
         },
         {
           "file": "packages/cli/src/commands/build.ts",
           "hash": "64a19d153e034072",
-          "commit": "ac4b4ea5e358f6d8874cfc576bf6ada483e580db"
+          "commit": "14485309b0f0dc838ef8b4b0ff20f30070399255"
         }
       ]
     },
@@ -91,38 +91,38 @@
       "sources": [
         {
           "file": "packages/core/src/schema.ts",
-          "hash": "34f64f6337c5ad39",
-          "commit": "ac4b4ea5e358f6d8874cfc576bf6ada483e580db"
+          "hash": "8de557e7340890c2",
+          "commit": "14485309b0f0dc838ef8b4b0ff20f30070399255"
         },
         {
           "file": "packages/core/src/status.ts",
           "hash": "3761708d35ba6723",
-          "commit": "ac4b4ea5e358f6d8874cfc576bf6ada483e580db"
+          "commit": "14485309b0f0dc838ef8b4b0ff20f30070399255"
         },
         {
           "file": "packages/core/src/hash.ts",
           "hash": "2afef0f45e81f800",
-          "commit": "ac4b4ea5e358f6d8874cfc576bf6ada483e580db"
+          "commit": "14485309b0f0dc838ef8b4b0ff20f30070399255"
         },
         {
           "file": "packages/core/src/resolver.ts",
           "hash": "31c33c07d42b3571",
-          "commit": "ac4b4ea5e358f6d8874cfc576bf6ada483e580db"
+          "commit": "14485309b0f0dc838ef8b4b0ff20f30070399255"
         },
         {
           "file": "packages/core/src/tree.ts",
           "hash": "1e39e040caf4ec64",
-          "commit": "ac4b4ea5e358f6d8874cfc576bf6ada483e580db"
+          "commit": "14485309b0f0dc838ef8b4b0ff20f30070399255"
         },
         {
           "file": "packages/core/src/manifest.ts",
-          "hash": "1bf158db60140165",
-          "commit": "ac4b4ea5e358f6d8874cfc576bf6ada483e580db"
+          "hash": "fb7dbf23d1eb8e4f",
+          "commit": "14485309b0f0dc838ef8b4b0ff20f30070399255"
         },
         {
           "file": "packages/core/src/coverage.ts",
-          "hash": "b43dedce21401290",
-          "commit": "ac4b4ea5e358f6d8874cfc576bf6ada483e580db"
+          "hash": "8a6ac7e271313cd8",
+          "commit": "14485309b0f0dc838ef8b4b0ff20f30070399255"
         }
       ]
     },
@@ -133,47 +133,47 @@
         {
           "file": "packages/core/src/index.ts",
           "hash": "e66f3c483bf628f3",
-          "commit": "ac4b4ea5e358f6d8874cfc576bf6ada483e580db"
+          "commit": "14485309b0f0dc838ef8b4b0ff20f30070399255"
         },
         {
           "file": "packages/cli/src/index.ts",
           "hash": "7b7dbb641c5d9210",
-          "commit": "ac4b4ea5e358f6d8874cfc576bf6ada483e580db"
+          "commit": "14485309b0f0dc838ef8b4b0ff20f30070399255"
         },
         {
           "file": "packages/cli/src/git.ts",
           "hash": "0e0d709390d2f137",
-          "commit": "ac4b4ea5e358f6d8874cfc576bf6ada483e580db"
+          "commit": "14485309b0f0dc838ef8b4b0ff20f30070399255"
         },
         {
           "file": "packages/cli/src/links.ts",
           "hash": "6a0b2a76f5f6b2e4",
-          "commit": "ac4b4ea5e358f6d8874cfc576bf6ada483e580db"
+          "commit": "14485309b0f0dc838ef8b4b0ff20f30070399255"
         },
         {
           "file": "packages/template/src/materialize.ts",
-          "hash": "9b9833b30f13d295",
-          "commit": "ac4b4ea5e358f6d8874cfc576bf6ada483e580db"
+          "hash": "024801bb11c09a46",
+          "commit": "14485309b0f0dc838ef8b4b0ff20f30070399255"
         },
         {
           "file": "packages/template/src/site-config.ts",
-          "hash": "289f5df6b7a2b2fd",
-          "commit": "ac4b4ea5e358f6d8874cfc576bf6ada483e580db"
+          "hash": "57e69b44f1c18206",
+          "commit": "14485309b0f0dc838ef8b4b0ff20f30070399255"
         },
         {
           "file": "packages/template/src/index.ts",
           "hash": "8aa5d006d453c2c4",
-          "commit": "ac4b4ea5e358f6d8874cfc576bf6ada483e580db"
+          "commit": "14485309b0f0dc838ef8b4b0ff20f30070399255"
         },
         {
           "file": "packages/template/src/remark-join-cjk.ts",
           "hash": "11a1593a397791a2",
-          "commit": "ac4b4ea5e358f6d8874cfc576bf6ada483e580db"
+          "commit": "14485309b0f0dc838ef8b4b0ff20f30070399255"
         },
         {
           "file": "packages/template/src/staleness-banner.ts",
           "hash": "6bccccd65f12bf11",
-          "commit": "ac4b4ea5e358f6d8874cfc576bf6ada483e580db"
+          "commit": "14485309b0f0dc838ef8b4b0ff20f30070399255"
         }
       ]
     }
