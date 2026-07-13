@@ -18,7 +18,7 @@ title: CLI 参考
 
 | 命令 | 为你做什么 | 退出码 |
 |---|---|---|
-| `init` | 搭建 `carto.json` + `docs/` + `carto.config.mjs` | 若 `carto.json` 已存在则为 1 |
+| `init` | 搭建 `carto.json` + `docs/`（`carto.config.mjs` 不存在时一并生成） | 若 `carto.json` 已存在则为 1 |
 | `status` | 报告每个节点的新鲜度 | 有任一节点非 fresh 则非零 |
 | `sync` | 写入每个源文件哈希 | 有源文件缺失则为 1 |
 | `coverage` | 列出没有任何节点 source 追踪的文件 | 0，或配合 `--fail-on-uncovered` 为 1 |

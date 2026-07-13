@@ -21,7 +21,7 @@ signal failure by exit code, so they drop straight into CI.
 
 | Command | Does for you | Exit |
 |---|---|---|
-| `init` | Scaffold `carto.json` + `docs/` + `carto.config.mjs` | 1 if `carto.json` exists |
+| `init` | Scaffold `carto.json` + `docs/` (+ `carto.config.mjs` if absent) | 1 if `carto.json` exists |
 | `status` | Report each node's freshness | non-zero if any node not fresh |
 | `sync` | Write every source hash | 1 if a source file is missing |
 | `coverage` | List files no node source tracks | 0, or 1 with `--fail-on-uncovered` |
