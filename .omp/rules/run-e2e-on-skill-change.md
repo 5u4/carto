@@ -4,8 +4,7 @@ condition: skills/**
 ---
 
 Editing anything under `skills/` (the doc-authoring `skills/carto/SKILL.md`)
-changes the
-instructions the carto agent e2e feeds to a live agent — it launches the agent
+changes the instructions the carto agent e2e feeds to a live agent — it launches the agent
 with `--append-system-prompt skills/carto/SKILL.md` and asserts the full
 generate -> validate -> build -> refresh authoring loop. A skill edit can silently
 break that loop without touching any TypeScript.

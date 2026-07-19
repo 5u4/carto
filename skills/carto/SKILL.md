@@ -25,12 +25,11 @@ result. This skill tells you how to drive the loop.
 - The `carto` CLI must be on PATH.
 - You write prose and the manifest by hand. The CLI never invents structure — it
   only hashes (`carto sync`) and checks (`carto validate`).
-- This skill covers the carto-specific mechanics only — the CLI, the manifest,
-  the link and anchor rules, and how to shape the node tree. What makes a page
-  *good* (how to split a system into mental-model pages, layer them for the
-  audience, pick a page type, hold each page to a content floor) is writing
-  judgement you bring yourself, optionally via a separate documentation skill of
-  your choosing.
+- This skill is about driving carto — the CLI, the manifest, the link and anchor
+  rules, and how to map a page onto carto's node tree. What makes a page *good*
+  (how to split a system into mental-model pages, layer them for the audience,
+  pick a page type, hold each page to a content floor) is writing judgement you
+  bring yourself, optionally via a separate documentation skill of your choosing.
 
 ## Two modes
 
@@ -192,8 +191,8 @@ should point at the same load-bearing code.
 How you decide what each page is — how to split a system into mental-model pages,
 layer them for the audience (lead with the user, not the architecture), give
 every user-facing tree a getting-started page, and hold every page to a content
-floor — is writing judgement outside carto's scope. Everything below is only how
-such a page maps onto carto's nodes and `sources`.
+floor — is up to you. Everything below is only how those choices map onto carto's
+nodes and `sources`.
 
 - **One mental model = one node.** "One page = one mental model, never one file
   per page" becomes a carto node: an `id`, an optional `parent`,
