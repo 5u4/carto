@@ -1,15 +1,16 @@
 ---
 description: Re-run the carto agent e2e after editing the injected skill
-condition: skill/**
+condition: skills/**
 ---
 
-Editing anything under `skill/` (the doc-authoring `skill/SKILL.md`) changes the
+Editing anything under `skills/` (the doc-authoring `skills/carto/SKILL.md`, or the
+`skills/documenting-strategy/SKILL.md` doctrine it builds on) changes the
 instructions the carto agent e2e feeds to a live agent — it launches the agent
-with `--append-system-prompt skill/SKILL.md` and asserts the full
+with `--append-system-prompt skills/carto/SKILL.md` and asserts the full
 generate -> validate -> build -> refresh authoring loop. A skill edit can silently
 break that loop without touching any TypeScript.
 
-So after you edit any file under `skill/`, you MUST run the real agent e2e before
+So after you edit any file under `skills/`, you MUST run the real agent e2e before
 claiming the change is verified:
 
 ```sh
@@ -20,5 +21,5 @@ pnpm test:e2e
 
 `pnpm test` / `pnpm typecheck` passing is NOT sufficient — only `pnpm test:e2e`
 exercises the skill against a live agent (it is skipped by default and costs a
-live model run). Do not report a `skill/` change as done or verified until
+live model run). Do not report a `skills/` change as done or verified until
 `pnpm test:e2e` exits 0.

@@ -6,7 +6,7 @@ REPO_URL="${CARTO_REPO_URL:-https://github.com/5u4/carto.git}"
 CARTO_HOME="${CARTO_DIR:-$HOME/.carto}"
 REPO_DIR="$CARTO_HOME/repo"
 SKILLS_DIR="$HOME/.agents/skills"
-SKILL_LINK="$SKILLS_DIR/carto"
+SKILL_NAMES=(carto documenting-strategy)
 
 say() { printf '%s\n' "$*"; }
 step() { printf '\n\033[1m→ %s\033[0m\n' "$*"; }
@@ -41,12 +41,15 @@ link_cli() {
 }
 
 link_skill() {
-  step "Linking carto skill → $SKILL_LINK"
   mkdir -p "$SKILLS_DIR"
-  if [ -e "$SKILL_LINK" ] && [ ! -L "$SKILL_LINK" ]; then
-    die "$SKILL_LINK already exists and is not a symlink; move it aside and re-run."
-  fi
-  ln -sfn "$REPO_DIR/skill" "$SKILL_LINK"
+  for name in "${SKILL_NAMES[@]}"; do
+    link="$SKILLS_DIR/$name"
+    step "Linking $name skill → $link"
+    if [ -e "$link" ] && [ ! -L "$link" ]; then
+      die "$link already exists and is not a symlink; move it aside and re-run."
+    fi
+    ln -sfn "$REPO_DIR/skills/$name" "$link"
+  done
 }
 
 do_install() {
@@ -70,14 +73,18 @@ do_update() {
   [ -d "$REPO_DIR/.git" ] || die "no install found at $REPO_DIR; run install first."
   clone_or_update
   build_cli
+  link_skill
   say "✓ carto updated."
 }
 
 do_uninstall() {
-  if [ -L "$SKILL_LINK" ]; then
-    rm -f "$SKILL_LINK"
-    say "removed $SKILL_LINK"
-  fi
+  for name in "${SKILL_NAMES[@]}"; do
+    link="$SKILLS_DIR/$name"
+    if [ -L "$link" ]; then
+      rm -f "$link"
+      say "removed $link"
+    fi
+  done
   if pnpm uninstall --global @carto/cli >/dev/null 2>&1; then
     say "unlinked carto from pnpm global"
   fi

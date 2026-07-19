@@ -2,7 +2,7 @@
 title: The carto skill
 ---
 
-The skill (`skill/SKILL.md`) is carto's **primary interface** — the thing you
+The skill (`skills/carto/SKILL.md`) is carto's **primary interface** — the thing you
 actually invoke. It's not code you run; it's the instruction set your LLM/agent
 follows to read a codebase, write `.mdx` pages, and edit the one `carto.json`
 manifest. Carto's split of labor is deliberate: **the agent does the judgement**
@@ -13,8 +13,10 @@ the map of that skill; the CLI it drives is [](carto:cli).
 ## The BYO-LLM model
 
 You bring the agent. Carto supplies three parts around it: this skill (the
-authoring guide), the `carto` CLI (the guardrails), and the Astro/Starlight
-template (the renderer). The agent writes prose and the manifest by hand; the
+authoring guide, split into `skills/carto/SKILL.md` for the carto mechanics and
+`skills/documenting-strategy/SKILL.md` for the tool-agnostic content doctrine it
+builds on), the `carto` CLI (the guardrails), and the Astro/Starlight template
+(the renderer). The agent writes prose and the manifest by hand; the
 CLI never invents structure — it only hashes (`carto sync`) and checks
 (`carto validate`). That boundary is why a page can never silently disagree with
 the code it points at: the hash catches it.
@@ -64,10 +66,10 @@ first use). Prose and links go in the `.mdx`; structure and source tracking go i
 Pages render as MDX through Starlight, so plain Markdown is not the only tool:
 asides (`:::note`/`:::caution`), Expressive Code block titles and line
 highlights, `<Steps>`, and `<details>` are available with the same restraint
-that governs mermaid — seasoning, not the meal (`skill/SKILL.md:266`). One hard
+that governs mermaid — seasoning, not the meal (`skills/carto/SKILL.md:215`). One hard
 rule: keep every `carto:` link in a plain Markdown link target, never inside a
 JSX prop, or the validator and build-time rewriter never see it
-(`skill/SKILL.md:285`).
+(`skills/carto/SKILL.md:235`).
 
 ## Verification disciplines (non-negotiable)
 
