@@ -1,6 +1,6 @@
 ---
 name: documenting-component
-description: Write one focused component page for a codebase — delineate what a single component is, read widely enough to place it in the whole system, then write a page that stays on that component. Use when documenting an individual module, subsystem, or flow as its own page, especially when only part of a larger system is being covered at a time.
+description: Write one focused documentation page for a single code component. Use when documenting an individual module, subsystem, or flow as its own page.
 ---
 
 # Documenting a component
