@@ -25,6 +25,10 @@ result. This skill tells you how to drive the loop.
 - The `carto` CLI must be on PATH.
 - You write prose and the manifest by hand. The CLI never invents structure — it
   only hashes (`carto sync`) and checks (`carto validate`).
+- Content doctrine lives in the **`documenting-strategy`** skill — how to split a
+  system into mental-model pages, layer them for the audience, pick each page's
+  type, and hold every page to a content floor. Read it before you plan a node
+  tree; this skill covers only the carto-specific mechanics.
 
 ## Two modes
 
@@ -181,83 +185,27 @@ permalink. They are for the reader's eye and are **separate** from
 `nodes[].sources`, which is the machine-tracked staleness set. In practice both
 should point at the same load-bearing code.
 
-## How to split into nodes
+## Structuring the node tree
 
-A node is **one mental model**, readable in one sitting.
+**Read the `documenting-strategy` skill first** — it is the tool-agnostic doctrine
+for how to split a system into mental-model pages, layer them for the audience
+(lead with the user, not the architecture), give every user-facing tree a
+getting-started page, pick each page's type and section order, and hold every page
+to a content floor. Everything below is only how that doctrine maps onto carto's
+nodes and `sources`.
 
-- A node = "one thing you'd explain on a whiteboard": a subsystem, a flow, a core
-  concept. **Never one file per node** — mirroring the file tree is exactly what
-  carto avoids.
-- Split a node when its `sources` list balloons or more than about 5 independent
-  concepts pile up.
-- Shape the tree top-down: the top is orientation ("what is this, how do the
-  pieces fit"); deeper nodes are subsystems, then flows. Starting from a root is
-  recommended but not required — middle generation is legal (a dangling parent is
-  only a warning).
-- Keep `sources` precise: register only the files whose behavior the node
-  actually describes. Too broad triggers false "stale" churn; too narrow lets
-  real changes go undetected. This is the staleness crosshair.
-- **Audience layering — lead with the user, not the architecture.** If the code
-  is a tool, library, product, or anything with users, the tree MUST open with a
-  user-facing layer that answers "as a user, how do I actually use this?": what it
-  is and who it's for, how you invoke or call it, and the main loop or workflow
-  you drive. Internal architecture (how the packages/modules are built) belongs in
-  **deeper** nodes aimed at contributors — never as the top of the tree. A pure
-  package-dependency diagram is not orientation; it is architecture wearing an
-  overview's hat.
-- **Every user-facing tree needs a getting-started node.** Add a dedicated node
-  (id such as `getting-started` or `usage`) that walks a first-time user from zero
-  to a working result: prerequisites, the exact invocation, what happens at each
-  step, and one complete run they can reproduce. This node is required whenever the
-  documented thing has users; skip it only for purely internal code nobody invokes
-  directly.
-
-**Pick each node's type — it fixes the section order.** Most carto nodes are
-Explanation; that is the "one node = one mental model" shape.
-
-| Node type | Reader goal | Typical carto node | Section order |
-|---|---|---|---|
-| Explanation | build a mental model | subsystem, core concept | concept → context → mechanism → tradeoffs → example |
-| Tutorial | working result from zero | getting-started, usage | goal → prerequisites → steps → verification → next |
-| Reference | look up exact behavior | CLI/API entry node | overview → signature → parameters → returns → examples → edge cases |
-
-Deeper contributor nodes are almost always Explanation — resist letting them
-decay into step-by-step tutorials.
-
-## What each node contains
-
-Do not force one fixed shape on every node. First pick the node's type (above) —
-that fixes the section order. Then apply four principles that hold across all
-types:
-
-- **Value first.** Open with what the reader gains: what this thing is, what you
-  can do after reading. Push background and internal architecture below the fold.
-- **Overview before detail.** The first lines state the node's value plus any
-  prerequisites or constraints; never open with deep background unless the
-  background *is* the value.
-- **Concrete over vague.** Every claim is observable — real commands, real inputs
-  and outputs, version and environment constraints — not "handles caching
-  appropriately". Replace a vague adjective with the condition that proves it.
-- **Sufficient background.** Define an unfamiliar concept the first time it
-  appears, near the point of use, not in a detached glossary.
-- **Prefer prose to diagrams.** Convey the mental-model view — the core concepts
-  and how they relate — as a sequential narrative or a short labelled list by
-  default. A `mermaid` diagram is optional and earns its place only when a small
-  set of nodes and edges genuinely reads more clearly as a picture; keep any
-  diagram to roughly 5 to 7 nodes. Never emit a large auto-generated graph — a
-  full package/module dependency dump or an every-edge flow. Past ~10 nodes a
-  mermaid diagram degrades into an unreadable tangle and renders especially
-  badly on the mobile screens many readers use. When in doubt, write the
-  relationships out in words.
-
-**Hard floor, regardless of type:** Intent (the problem it solves and its role in
-the system) + a mental-model view (3 to 5 core concepts and how they relate) +
-a `path:line` code anchor on every load-bearing claim. On any
-**user-facing node** (getting-started, usage, or a node documenting a command or
-API a reader calls), one **real, reproducible worked example** — real commands
-with their real output, or real inputs mapped to real outputs — is also part of
-the floor. An idealized or invented example does not count; a user node without
-one has not met the floor.
+- **One mental model = one node.** The doctrine's "one page = one mental model,
+  never one file per page" becomes a carto node: an `id`, an optional `parent`,
+  and a `sources` list. A getting-started page becomes a node with id
+  `getting-started` or `usage`.
+- **A node's `sources` is its evidence set — the staleness crosshair.** Register
+  only the files whose behavior the node actually describes. Too broad triggers
+  false "stale" churn; too narrow lets real changes go undetected. This precision
+  is what makes carto's freshness tracking trustworthy; it is carto's own concern,
+  not part of the general doctrine.
+- **Generate top-down or from the middle.** A root node is recommended but not
+  required — a node whose `parent` does not exist yet is only a warning, so you may
+  generate a subtree before its parent. A cycle or a self-parent is an error.
 
 ## Starlight syntax worth reaching for
 
@@ -288,19 +236,15 @@ invisible to the validator and the build-time rewriter.
 
 ## Verification disciplines (non-negotiable)
 
-1. **Comments, docstrings, and names are assumptions, not evidence.** Use them as
-   hints about intent, but verify every claim against actual code behavior, and
-   never copy them verbatim into the docs — comments drift out of sync with code.
-2. **Every claim must be supportable by code behavior and carry a `path:line`
-   anchor.** If you cannot confirm it from the code, do not write it — mark the
-   gap as an explicit TODO instead of inventing a fact.
-3. **Run-throughs trace a real code path** with inputs and outputs the code can
-   actually produce — no imagined or idealized examples.
-4. **Generate all locales together.** Write `defaultLocale` first, then each
-   translation. Translations preserve every `carto:` link and every `path:line`
-   anchor **verbatim** — translate the prose, never the identifiers or link
-   targets. Every node must have an `.mdx` for every declared locale, or
-   `carto validate` fails.
+The `documenting-strategy` skill carries the general evidence rules — comments are
+assumptions not evidence, every claim needs a `path:line` anchor, run-throughs
+trace a real code path. One discipline is carto-specific:
+
+- **Generate all locales together.** Write `defaultLocale` first, then each
+  translation. Translations preserve every `carto:` link and every `path:line`
+  anchor **verbatim** — translate the prose, never the identifiers or link
+  targets. Every node must have an `.mdx` for every declared locale, or
+  `carto validate` fails.
 
 ## Recovering from a failed validate
 
