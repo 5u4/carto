@@ -147,7 +147,7 @@ deliberately simple so a small, cheap model can document it).
 - `packages/core` — schema, hashing, node tree, `carto:` link resolver
 - `packages/cli` — the `carto` binary (`packages/cli/src/commands/`)
 - `packages/template` — the bundled Astro + Starlight site
-- `skills/carto/SKILL.md` — carto's doc-authoring mechanics; `skills/documenting-strategy/SKILL.md` — the tool-agnostic content doctrine it builds on
+- `skills/carto/SKILL.md` — carto's doc-authoring skill (mechanics + node-tree content guidance)
 - `docs/` + `carto.json` — carto's own self-documentation (dogfooded)
 - `plans/` — implementation plans for this repo
 - `pnpm e2e` — end-to-end smoke test that carto can document its own repo
