@@ -73,6 +73,7 @@ do_update() {
   [ -d "$REPO_DIR/.git" ] || die "no install found at $REPO_DIR; run install first."
   clone_or_update
   build_cli
+  link_skill
   say "✓ carto updated."
 }
 

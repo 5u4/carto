@@ -7,7 +7,7 @@ import { join } from 'node:path'
 const repoRoot = fileURLToPath(new URL('../../', import.meta.url))
 const cartoBin = join(repoRoot, 'node_modules', '.bin', 'carto')
 const binDir = join(repoRoot, 'node_modules', '.bin')
-const skillPath = join(repoRoot, 'skill', 'SKILL.md')
+const skillPath = join(repoRoot, 'skills', 'carto', 'SKILL.md')
 const fixtureSrc = join(repoRoot, 'tests', 'e2e', 'fixtures', 'sample-app', 'src')
 const mutation = join(repoRoot, 'tests', 'e2e', 'fixtures', 'sample-app', 'mutations', 'user-with-handle.ts')
 
