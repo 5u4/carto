@@ -12,11 +12,10 @@ the map of that skill; the CLI it drives is [](carto:cli).
 
 ## The BYO-LLM model
 
-You bring the agent. Carto supplies three parts around it: this skill (the
-authoring guide, split into `skills/carto/SKILL.md` for the carto mechanics and
-`skills/documenting-strategy/SKILL.md` for the tool-agnostic content doctrine it
-builds on), the `carto` CLI (the guardrails), and the Astro/Starlight template
-(the renderer). The agent writes prose and the manifest by hand; the
+You bring the agent. Carto supplies three parts around it: this skill
+(`skills/carto/SKILL.md`, the authoring guide), the `carto` CLI (the guardrails),
+and the Astro/Starlight template (the renderer). The agent writes prose and the
+manifest by hand; the
 CLI never invents structure — it only hashes (`carto sync`) and checks
 (`carto validate`). That boundary is why a page can never silently disagree with
 the code it points at: the hash catches it.

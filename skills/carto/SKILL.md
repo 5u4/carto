@@ -25,10 +25,11 @@ result. This skill tells you how to drive the loop.
 - The `carto` CLI must be on PATH.
 - You write prose and the manifest by hand. The CLI never invents structure — it
   only hashes (`carto sync`) and checks (`carto validate`).
-- Content doctrine lives in the **`documenting-strategy`** skill — how to split a
-  system into mental-model pages, layer them for the audience, pick each page's
-  type, and hold every page to a content floor. Read it before you plan a node
-  tree; this skill covers only the carto-specific mechanics.
+- This skill is about driving carto — the CLI, the manifest, the link and anchor
+  rules, and how to map a page onto carto's node tree. What makes a page *good*
+  (how to split a system into mental-model pages, layer them for the audience,
+  pick a page type, hold each page to a content floor) is writing judgement you
+  bring yourself, optionally via a separate documentation skill of your choosing.
 
 ## Two modes
 
@@ -187,22 +188,21 @@ should point at the same load-bearing code.
 
 ## Structuring the node tree
 
-**Read the `documenting-strategy` skill first** — it is the tool-agnostic doctrine
-for how to split a system into mental-model pages, layer them for the audience
-(lead with the user, not the architecture), give every user-facing tree a
-getting-started page, pick each page's type and section order, and hold every page
-to a content floor. Everything below is only how that doctrine maps onto carto's
+How you decide what each page is — how to split a system into mental-model pages,
+layer them for the audience (lead with the user, not the architecture), give
+every user-facing tree a getting-started page, and hold every page to a content
+floor — is up to you. Everything below is only how those choices map onto carto's
 nodes and `sources`.
 
-- **One mental model = one node.** The doctrine's "one page = one mental model,
-  never one file per page" becomes a carto node: an `id`, an optional `parent`,
+- **One mental model = one node.** "One page = one mental model, never one file
+  per page" becomes a carto node: an `id`, an optional `parent`,
   and a `sources` list. A getting-started page becomes a node with id
   `getting-started` or `usage`.
 - **A node's `sources` is its evidence set — the staleness crosshair.** Register
   only the files whose behavior the node actually describes. Too broad triggers
   false "stale" churn; too narrow lets real changes go undetected. This precision
-  is what makes carto's freshness tracking trustworthy; it is carto's own concern,
-  not part of the general doctrine.
+  is what makes carto's freshness tracking trustworthy; it is carto's own
+  concern.
 - **Generate top-down or from the middle.** A root node is recommended but not
   required — a node whose `parent` does not exist yet is only a warning, so you may
   generate a subtree before its parent. A cycle or a self-parent is an error.
@@ -236,9 +236,9 @@ invisible to the validator and the build-time rewriter.
 
 ## Verification disciplines (non-negotiable)
 
-The `documenting-strategy` skill carries the general evidence rules — comments are
-assumptions not evidence, every claim needs a `path:line` anchor, run-throughs
-trace a real code path. One discipline is carto-specific:
+Hold every claim to the usual evidence bar — comments are assumptions not
+evidence, every claim needs a `path:line` anchor, run-throughs trace a real code
+path. One discipline is carto-specific:
 
 - **Generate all locales together.** Write `defaultLocale` first, then each
   translation. Translations preserve every `carto:` link and every `path:line`
