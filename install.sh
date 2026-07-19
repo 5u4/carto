@@ -6,7 +6,7 @@ REPO_URL="${CARTO_REPO_URL:-https://github.com/5u4/carto.git}"
 CARTO_HOME="${CARTO_DIR:-$HOME/.carto}"
 REPO_DIR="$CARTO_HOME/repo"
 SKILLS_DIR="$HOME/.agents/skills"
-SKILL_NAMES=(carto)
+SKILL_NAMES=(carto documenting-component)
 
 say() { printf '%s\n' "$*"; }
 step() { printf '\n\033[1m→ %s\033[0m\n' "$*"; }
