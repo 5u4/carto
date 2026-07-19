@@ -1,6 +1,6 @@
 ---
 name: carto
-description: Generate and maintain sustainably-evolving documentation for one or more codebases — a top-down, mental-model map (not API reference) whose pages carry machine-checkable anchors back to source, so stale pages are detectable and regenerable. Use when asked to document a codebase, write architecture or onboarding docs, build a code map for new joiners, or refresh existing carto docs after code changes.
+description: Document a codebase with the carto CLI, or refresh existing carto docs after code changes. Use when the user asks to build, update, or maintain documentation with carto.
 ---
 
 # Carto
@@ -25,11 +25,11 @@ result. This skill tells you how to drive the loop.
 - The `carto` CLI must be on PATH.
 - You write prose and the manifest by hand. The CLI never invents structure — it
   only hashes (`carto sync`) and checks (`carto validate`).
-- This skill is about driving carto — the CLI, the manifest, the link and anchor
-  rules, and how to map a page onto carto's node tree. What makes a page *good*
-  (how to split a system into mental-model pages, layer them for the audience,
-  pick a page type, hold each page to a content floor) is writing judgement you
-  bring yourself, optionally via a separate documentation skill of your choosing.
+- This skill drives carto — the CLI, the manifest, the link and anchor rules, and
+  how a page maps onto carto's node tree. What makes a page *good* (splitting a
+  system into mental-model pages, layering them for the audience, holding each to
+  a content floor) is documenting judgement: load the `documenting-component`
+  skill for that.
 
 ## Two modes
 
@@ -188,16 +188,13 @@ should point at the same load-bearing code.
 
 ## Structuring the node tree
 
-How you decide what each page is — how to split a system into mental-model pages,
-layer them for the audience (lead with the user, not the architecture), give
-every user-facing tree a getting-started page, and hold every page to a content
-floor — is up to you. Everything below is only how those choices map onto carto's
-nodes and `sources`.
+How to split a system into good mental-model pages is documenting judgement (see
+the `documenting-component` skill). This section is only how those pages map onto
+carto's nodes and `sources`.
 
 - **One mental model = one node.** "One page = one mental model, never one file
   per page" becomes a carto node: an `id`, an optional `parent`,
-  and a `sources` list. A getting-started page becomes a node with id
-  `getting-started` or `usage`.
+  and a `sources` list.
 - **A node's `sources` is its evidence set — the staleness crosshair.** Register
   only the files whose behavior the node actually describes. Too broad triggers
   false "stale" churn; too narrow lets real changes go undetected. This precision
@@ -207,38 +204,7 @@ nodes and `sources`.
   required — a node whose `parent` does not exist yet is only a warning, so you may
   generate a subtree before its parent. A cycle or a self-parent is an error.
 
-## Starlight syntax worth reaching for
-
-Pages render as MDX through Starlight, so plain Markdown is not your only
-tool. Reach for the following when they genuinely serve the mental model.
-The same restraint that governs mermaid applies: prose is the default,
-structure earns its place — this is seasoning, not the meal.
-
-- **Asides (callouts)** — `:::note`, `:::tip`, `:::caution`, `:::danger`,
-  optionally titled `:::caution[Gotcha]`. The natural home for a constraint,
-  an invariant, or a footgun you want to flag without derailing the prose.
-  No import needed.
-- **Code-block titles and highlights** (Expressive Code, on by default) —
-  open a fenced code block with `title="src/foo.ts"` after the language, and
-  draw the eye to the load-bearing lines with `{4-7}` or a term with `"handleX"`.
-  This is the visual partner of a `path:line` anchor: name the block with the file,
-  highlight the exact lines your prose points at.
-- **`<Steps>`** — wraps an ordered list into a numbered walkthrough, which is
-  what a getting-started or usage node's steps want to be. Import it from
-  `@astrojs/starlight/components`.
-- **`<details><summary>`** — collapse secondary detail so the page leads with
-  value and keeps the digression out of the reader's way. Plain HTML, no
-  import.
-
-Components are safe, but keep every `carto:` link in a plain Markdown link
-target as described above — a `carto:` target placed inside a JSX prop is
-invisible to the validator and the build-time rewriter.
-
-## Verification disciplines (non-negotiable)
-
-Hold every claim to the usual evidence bar — comments are assumptions not
-evidence, every claim needs a `path:line` anchor, run-throughs trace a real code
-path. One discipline is carto-specific:
+## Locale discipline
 
 - **Generate all locales together.** Write `defaultLocale` first, then each
   translation. Translations preserve every `carto:` link and every `path:line`
@@ -260,3 +226,27 @@ path. One discipline is carto-specific:
   `federated` entry, or fix the alias/id.
 
 Fix, re-run `carto sync` then `carto validate`, and repeat until it exits 0.
+
+## Starlight syntax worth reaching for
+
+Pages render as MDX through Starlight, so plain Markdown is not your only
+tool. Reach for the following when they genuinely serve the mental model.
+The same restraint that governs mermaid applies: prose is the default,
+structure earns its place — this is seasoning, not the meal.
+
+- **Asides (callouts)** — `:::note`, `:::tip`, `:::caution`, `:::danger`,
+  optionally titled `:::caution[Gotcha]`. The natural home for a constraint,
+  an invariant, or a footgun you want to flag without derailing the prose.
+  No import needed.
+- **Code-block titles and highlights** (Expressive Code, on by default) —
+  open a fenced code block with `title="src/foo.ts"` after the language, and
+  draw the eye to the load-bearing lines with `{4-7}` or a term with `"handleX"`.
+  This is the visual partner of a `path:line` anchor: name the block with the file,
+  highlight the exact lines your prose points at.
+- **`<details><summary>`** — collapse secondary detail so the page leads with
+  value and keeps the digression out of the reader's way. Plain HTML, no
+  import.
+
+Components are safe, but keep every `carto:` link in a plain Markdown link
+target as described above — a `carto:` target placed inside a JSX prop is
+invisible to the validator and the build-time rewriter.
