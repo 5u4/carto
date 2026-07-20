@@ -1,0 +1,113 @@
+---
+title: 链接与联邦图
+description: "carto: 链接目标如何被解析并转换为 URL，以及联邦图如何将多个 doc-set 绑定成一个可寻址的命名空间。"
+---
+
+carto 页面从不硬编码 URL。它写成一个目标为 `carto:<id>` 的 Markdown 链接，让工具在 validate 和构建
+阶段把这个目标解析成真实路径。本节点覆盖这套机制的两个部分：把单个 `carto:`
+目标转换为 URL（或一个带类型的错误）的**解析器**，以及为跨 doc-set 链接提供命名
+空间来解析的**联邦图**。
+
+[manifest](carto:manifest) 定义了这些链接所在的磁盘格式，以及图所遍历的联邦条目；
+[validate](carto:cli) 是解析每个链接以捕获失效目标的命令；
+[rendering](carto:rendering) 把幸存的链接物化成具体的 URL。
+
+## 解析：`parseCartoLink`
+
+`parseCartoLink` 是纯字符串处理，没有 I/O
+（`packages/core/src/resolver.ts:10-19`）。它对任何没有 `carto:` 前缀的目标返回
+`null`，剥离前缀，然后切分出 `#` 锚点。剩下的部分是 *path*。锚点**之前**出现的
+`/` 表示这是一个联邦目标：第一个斜杠左侧是 `alias`，右侧是 `id`。没有斜杠则是内部
+目标——整个 path 就是 `id`。
+
+```
+carto:payments          -> { kind: 'internal',   id: 'payments' }
+carto:payments#refunds  -> { kind: 'internal',   id: 'payments', anchor: 'refunds' }
+carto:web/auth          -> { kind: 'federation', alias: 'web', id: 'auth' }
+```
+
+这些分隔符从构造上就是无歧义的：id 匹配
+`ID_PATTERN = /^[a-z0-9][a-z0-9-]*$/`（`packages/core/src/schema.ts:3`），所以 id
+本身永远不会包含 `.` 或 `/`。因此第一个 `/` 总是 alias 的边界，绝不会是 id 的一
+部分。`splitAnchor` 先运行（`packages/core/src/resolver.ts:21-25`），所以无论有无
+alias，`#` 总是标记 path 的结尾。
+
+## 解析为 URL：`resolveCartoLink`
+
+`resolveCartoLink` 接收一个目标以及一个 `ResolveContext`——当前的 `manifest`、
+`locale`、可选的 url `prefix`，以及可选的 `federation` 上下文
+（`packages/core/src/resolver.ts:41-46`）。它返回一个可判别的 `ResolveResult`：
+`{ ok: true, url, id }` 或 `{ ok: false, error }`
+（`packages/core/src/resolver.ts:48-50`）。每个失败都是一个带类型的
+`ResolveError` kind，从不抛异常（`packages/core/src/resolver.ts:27-33`）。
+
+**内部目标**（`packages/core/src/resolver.ts:56-61`）：
+
+1. `ID_PATTERN.test(id)`——格式错误的 id（大写、前导短横、点号）是 `malformed`。
+2. `nodesById(manifest.nodes).get(id)`——缺失的节点是 `unknown-id`。
+3. `urlPath(...)` 从节点的根链构建 URL，应用 locale 前缀和上下文 `prefix`
+   （`packages/core/src/tree.ts:26-29`）。若有锚点，则以 `#anchor` 追加。
+
+**联邦目标**（`packages/core/src/resolver.ts:64-79`）需要一个 `FederationContext`
+——它的 `byHash` 映射、`aliasToHash` 映射，以及 `siteDefaultLocale`
+（`packages/core/src/resolver.ts:35-39`）。遍历路径是 alias → hash → DocSet → node：
+
+1. 完全没有 federation 上下文 → `federation-unsupported`
+   （`packages/core/src/resolver.ts:68`）。单 doc-set 站点根本不会传入它，所以任何
+   `alias/id` 链接都会被提前拒绝。
+2. `alias` 或 `id` 未通过 `ID_PATTERN` → `malformed`
+   （`packages/core/src/resolver.ts:69-71`）。
+3. `aliasToHash.get(alias)` 未命中 → `unknown-alias`
+   （`packages/core/src/resolver.ts:72-75`）。
+4. 目标 DocSet 的 `nodesById` 未命中 → `unknown-federated-id`
+   （`packages/core/src/resolver.ts:76-77`）。
+5. 成功时基于*目标* DocSet 的 manifest 和 `prefix` 构建 URL，所以联邦链接落在该
+   doc-set 的命名空间之下（`packages/core/src/resolver.ts:78`）。
+
+## 提取：`extractCartoTargets`
+
+链接只有能被找到才会被解析。`extractCartoTargets` 用 `/\]\((carto:[^)\s]+)\)/g`
+扫描一个 MDX 字符串，返回捕获到的每个目标（`packages/cli/src/links.ts:1-9`）。模式
+中的 `](` 前缀正是关键：它**只**把 `carto:` URL 作为 Markdown 链接目标来匹配，绝
+不匹配裸露的正文文本，也绝不匹配 JSX prop 内部。这就是为什么 carto 链接必须作为
+Markdown 链接目标写出，置于链接括号内——出现在其他任何位置的 `carto:` 字符串对提取器都是不可见的，
+永远不会被验证。
+
+它唯一的消费者是 `validate` 命令，该命令读取每个 locale 的 MDX，提取每个目标并解
+析，把任何 `ok: false` 作为以文件为键的错误报告
+（`packages/cli/src/commands/validate.ts:70-73`）。
+
+## 联邦图：`loadGraph`
+
+`loadGraph` 从一个 `federalRoot` 遍历联邦条目，返回一个以 hash 为键的 `DocSet` 的
+`Graph`（`packages/core/src/graph.ts:41-86`）。一个 `DocSet` 捆绑了一个 doc-set 的
+`hash`、url `prefix`、`docRoot`、已解析的 `manifest`，以及它自己的 `aliasToHash`
+映射（`packages/core/src/graph.ts:7-13`）。
+
+**身份**是按路径内容寻址的，而非按 alias。`identity` 把 doc-root 相对于 federal
+root 规范化（通过 `realpath` 解析符号链接），然后对
+`sha256('file:' + canonical)` 求哈希并取前 8 个十六进制字符
+（`packages/core/src/graph.ts:28-32`）。指向同一目录的两个 alias 会折叠成同一个
+hash——菱形结构只加载一个 DocSet，而环也会终止，因为 `load` 在 `byHash` 上做了记
+忆化（`packages/core/src/graph.ts:47-49`）。
+
+**加载**是递归的：对 `manifest.federated` 中的每个条目，`resolveEntry` 把它转换成
+一个子 doc-root，`identity` 对其求哈希，记录 alias→hash 边，然后 `load` 递归
+（`packages/core/src/graph.ts:54-68`）。根 manifest 会被复用而非重新读取
+（`packages/core/src/graph.ts:50`）。
+
+:::caution
+`resolveEntry` 对 `git` 类型的条目抛出 `FederationError`——git 联邦尚未实现；只有
+`file` 条目会被加载（`packages/core/src/graph.ts:34-39`）。
+:::
+
+**前缀**在整个图已知之后才分配（`packages/core/src/graph.ts:75-83`）：
+
+- 非联邦的根 → `''`（URL 位于站点根部）。
+- 联邦的根 → `/self`。
+- 每个子节点 → `/<minAlias>-<hash>`，其中 `minAlias` 是引用该 DocSet 的字典序最
+  小的 alias（`packages/core/src/graph.ts:80-82`）。选择最小的 alias 能在一个
+  doc-set 可通过多个名称到达时保持前缀稳定。
+
+这些前缀正是 `resolveCartoLink` 喂给 `urlPath` 的东西，所以 `carto:web/auth` 链接
+会解析到 `web` 的 `/web-<hash>` 命名空间之下的一个 URL。

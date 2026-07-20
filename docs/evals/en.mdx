@@ -1,0 +1,143 @@
+---
+title: Skill evals
+description: Local-only, real-model measurement of whether an agent follows the carto skills.
+---
+
+Carto ships two skills — `skills/carto` (drive the whole authoring loop) and
+`skills/documenting-component` (write one page to the floor). The evals here
+answer a question the [test suite](carto:testing) cannot: **when a real agent
+reads a skill, does it actually do the right thing?** That is a property of the
+*model plus the skill prose*, not of carto's code, so it lives in its own
+measurement layer built on [`waza`](https://github.com/microsoft/waza) rather than in CI.
+
+## Why this is separate from `carto:testing`
+
+[carto:testing](carto:testing) asks *does the code work* — deterministic Vitest
+specs over pure functions, runnable offline in CI on every push. An eval asks
+*does an agent following the skill produce good output* — it spawns a real
+model, hands it a prompt and fixtures, lets it run the `carto` binary, and
+grades the workspace it leaves behind.
+
+That difference forces two constraints:
+
+- **Real model → non-deterministic and paid.** Each task runs `trials_per_task:
+  3` times (`evals/carto/eval.yaml:11`) because a single sample says little
+  about a stochastic agent.
+- **Real model → local-only.** These are **never wired into CI.** You run them
+  by hand after `copilot login`, against your own Copilot session; CI stays
+  fast, free, and deterministic.
+
+## An eval: skill + config + tasks glob
+
+Each eval is one `eval.yaml`. It names the `skill` under test, a `config`
+block, and a `tasks` glob:
+
+- `evals/carto/eval.yaml` — `skill: carto` (`evals/carto/eval.yaml:6`),
+  `timeout_seconds: 900` (a full author-and-build loop is slow), tasks
+  `tasks/*.yaml` (`evals/carto/eval.yaml:19-20`).
+- `evals/documenting-component/eval.yaml` — `skill: documenting-component`
+  (`evals/documenting-component/eval.yaml:6`), a tighter `timeout_seconds: 600`
+  (one page, no build), same `tasks/*.yaml` shape
+  (`evals/documenting-component/eval.yaml:19-20`).
+
+The shared `config` fields decide *how* the model runs:
+
+```yaml
+config:
+  trials_per_task: 3
+  timeout_seconds: 900
+  parallel: false
+  executor: copilot-sdk
+  model: claude-sonnet-4.6
+  skill_directories:
+    - ../../skills
+```
+
+`executor: copilot-sdk` picks the runner, `model` pins the model, and
+`skill_directories` points the agent at the repo's real skills
+(`evals/carto/eval.yaml:16-17`) — so the eval measures the *checked-in* skill
+prose, not a copy.
+
+## A task: prompt + fixtures, positive and negative
+
+A task yaml is one scenario: an `inputs.prompt`, optional `files` fixtures
+staged into the agent's workspace, and a `graders` list. They come in two
+flavours.
+
+**Positive (the skill should fire and succeed).** `evals/carto/tasks/generate.yaml`
+drops the agent into an empty doc root with a tiny `user`/`post`/`feed`
+TypeScript app under `sample-app/` and tells it to init, design a node tree,
+write `node.json` + `.mdx`, and drive `carto sync/validate/build` until it
+renders (`evals/carto/tasks/generate.yaml:12-27`). The fixtures are the three
+source files listed under `inputs.files`
+(`evals/carto/tasks/generate.yaml:28-31`), copied from
+`evals/carto/fixtures/sample-app/`. Its documenting-component sibling,
+`evals/documenting-component/tasks/document.yaml`, stages a single
+`src/token-bucket.ts` and asks for one `component.md` page that meets the floor
+(`evals/documenting-component/tasks/document.yaml:12-23`).
+
+**Negative-trigger (the skill should NOT fire).** An unrelated prompt — "write a
+US-phone-number regex" (`evals/carto/tasks/negative-trigger.yaml:10`), or
+"reverse a linked list" (`evals/documenting-component/tasks/negative-trigger.yaml:11`)
+— must not activate the skill. These use `trigger` (mode `negative`) and
+`skill_invocation` (with `forbidden_skills`) graders instead of a workspace
+check (`evals/carto/tasks/negative-trigger.yaml:16-28`). A skill that fires on
+everything is as broken as one that never fires; the negative tasks guard the
+`description` line that gates activation.
+
+## A grader: a script that scores the workspace
+
+The positive carto task is graded by a `program` grader — an external command
+run against the finished workspace (`evals/carto/tasks/generate.yaml:37-43`).
+Walk `evals/carto/graders/check_build.py`:
+
+1. **Locate the workspace.** It reads `WAZA_WORKSPACE_DIR` from the environment
+   — waza sets this to the directory the agent worked in
+   (`evals/carto/graders/check_build.py:8`).
+2. **Require a build.** It demands `dist-site/` exist; absent, the agent never
+   ran `carto build` and the grader fails immediately
+   (`evals/carto/graders/check_build.py:9-12`). This is the check that the agent
+   drove the full [CLI](carto:cli) loop to the end, not just wrote files.
+3. **Read what rendered.** It concatenates every `*.html` under `dist-site/`
+   into one string (`evals/carto/graders/check_build.py:14`); empty output is
+   also a failure (`evals/carto/graders/check_build.py:15-17`).
+4. **Prove the docs describe the real code.** The rendered HTML MUST contain the
+   source identifiers `authorId` and `buildFeed`
+   (`evals/carto/graders/check_build.py:20-22`) — real symbols from the fixtures
+   (`buildFeed` at `evals/carto/fixtures/sample-app/src/feed.ts:9`, `authorId`
+   at `evals/carto/fixtures/sample-app/src/post.ts:5`). Their presence is cheap
+   evidence the agent actually documented the behaviour rather than emitting
+   generic filler.
+5. **Prove links resolve.** It fails if any `href="carto:` (or single-quoted)
+   survives in the HTML (`evals/carto/graders/check_build.py:23-24`) — an
+   unrewritten `carto:` link means the [rendering](carto:rendering) step never
+   resolved it.
+
+Any problem prints to stderr and exits non-zero
+(`evals/carto/graders/check_build.py:26-32`); a clean pass exits 0. The exit
+code *is* the score. The grader is deliberately shallow and behavioural — it
+never parses the docs, it checks the observable end product a correct run must
+produce.
+
+:::note
+The grader tolerates a lot of stylistic freedom: it never dictates the node
+tree, the prose, or the number of pages. It only insists the pipeline ran and
+the output points at the real source. Two identifiers plus a link check is
+enough signal because an agent that skipped the code or broke links cannot pass
+by luck.
+:::
+
+## Running them
+
+Evals are a local ritual, not a CI gate:
+
+1. `copilot login` — the `copilot-sdk` executor needs your Copilot session.
+2. Run the eval with `waza` from the repo root (e.g. `waza run evals/carto`),
+   which fans out each task over its `trials_per_task` samples and reports the
+   grader outcomes.
+
+Because they call a real model they are slow, non-deterministic, and cost
+tokens — run them when you change a skill's prose and want proof the change
+still steers an agent correctly. For the offline, deterministic half of carto's
+safety net see [carto:testing](carto:testing); for the `carto build` step these
+evals exercise see [carto:cli](carto:cli) and the [overview](carto:overview).

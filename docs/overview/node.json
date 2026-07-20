@@ -1,0 +1,14 @@
+{
+  "sources": [
+    {
+      "file": "packages/core/src/index.ts",
+      "hash": "4a735758e7ec5407",
+      "commit": "59d86e576e9dea007f0af7e172d2b317489124cd"
+    },
+    {
+      "file": "packages/cli/src/index.ts",
+      "hash": "7b7dbb641c5d9210",
+      "commit": "59d86e576e9dea007f0af7e172d2b317489124cd"
+    }
+  ]
+}

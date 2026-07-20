@@ -1,0 +1,87 @@
+---
+title: 测试
+description: 按各自守护的目标划分的两套测试——一套快速且确定性的单元测试，以及一套端到端驱动真实 carto CLI 的确定性系统测试。
+---
+
+carto 的测试沿着一条断层线组织：**每套测试守护什么**。两套测试，两份契约，互不重叠。
+
+## 两套测试，按守护目标划分
+
+**单元测试**守护各个模块本身的正确性——schema、哈希器、链接解析器、节点树。它由
+`vitest.config.ts` 配置，匹配 `packages/**/*.test.ts`
+（`vitest.config.ts:11`），并将 `@carto/core` 别名指向其 TypeScript 源码，因此测试无需
+构建步骤即可直接针对 `packages/core/src` 运行（`vitest.config.ts:7`）。它是确定性的，且
+不访问网络。用 `pnpm test` 运行。
+
+**流水线测试**守护这些模块*之间的接缝*——即 `sync`、`validate`、`coverage`、`build`、
+`status` 与联邦（federation）确实能组合成一个可用的文档系统。它由
+`vitest.pipeline.config.ts` 配置，匹配 `tests/pipeline/**/*.test.ts`
+（`vitest.pipeline.config.ts:11`），并将测试与钩子的超时都提高到 120s
+（`vitest.pipeline.config.ts:12-13`），因为每个阶段都会以子进程方式启动真实 CLI。用
+`pnpm test:pipeline` 运行。
+
+两份配置共享同一个 `@carto/core` → 源码 的别名（`vitest.pipeline.config.ts:7`），因此两套
+测试都不依赖预先构建的 core 产物。
+
+技能*质量*——某个 agent 是否真的遵循了文档撰写技能——在这里根本不算一套测试。它属于
+[evals](carto:evals) 这一层，会调用真实模型，因此仅限本地运行，绝不接入 CI。本页只讲这两套
+确定性测试；evals 是第三层、非 CI 的度量层。
+
+## 流水线测试就是那块白板
+
+[carto CLI](carto:cli) 的整体都由这一个测试来演练：
+`tests/pipeline/carto-pipeline.test.ts`。它是核心中枢——一个 `it` 块，在**手写的
+fixtures** 上走完整条文档循环，驱动的是*真实构建出来的二进制*，而非导入函数。
+
+它从不直接接触 `@carto/core`。它把已编译的 CLI 定位到
+`packages/cli/dist/index.js`（`carto-pipeline.test.ts:8`），并通过
+`spawnSync(process.execPath, [cartoCli, ...args])` 调用它
+（`carto-pipeline.test.ts:17-24`），捕获退出状态、stdout 与 stderr。因为它驱动的是构建
+产物，一个 `beforeAll` 守卫会在二进制缺失时大声失败——你必须先 `pnpm build` 再
+`pnpm test:pipeline`（`carto-pipeline.test.ts:44-48`）。
+
+:::note
+无 LLM、无密钥、无网络。每个 fixture 都是手工签入的，每条断言都是确定性的，因此流水线测试可
+在 CI 中运行。
+:::
+
+### 它所走的循环
+
+每个阶段都把 fixtures 复制进一个全新的 `mkdtemp` 根目录并断言一个可观测的结果，全部包在一个
+`try/finally` 里，最终删除该临时根目录（`carto-pipeline.test.ts:133-135`）。
+
+**Sync → validate → 节点计数。** 它把 `sample-app/src`（代码根）与 `doc-set`（文档根）
+复制进临时根目录（`carto-pipeline.test.ts:60-61`），运行 `carto sync` 并断言退出码 0
+（`carto-pipeline.test.ts:63-64`），随后 `carto validate` 为绿
+（`carto-pipeline.test.ts:66-67`），再统计 `docs/` 下携带 `node.json` 的目录数并断言至少
+三个节点（`carto-pipeline.test.ts:69-72`）。
+
+**Coverage 走的是代码，而非文档。** `carto coverage` 必须报告 `/ 3 files`——证明
+[coverage](carto:coverage) 走的是*代码*根的三个源文件，而非文档根
+（`carto-pipeline.test.ts:74-76`）。
+
+**Build 渲染出真实符号并解析每个链接。** 在 `carto build` 之后
+（`carto-pipeline.test.ts:78-79`），它拼接 `dist-site` 下的每个 `.html`，并断言构建出的
+HTML 包含真实的源码符号 `authorId` 与 `buildFeed`（`carto-pipeline.test.ts:81-83`），且
+输出中**不**残留任何未解析的 `carto:` href（`carto-pipeline.test.ts:84`）。
+
+**陈旧检测。** 它用一个变异后的 fixture 覆盖 `src/user.ts`（`carto-pipeline.test.ts:86`），
+并断言 `carto status` 此时退出非零——[freshness](carto:freshness) 哈希不再与源码匹配
+（`carto-pipeline.test.ts:88-89`）。它复制一个刷新后的 `user` 页，运行 `carto sync user`
+（`carto-pipeline.test.ts:91-93`），并断言 `carto status` 再次变绿
+（`carto-pipeline.test.ts:95-96`）。随后一次重建证明新符号 `handle` 与原有符号一同到达了
+HTML（`carto-pipeline.test.ts:98-105`）。
+
+**联邦。** 它复制第二个 doc-set `glossary`，并在 `carto.json` 的 `federated` 下注册它
+（`carto-pipeline.test.ts:107-111`），在两种语言的 overview 页追加一条跨 doc-set 链接
+`carto:glossary/terms`（`carto-pipeline.test.ts:113-117`），然后重建
+（`carto-pipeline.test.ts:119-123`）。接着它断言构建出的站点把联邦页挂载在一个
+`glossary-<8 位十六进制>` 别名哈希前缀下（`carto-pipeline.test.ts:126`），在联邦生效后把
+*自身*页面挂载在 `/self` 前缀下（`carto-pipeline.test.ts:127`），并断言那条跨 doc-set 的
+[链接](carto:links) 解析到带前缀的 URL（`carto-pipeline.test.ts:132`）。
+
+### 为什么要驱动二进制
+
+导入函数测的是单元；启动二进制测的是产品。流水线测试是唯一一处以用户运行的方式演练*已组合*系统
+的地方——真实的 `carto` 进程、磁盘上真实的 fixture 文件、真实的 HTML 输出。它是 [CLI](carto:cli)
+所暴露的每一条命令之下的安全网。

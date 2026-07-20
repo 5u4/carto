@@ -1,0 +1,107 @@
+---
+title: Testing
+description: Two suites split by what they defend — a fast deterministic unit suite and a deterministic system test that drives the real carto CLI end to end.
+---
+
+carto tests along a single fault line: **what each suite defends**. Two suites,
+two contracts, zero overlap.
+
+## Two suites, split by what they defend
+
+The **unit suite** defends the correctness of individual modules — the schema,
+the hasher, the link resolver, the node tree. It is configured by
+`vitest.config.ts`, which globs `packages/**/*.test.ts`
+(`vitest.config.ts:11`) and aliases `@carto/core` to its TypeScript source so
+tests run against `packages/core/src` without a build step
+(`vitest.config.ts:7`). It is deterministic and hits no network. Run it with
+`pnpm test`.
+
+The **pipeline suite** defends the *seams between* those modules — that
+`sync`, `validate`, `coverage`, `build`, `status`, and federation actually
+compose into a working documentation system. It is configured by
+`vitest.pipeline.config.ts`, which globs `tests/pipeline/**/*.test.ts`
+(`vitest.pipeline.config.ts:11`) and raises both the test and hook timeouts to
+120s (`vitest.pipeline.config.ts:12-13`) because each phase spawns the real CLI
+as a child process. Run it with `pnpm test:pipeline`.
+
+Both configs share the same `@carto/core` → source alias
+(`vitest.pipeline.config.ts:7`), so neither suite depends on prebuilt core
+artifacts.
+
+Skill *quality* — whether an agent actually follows the authoring skills — is
+not a suite here at all. It lives in the [evals](carto:evals) layer, which
+calls a real model and is therefore local-only, never wired into CI. This page
+is about the two deterministic suites; evals are the third, non-CI measurement
+layer.
+
+## The pipeline test is the whiteboard
+
+The whole of [carto's CLI](carto:cli) is exercised by one test:
+`tests/pipeline/carto-pipeline.test.ts`. It is the centerpiece — a single
+`it` block that walks the full documentation loop over **hand-written
+fixtures**, driving the *real built binary* rather than importing functions.
+
+It never touches `@carto/core` directly. It resolves the compiled CLI at
+`packages/cli/dist/index.js` (`carto-pipeline.test.ts:8`) and invokes it with
+`spawnSync(process.execPath, [cartoCli, ...args])`
+(`carto-pipeline.test.ts:17-24`), capturing exit status, stdout, and stderr.
+Because it drives the built artifact, a `beforeAll` guard fails loudly if the
+binary is missing — you must run `pnpm build` before `pnpm test:pipeline`
+(`carto-pipeline.test.ts:44-48`).
+
+:::note
+No LLM, no secrets, no network. Every fixture is checked in by hand and every
+assertion is deterministic, so the pipeline suite runs in CI.
+:::
+
+### The loop it walks
+
+Each phase copies fixtures into a fresh `mkdtemp` root and asserts an
+observable outcome, all inside a `try/finally` that removes the temp root
+(`carto-pipeline.test.ts:133-135`).
+
+**Sync → validate → node count.** It copies `sample-app/src` (the code root)
+and `doc-set` (the doc root) into the temp root
+(`carto-pipeline.test.ts:60-61`), runs `carto sync` and asserts exit 0
+(`carto-pipeline.test.ts:63-64`), then `carto validate` green
+(`carto-pipeline.test.ts:66-67`), then counts directories under `docs/` that
+carry a `node.json` and asserts at least three nodes
+(`carto-pipeline.test.ts:69-72`).
+
+**Coverage walks the code, not the docs.** `carto coverage` must report
+`/ 3 files` — proving [coverage](carto:coverage) walks the three source files
+of the *code* root, not the doc root (`carto-pipeline.test.ts:74-76`).
+
+**Build renders real symbols and resolves every link.** After `carto build`
+(`carto-pipeline.test.ts:78-79`), it concatenates every `.html` under
+`dist-site` and asserts the built HTML contains the real source symbols
+`authorId` and `buildFeed` (`carto-pipeline.test.ts:81-83`), and that **no**
+unresolved `carto:` href survives into the output
+(`carto-pipeline.test.ts:84`).
+
+**Staleness detection.** It overwrites `src/user.ts` with a mutated fixture
+(`carto-pipeline.test.ts:86`) and asserts `carto status` now exits non-zero —
+the [freshness](carto:freshness) hash no longer matches the source
+(`carto-pipeline.test.ts:88-89`). It copies a refreshed `user` page, runs
+`carto sync user` (`carto-pipeline.test.ts:91-93`), and asserts `carto status`
+is green again (`carto-pipeline.test.ts:95-96`). A rebuild then proves the new
+symbol `handle` reached the HTML alongside the originals
+(`carto-pipeline.test.ts:98-105`).
+
+**Federation.** It copies a second doc-set, `glossary`, and registers it in
+`carto.json` under `federated` (`carto-pipeline.test.ts:107-111`), appends a
+cross-doc-set link `carto:glossary/terms` to the overview page in both locales
+(`carto-pipeline.test.ts:113-117`), and rebuilds
+(`carto-pipeline.test.ts:119-123`). It then asserts the built site mounts the
+federated pages under an `glossary-<8 hex>` alias-hash prefix
+(`carto-pipeline.test.ts:126`), mounts its *own* pages under `/self` once
+federation is active (`carto-pipeline.test.ts:127`), and that the cross-doc-set
+[link](carto:links) resolves to the prefixed URL
+(`carto-pipeline.test.ts:132`).
+
+### Why drive the binary
+
+Importing functions tests units; spawning the binary tests the product. The
+pipeline test is the only place the *composed* system is exercised the way a
+user runs it — a real `carto` process, real fixture files on disk, real HTML
+output. It is the safety net under every command the [CLI](carto:cli) exposes.

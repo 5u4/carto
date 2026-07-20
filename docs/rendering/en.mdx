@@ -1,0 +1,177 @@
+---
+title: Rendering
+description: How a carto doc root becomes a Starlight-on-Astro site through a two-phase render over one core Graph.
+---
+
+A carto doc root is not a website. It is a tree of `<id>/<locale>.mdx` files plus a
+`carto.json` manifest — the raw material the [links](carto:links) and
+[freshness](carto:freshness) subsystems reason about. The `@carto/template` package
+is what turns that raw material into a browsable [Starlight](carto:overview) site.
+It is the render tier: everything below runs when someone invokes `carto dev` or
+`carto build`, which the [CLI](carto:cli) launches with `CARTO_ROOT` pointing at the
+doc root.
+
+## One Graph, two phases
+
+Both phases start from the same primitive — `loadGraph(root)` from `@carto/core`,
+which reads the root manifest and every federated doc-set into a single `Graph`
+(`{ federated, root, byHash }`, `packages/core/src/graph.ts:15`). Nothing in the
+template layer re-parses manifests; it consumes the `Graph` and its `DocSet`s
+(`packages/core/src/graph.ts:7`).
+
+The two phases are separate programs, run in order:
+
+1. **`materialize.ts`** — a standalone Node script that projects the `Graph` into
+   Astro's content collection at `src/content/docs`. It runs to completion and
+   exits before Astro starts.
+2. **`astro.config.mjs`** — loads the same `Graph` again, at config-evaluation
+   time, and derives Astro/Starlight configuration (locales, sidebar, redirects,
+   remark plugins) from it.
+
+The split exists because Astro owns the `src/content/docs` directory as file input,
+but carto's source of truth is `<docRoot>/docs/<id>/<locale>.mdx`. Phase 1 bridges
+that gap by copying-and-rewriting; phase 2 wires the copied tree into a themed site.
+
+## Phase 1 — materialize
+
+`main()` is a top-level `await main()` at module end (`packages/template/src/materialize.ts:133`).
+It reads `CARTO_ROOT` (falling back to `process.cwd()`), loads the graph, then
+**wipes and recreates** the content directory — `rm(contentDir, { recursive: true,
+force: true })` followed by `mkdir` (`packages/template/src/materialize.ts:28`). The
+output is disposable and fully rebuilt every run; there is no incremental merge.
+
+### Empty state
+
+If the root manifest has no nodes and the graph is not federated, `main` writes a
+single onboarding `index.mdx` and returns early (`packages/template/src/materialize.ts:30`,
+`writeEmptyState` at `packages/template/src/materialize.ts:68`). That page tells the
+user to ask their agent to document the code, then re-run `carto dev`.
+
+### The render loop
+
+Otherwise `main` iterates three nested levels — **doc-set × node × site-locale**
+(`packages/template/src/materialize.ts:38`):
+
+- `graph.byHash.values()` gives every doc-set; each gets a `FederationContext`
+  carrying `byHash`, that doc-set's `aliasToHash`, and the site default locale
+  (`packages/template/src/materialize.ts:39`).
+- For every node, and for every locale the **site** declares
+  (`graph.root.manifest.locales`), it picks a `contentLocale`: the requested
+  locale if the doc-set has it, otherwise the doc-set's own `defaultLocale` with a
+  `console.warn` (`packages/template/src/materialize.ts:42`). A site can request `zh`
+  pages a federated doc-set never wrote; the fallback keeps the page present.
+
+For each cell it reads `<docRoot>/docs/<id>/<contentLocale>.mdx`
+(`packages/template/src/materialize.ts:46`), transforms it, and writes it:
+
+1. **`rewriteLinks`** rewrites every `carto:` link in place
+   (`packages/template/src/materialize.ts:99`). It calls `resolveCartoLink` — the same
+   resolver the [links](carto:links) node owns — and on success swaps the `carto:`
+   target for the real `result.url`. An empty label is auto-filled from the target's
+   title via `titleFor` (`packages/template/src/materialize.ts:110`), which looks up
+   `hash:id:locale` in the titles map and falls back through the target doc-set's
+   default locale to the bare id (`packages/template/src/materialize.ts:126`). An
+   unresolvable link is left verbatim.
+2. **`injectStalenessBanner`** stamps a warning banner when the node is stale or
+   missing (see below), keyed by `${docSet.hash}:${node.id}` in the freshness map
+   (`packages/template/src/materialize.ts:49`).
+3. **`targetPath`** computes the destination and the file is written
+   (`packages/template/src/materialize.ts:52`).
+
+### Where a page lands
+
+`targetPath` joins three segments under `contentDir`
+(`packages/template/src/materialize.ts:92`):
+
+- a **locale prefix** — empty for the site default locale, else `<locale>/`;
+- a **doc-set prefix** — empty for the root, else the federated prefix minus its
+  leading `/`;
+- the **root chain** — `rootChain(nodes, id)` mapped to ids and joined by `/`, so a
+  child node nests under its parents' path.
+
+So the site-default `overview` node of the root doc-set writes to
+`src/content/docs/overview.mdx`, while a `zh` page of a federated `web` doc-set's
+`auth` node writes to `src/content/docs/zh/web/auth.mdx`.
+
+Freshness for the whole graph is precomputed once by `collectFreshness`, which runs
+`statusReport` per doc-set against its `codeRootDir` (`packages/template/src/materialize.ts:58`).
+
+## Staleness banner
+
+`injectStalenessBanner` is a pure string transform over one page's MDX
+(`packages/template/src/staleness-banner.ts:3`). Its rules:
+
+- **No-op unless stale or missing.** `fresh`, `unsynced`, or `undefined` status
+  returns the input unchanged (`packages/template/src/staleness-banner.ts:4`). The
+  `state` field comes from `NodeStatus` (`packages/core/src/status.ts:15`), owned by
+  [freshness](carto:freshness).
+- **Frontmatter-aware.** It matches the leading `---\n…\n---` block; a page without
+  frontmatter is left alone (`packages/template/src/staleness-banner.ts:5`).
+- **Idempotent.** If the frontmatter body already has a `banner:` key it bails, so
+  re-running materialize never double-stamps (`packages/template/src/staleness-banner.ts:8`).
+- **Content.** It inserts a Starlight `banner:` frontmatter key whose message lists
+  the changed source files (`<code>…</code>`) under "changed since this page was
+  written" and missing ones under "no longer exist"
+  (`packages/template/src/staleness-banner.ts:11`, message at
+  `packages/template/src/staleness-banner.ts:15`). Quotes and backslashes in the
+  message are escaped so the YAML string stays valid
+  (`packages/template/src/staleness-banner.ts:10`).
+
+Starlight renders that `banner:` key as a site-wide banner atop the page, so a
+stale page announces its own staleness at read time.
+
+## Phase 2 — astro.config.mjs
+
+The Astro config is itself a carto-aware program (`packages/template/astro.config.mjs`).
+At evaluation time it loads the same graph, the user config, and the titles map
+(`packages/template/astro.config.mjs:9`), then builds `defineConfig`:
+
+- **`outDir`** is `<root>/dist-site` — the built site lands next to the doc root, not
+  inside the template package (`packages/template/astro.config.mjs:15`).
+- **`redirects`** come from `buildGraphRedirects` (`packages/template/astro.config.mjs:16`).
+- **`markdown.remarkPlugins`** is `[remarkJoinCjkLines]` (`packages/template/astro.config.mjs:18`).
+- **`integrations`** are `mermaid` (auto-theme diagrams) plus `starlight`, whose
+  options are `mergeStarlight(user.starlight ?? {}, { locales, sidebar })`
+  (`packages/template/astro.config.mjs:22`).
+
+Everything Starlight needs is derived in `site-config.ts`.
+
+## Config derivations (`site-config.ts`)
+
+- **`buildLocales`** maps each manifest locale to a Starlight locale entry, keying
+  the **default locale as `root`** (Starlight's convention for the un-prefixed
+  locale) and others by their own code (`packages/template/src/site-config.ts:7`).
+- **`buildGraphSidebar`** builds the root doc-set's sidebar, then appends every other
+  doc-set (sorted by prefix) as its own titled group
+  (`packages/template/src/site-config.ts:33`). Within a doc-set, `entryFor` gives a
+  node with children a group whose **first item is the parent itself** as a leaf,
+  followed by its children — so a parent is both a heading and a clickable page
+  (`packages/template/src/site-config.ts:82`). Group labels come from the doc-set's
+  home-node title via `docSetLabel` (`packages/template/src/site-config.ts:44`).
+- **`buildGraphRedirects`** redirects `/` (and `/<locale>/`) to the root doc-set's
+  home node, so the bare site URL lands on a real page
+  (`packages/template/src/site-config.ts:62`, via `buildRedirects` at
+  `packages/template/src/site-config.ts:51`).
+- **`collectGraphTitles`** reads each page's frontmatter `title:` and stores it
+  keyed `hash:id:locale` (`packages/template/src/site-config.ts:96`, extraction at
+  `packages/template/src/site-config.ts:114`). This is the map both the sidebar and
+  materialize's empty-label link filling consult.
+- **`loadUserConfig` + `mergeStarlight`** let a project drop a `carto.config.mjs`
+  that default-exports `{ starlight }` (`packages/template/src/site-config.ts:144`).
+  The merge order matters: carto seeds `title: 'Carto'`, spreads the user options
+  over it, then **force-owns `locales` and `sidebar`** last
+  (`packages/template/src/site-config.ts:174`). A user can theme freely but cannot
+  break navigation — the two structural keys carto derives from the graph always win.
+
+## CJK line joining (`remark-join-cjk.ts`)
+
+Markdown treats a single newline as a soft break, which for CJK text inserts an
+unwanted space between characters. `remarkJoinCjkLines` walks every text node and
+collapses a soft break **only when it sits between two adjacent CJK characters**
+(`packages/template/src/remark-join-cjk.ts:39`, join at
+`packages/template/src/remark-join-cjk.ts:25`). The regex fires on the CJK ranges
+plus em-dash and ellipsis, and requires a CJK char on both sides
+(`packages/template/src/remark-join-cjk.ts:23`) — so `你好\n世界` becomes `你好世界`
+while `hello\nworld` and mixed CJK/Latin boundaries keep their space. This is why the
+[zh](carto:overview) pages authored with hard-wrapped source lines still render as
+continuous prose.

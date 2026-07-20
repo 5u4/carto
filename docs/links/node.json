@@ -1,0 +1,20 @@
+{
+  "parent": "overview",
+  "sources": [
+    {
+      "file": "packages/core/src/resolver.ts",
+      "hash": "b6298f154bd71674",
+      "commit": "59d86e576e9dea007f0af7e172d2b317489124cd"
+    },
+    {
+      "file": "packages/core/src/graph.ts",
+      "hash": "22a20053f874c4e9",
+      "commit": "59d86e576e9dea007f0af7e172d2b317489124cd"
+    },
+    {
+      "file": "packages/cli/src/links.ts",
+      "hash": "6a0b2a76f5f6b2e4",
+      "commit": "59d86e576e9dea007f0af7e172d2b317489124cd"
+    }
+  ]
+}

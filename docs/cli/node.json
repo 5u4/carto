@@ -1,0 +1,45 @@
+{
+  "parent": "overview",
+  "sources": [
+    {
+      "file": "packages/cli/src/index.ts",
+      "hash": "7b7dbb641c5d9210",
+      "commit": "59d86e576e9dea007f0af7e172d2b317489124cd"
+    },
+    {
+      "file": "packages/cli/src/commands/init.ts",
+      "hash": "ecc17f439487fde4",
+      "commit": "59d86e576e9dea007f0af7e172d2b317489124cd"
+    },
+    {
+      "file": "packages/cli/src/commands/status.ts",
+      "hash": "298a1b6c0d9dbba4",
+      "commit": "59d86e576e9dea007f0af7e172d2b317489124cd"
+    },
+    {
+      "file": "packages/cli/src/commands/sync.ts",
+      "hash": "55db9e9597df4278",
+      "commit": "59d86e576e9dea007f0af7e172d2b317489124cd"
+    },
+    {
+      "file": "packages/cli/src/commands/coverage.ts",
+      "hash": "afa117eeafdc310f",
+      "commit": "59d86e576e9dea007f0af7e172d2b317489124cd"
+    },
+    {
+      "file": "packages/cli/src/commands/validate.ts",
+      "hash": "0ded9f070df60059",
+      "commit": "59d86e576e9dea007f0af7e172d2b317489124cd"
+    },
+    {
+      "file": "packages/cli/src/commands/dev.ts",
+      "hash": "eadd432bb6e3f5a1",
+      "commit": "59d86e576e9dea007f0af7e172d2b317489124cd"
+    },
+    {
+      "file": "packages/cli/src/commands/build.ts",
+      "hash": "64a19d153e034072",
+      "commit": "59d86e576e9dea007f0af7e172d2b317489124cd"
+    }
+  ]
+}

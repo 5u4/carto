@@ -1,0 +1,130 @@
+---
+title: 技能评估
+description: 仅本地、调用真实模型来衡量 agent 是否遵循 carto 技能。
+---
+
+Carto 附带两个技能 —— `skills/carto`（驱动整个编写循环）和
+`skills/documenting-component`（把单个页面写到底线）。这里的评估回答了一个
+[测试套件](carto:testing)无法回答的问题：**当一个真实的 agent 读取某个技能
+时，它是否真的做了正确的事？** 这是*模型加技能文字*的属性，而不是 carto 代码
+的属性，所以它构建在 [`waza`](https://github.com/microsoft/waza) 之上、拥有独立的衡量层，而
+不是放进 CI。
+
+## 为什么它与 `carto:testing` 分离
+
+[carto:testing](carto:testing) 问的是*代码能否工作* —— 覆盖纯函数的确定性
+Vitest 规格，可以在 CI 里每次推送都离线运行。而评估问的是*遵循技能的 agent 是
+否产出好结果* —— 它启动一个真实模型，交给它一段 prompt 和 fixtures，让它运行
+`carto` 二进制，然后为它留下的工作区打分。
+
+这个差异带来两个约束：
+
+- **真实模型 → 非确定且付费。** 每个任务运行 `trials_per_task:
+  3` 次（`evals/carto/eval.yaml:11`），因为单次采样几乎说明不了一个随机
+  agent 的表现。
+- **真实模型 → 仅本地。** 它们**从不接入 CI。** 你在 `copilot login` 之后用
+  自己的 Copilot 会话手动运行；CI 保持快速、免费且确定。
+
+## 一个评估：技能 + 配置 + 任务 glob
+
+每个评估就是一个 `eval.yaml`。它指明被测的 `skill`、一个 `config`
+块，以及一个 `tasks` glob：
+
+- `evals/carto/eval.yaml` —— `skill: carto`（`evals/carto/eval.yaml:6`），
+  `timeout_seconds: 900`（一次完整的编写加构建循环很慢），任务
+  `tasks/*.yaml`（`evals/carto/eval.yaml:19-20`）。
+- `evals/documenting-component/eval.yaml` —— `skill: documenting-component`
+  （`evals/documenting-component/eval.yaml:6`），更紧的 `timeout_seconds: 600`
+  （单页、无构建），相同的 `tasks/*.yaml` 结构
+  （`evals/documenting-component/eval.yaml:19-20`）。
+
+共享的 `config` 字段决定模型*如何*运行：
+
+```yaml
+config:
+  trials_per_task: 3
+  timeout_seconds: 900
+  parallel: false
+  executor: copilot-sdk
+  model: claude-sonnet-4.6
+  skill_directories:
+    - ../../skills
+```
+
+`executor: copilot-sdk` 选定运行器，`model` 锁定模型，而
+`skill_directories` 把 agent 指向仓库里真实的技能
+（`evals/carto/eval.yaml:16-17`）—— 于是评估衡量的是*已签入*的技能文字，而
+不是一份副本。
+
+## 一个任务：prompt + fixtures，正向与负向
+
+一个任务 yaml 就是一个场景：一段 `inputs.prompt`、可选的、会被放入 agent 工作
+区的 `files` fixtures，以及一个 `graders` 列表。它们有两种风味。
+
+**正向（技能应当触发并成功）。** `evals/carto/tasks/generate.yaml`
+把 agent 放进一个空的文档根目录，附带一个位于 `sample-app/` 下的小型
+`user`/`post`/`feed` TypeScript 应用，并要求它 init、设计节点树、
+写出 `node.json` + `.mdx`，并驱动 `carto sync/validate/build` 直到成功
+渲染（`evals/carto/tasks/generate.yaml:12-27`）。fixtures 就是 `inputs.files`
+下列出的三个源文件
+（`evals/carto/tasks/generate.yaml:28-31`），从
+`evals/carto/fixtures/sample-app/` 复制而来。它的 documenting-component 姊妹任
+务 `evals/documenting-component/tasks/document.yaml` 放置单个
+`src/token-bucket.ts`，并要求写出一个满足底线的 `component.md` 页面
+（`evals/documenting-component/tasks/document.yaml:12-23`）。
+
+**负向触发（技能不应触发）。** 一段无关的 prompt —— “写一个匹配美国电话号码的
+正则”（`evals/carto/tasks/negative-trigger.yaml:10`），或
+“原地反转一个链表”（`evals/documenting-component/tasks/negative-trigger.yaml:11`）
+—— 都不得激活技能。它们使用 `trigger`（模式 `negative`）和
+`skill_invocation`（带 `forbidden_skills`）grader，而不是工作区检查
+（`evals/carto/tasks/negative-trigger.yaml:16-28`）。一个对什么都触发的技能，
+和一个从不触发的技能同样糟糕；负向任务守护着那条决定激活的 `description` 文字。
+
+## 一个 grader：给工作区打分的脚本
+
+正向的 carto 任务由一个 `program` grader 打分 —— 一个针对完成后的工作区运行的
+外部命令（`evals/carto/tasks/generate.yaml:37-43`）。
+逐步走读 `evals/carto/graders/check_build.py`：
+
+1. **定位工作区。** 它从环境读取 `WAZA_WORKSPACE_DIR` —— waza 把它设为 agent
+   工作的目录（`evals/carto/graders/check_build.py:8`）。
+2. **要求已构建。** 它要求 `dist-site/` 存在；若缺失，说明 agent 从未运行
+   `carto build`，grader 立即失败
+   （`evals/carto/graders/check_build.py:9-12`）。这项检查确认 agent 把整个
+   [CLI](carto:cli) 循环驱动到了终点，而不只是写了文件。
+3. **读取渲染结果。** 它把 `dist-site/` 下每个 `*.html` 拼接成一个字符串
+   （`evals/carto/graders/check_build.py:14`）；空输出同样算失败
+   （`evals/carto/graders/check_build.py:15-17`）。
+4. **证明文档描述了真实代码。** 渲染后的 HTML 必须包含源标识符 `authorId` 和
+   `buildFeed`（`evals/carto/graders/check_build.py:20-22`）—— 来自 fixtures 的
+   真实符号（`buildFeed` 在 `evals/carto/fixtures/sample-app/src/feed.ts:9`，
+   `authorId` 在 `evals/carto/fixtures/sample-app/src/post.ts:5`）。它们的存在
+   是廉价的证据，说明 agent 真的记录了行为，而不是输出泛泛的填充内容。
+5. **证明链接已解析。** 若 HTML 中还残留任何 `href="carto:`（或单引号版本），
+   它就失败（`evals/carto/graders/check_build.py:23-24`）—— 一个未被重写的
+   `carto:` 链接意味着[渲染](carto:rendering)步骤从未解析它。
+
+任何问题都会打印到 stderr 并以非零退出
+（`evals/carto/graders/check_build.py:26-32`）；干净通过则退出 0。退出码*就是*
+分数。这个 grader 刻意做得浅而偏行为 —— 它从不解析文档，只检查一次正确运行必
+然产出的可观测终产物。
+
+:::note
+grader 容许大量风格自由：它从不规定节点树、散文，或页面数量。它只坚持要求流水
+线运行过、且输出指向真实源码。两个标识符加一次链接检查已足够作为信号，因为一个
+跳过代码或弄坏链接的 agent 无法靠运气通过。
+:::
+
+## 如何运行
+
+评估是一项本地仪式，而非 CI 门禁：
+
+1. `copilot login` —— `copilot-sdk` executor 需要你的 Copilot 会话。
+2. 在仓库根目录用 `waza` 运行评估（例如 `waza run evals/carto`），它会把每个任
+   务在其 `trials_per_task` 次采样上展开，并报告 grader 的结果。
+
+因为它们调用真实模型，所以慢、非确定且消耗 token —— 当你修改某个技能的文字、想
+要证据表明改动仍能正确引导 agent 时再运行它们。carto 安全网中离线、确定的那一半
+见 [carto:testing](carto:testing)；这些评估所行使的 `carto build` 步骤见
+[carto:cli](carto:cli) 和[概览](carto:overview)。

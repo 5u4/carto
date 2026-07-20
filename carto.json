@@ -4,5 +4,6 @@
     "en",
     "zh"
   ],
-  "defaultLocale": "en"
+  "defaultLocale": "en",
+  "home": "overview"
 }

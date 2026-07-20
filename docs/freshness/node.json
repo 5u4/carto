@@ -1,0 +1,20 @@
+{
+  "parent": "overview",
+  "sources": [
+    {
+      "file": "packages/core/src/hash.ts",
+      "hash": "2afef0f45e81f800",
+      "commit": "59d86e576e9dea007f0af7e172d2b317489124cd"
+    },
+    {
+      "file": "packages/core/src/status.ts",
+      "hash": "3761708d35ba6723",
+      "commit": "59d86e576e9dea007f0af7e172d2b317489124cd"
+    },
+    {
+      "file": "packages/cli/src/git.ts",
+      "hash": "0e0d709390d2f137",
+      "commit": "59d86e576e9dea007f0af7e172d2b317489124cd"
+    }
+  ]
+}

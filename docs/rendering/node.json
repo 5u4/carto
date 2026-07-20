@@ -1,0 +1,30 @@
+{
+  "parent": "overview",
+  "sources": [
+    {
+      "file": "packages/template/src/materialize.ts",
+      "hash": "7ce0cca697ef8c9a",
+      "commit": "59d86e576e9dea007f0af7e172d2b317489124cd"
+    },
+    {
+      "file": "packages/template/src/site-config.ts",
+      "hash": "1fbe7d4dccc9d030",
+      "commit": "59d86e576e9dea007f0af7e172d2b317489124cd"
+    },
+    {
+      "file": "packages/template/src/staleness-banner.ts",
+      "hash": "6bccccd65f12bf11",
+      "commit": "59d86e576e9dea007f0af7e172d2b317489124cd"
+    },
+    {
+      "file": "packages/template/src/remark-join-cjk.ts",
+      "hash": "11a1593a397791a2",
+      "commit": "59d86e576e9dea007f0af7e172d2b317489124cd"
+    },
+    {
+      "file": "packages/template/astro.config.mjs",
+      "hash": "27c8b01ebd273191",
+      "commit": "59d86e576e9dea007f0af7e172d2b317489124cd"
+    }
+  ]
+}
