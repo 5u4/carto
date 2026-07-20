@@ -14,7 +14,8 @@ import {
   serializeNodeFile,
   syncManifest,
   writeConfig,
-  writeNode
+  writeNode,
+  writeManifest
 } from './manifest'
 import type { Config, Manifest, Node } from './schema'
 
@@ -265,6 +266,33 @@ describe('writeNode', () => {
       await writeNode(dir, { id: 'api', sources: [{ file: 'a.ts', hash: 'h' }] })
       const text = await readFileText(dir, 'api')
       expect(JSON.parse(text)).toEqual({ sources: [{ file: 'a.ts', hash: 'h' }] })
+    })
+  })
+})
+
+describe('id guards on public core API', () => {
+  it('readNode rejects a traversal id before touching the filesystem', async () => {
+    await withTempDir(async (dir) => {
+      await expect(readNode(dir, '../secret')).rejects.toThrow(ManifestError)
+    })
+  })
+
+  it('writeNode rejects a traversal id instead of writing outside docs/', async () => {
+    await withTempDir(async (dir) => {
+      await expect(writeNode(dir, { id: '../escape', sources: [] })).rejects.toThrow(ManifestError)
+    })
+  })
+
+  it('writeManifest fails fast on duplicate ids without clobbering', async () => {
+    await withTempDir(async (dir) => {
+      const manifest: Manifest = {
+        ...validConfig(),
+        nodes: [
+          { id: 'dup', sources: [{ file: 'a.ts' }] },
+          { id: 'dup', sources: [{ file: 'b.ts' }] }
+        ]
+      }
+      await expect(writeManifest(dir, manifest)).rejects.toThrow('duplicate node id')
     })
   })
 })

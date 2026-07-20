@@ -99,6 +99,9 @@ async function readNodeIds(docRoot: string): Promise<string[]> {
 }
 
 export async function readNode(docRoot: string, id: string): Promise<Node | undefined> {
+  if (!ID_PATTERN.test(id)) {
+    throw new ManifestError(`invalid node id "${id}" (must match ${ID_PATTERN.source})`)
+  }
   const path = join(docRoot, 'docs', id, 'node.json')
   let text: string
   try {
@@ -133,12 +136,22 @@ export async function writeConfig(docRoot: string, config: Config): Promise<void
 }
 
 export async function writeNode(docRoot: string, node: Node): Promise<void> {
+  if (!ID_PATTERN.test(node.id)) {
+    throw new ManifestError(`invalid node id "${node.id}" (must match ${ID_PATTERN.source})`)
+  }
   const dir = join(docRoot, 'docs', node.id)
   await mkdir(dir, { recursive: true })
   await writeFile(join(dir, 'node.json'), serializeNodeFile(node), 'utf8')
 }
 
 export async function writeManifest(docRoot: string, manifest: Manifest): Promise<void> {
+  const seen = new Set<string>()
+  for (const node of manifest.nodes) {
+    if (seen.has(node.id)) {
+      throw new ManifestError(`duplicate node id "${node.id}"`)
+    }
+    seen.add(node.id)
+  }
   await writeConfig(docRoot, manifest)
   for (const node of manifest.nodes) await writeNode(docRoot, node)
 }
