@@ -8,5 +8,4 @@ astro/.astro/
 *.log
 .env
 .env.*
-!.env.example
-tests/e2e/.work/
+tests/pipeline/.work/

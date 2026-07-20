@@ -1,0 +1,20 @@
+name: documenting-component-eval
+description: |
+  Evaluates whether an agent following skills/documenting-component writes one
+  focused component page that meets the floor: intent, mental model, and a
+  path:line anchor on load-bearing claims.
+skill: documenting-component
+schemaVersion: "1.2"
+version: "1.0"
+
+config:
+  trials_per_task: 3
+  timeout_seconds: 600
+  parallel: false
+  executor: copilot-sdk
+  model: claude-sonnet-4.6
+  skill_directories:
+    - ../../skills
+
+tasks:
+  - "tasks/*.yaml"
