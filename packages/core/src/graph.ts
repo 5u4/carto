@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto'
 import { realpath } from 'node:fs/promises'
-import { join, relative, resolve } from 'node:path'
+import { relative, resolve } from 'node:path'
 import type { Federated, Manifest } from './schema.js'
 import { readManifest } from './manifest.js'
 
@@ -41,13 +41,13 @@ function resolveEntry(currentDocRoot: string, entry: Federated): string {
 export async function loadGraph(federalRoot: string): Promise<Graph> {
   const byHash = new Map<string, DocSet>()
   const aliasesByHash = new Map<string, Set<string>>()
-  const rootManifest = await readManifest(join(federalRoot, 'carto.json'))
+  const rootManifest = await readManifest(federalRoot)
   const federated = rootManifest.federated.length > 0
 
   async function load(docRoot: string, hash: string): Promise<DocSet> {
     const existing = byHash.get(hash)
     if (existing) return existing
-    const manifest = docRoot === federalRoot ? rootManifest : await readManifest(join(docRoot, 'carto.json'))
+    const manifest = docRoot === federalRoot ? rootManifest : await readManifest(docRoot)
     const aliasToHash = new Map<string, string>()
     const docSet: DocSet = { hash, prefix: '', docRoot, manifest, aliasToHash }
     byHash.set(hash, docSet)

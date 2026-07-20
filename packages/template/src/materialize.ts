@@ -8,7 +8,6 @@ import {
   parseCartoLink,
   resolveCartoLink,
   rootChain,
-  slugOf,
   statusReport,
   type DocSet,
   type FederationContext,
@@ -88,7 +87,7 @@ async function writeEmptyState(root: string): Promise<void> {
 }
 
 function targetPath(docSet: DocSet, node: Node, locale: string, siteDefaultLocale: string): string {
-  const chain = rootChain(docSet.manifest.nodes, node.id).map((n) => slugOf(n)).join('/')
+  const chain = rootChain(docSet.manifest.nodes, node.id).map((n) => n.id).join('/')
   const localePrefix = locale === siteDefaultLocale ? '' : `${locale}/`
   const docPrefix = docSet.prefix ? `${docSet.prefix.slice(1)}/` : ''
   return join(contentDir, `${localePrefix}${docPrefix}${chain}.mdx`)

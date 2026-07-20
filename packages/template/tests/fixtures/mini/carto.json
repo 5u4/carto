@@ -1,11 +1,5 @@
 {
   "version": 1,
   "locales": ["en", "zh"],
-  "defaultLocale": "en",
-  "updated_at": "2026-07-08T00:00:00Z",
-  "nodes": [
-    { "id": "overview", "sources": [] },
-    { "id": "api", "slug": "backend", "sources": [] },
-    { "id": "payments", "slug": "billing", "parent": "api", "sources": [] }
-  ]
+  "defaultLocale": "en"
 }

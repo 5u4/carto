@@ -4,7 +4,7 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type { Manifest } from '@carto/core'
-import { serializeManifest, syncManifest } from '@carto/core'
+import { writeManifest, syncManifest } from '@carto/core'
 import { statusCommand } from './status'
 
 class ProcessExitSignal extends Error {
@@ -55,7 +55,6 @@ function manifestWithSource(): Manifest {
     version: 1,
     locales: ['en'],
     defaultLocale: 'en',
-    updated_at: '2026-01-01T00:00:00.000Z',
     federated: [],
     nodes: [{ id: 'payments', sources: [{ file: 'payments.md' }] }]
   }
@@ -65,8 +64,8 @@ describe('carto status', () => {
   it('exits 0 and prints fresh for a synced manifest matching its source', async () => {
     await withTempCwd(async (dir) => {
       await writeFile(join(dir, 'payments.md'), 'payments content', 'utf8')
-      const synced = await syncManifest(manifestWithSource(), { rootDir: dir })
-      await writeFile(join(dir, 'carto.json'), serializeManifest(synced), 'utf8')
+      const { manifest: synced } = await syncManifest(manifestWithSource(), { rootDir: dir })
+      await writeManifest(dir, synced)
 
       const { exitCode, logs } = await runAndCaptureExit()
       expect(exitCode).toBe(0)
@@ -77,8 +76,8 @@ describe('carto status', () => {
   it('exits non-zero and prints stale after the tracked file mutates', async () => {
     await withTempCwd(async (dir) => {
       await writeFile(join(dir, 'payments.md'), 'payments content', 'utf8')
-      const synced = await syncManifest(manifestWithSource(), { rootDir: dir })
-      await writeFile(join(dir, 'carto.json'), serializeManifest(synced), 'utf8')
+      const { manifest: synced } = await syncManifest(manifestWithSource(), { rootDir: dir })
+      await writeManifest(dir, synced)
       await writeFile(join(dir, 'payments.md'), 'mutated content', 'utf8')
 
       const { exitCode, logs } = await runAndCaptureExit()
@@ -90,7 +89,7 @@ describe('carto status', () => {
   it('exits non-zero and prints unsynced for a source with no stored hash', async () => {
     await withTempCwd(async (dir) => {
       await writeFile(join(dir, 'payments.md'), 'payments content', 'utf8')
-      await writeFile(join(dir, 'carto.json'), serializeManifest(manifestWithSource()), 'utf8')
+      await writeManifest(dir, manifestWithSource())
 
       const { exitCode, logs } = await runAndCaptureExit()
       expect(exitCode).toBe(1)
@@ -101,8 +100,8 @@ describe('carto status', () => {
   it('lists the specific changed file under a stale node', async () => {
     await withTempCwd(async (dir) => {
       await writeFile(join(dir, 'payments.md'), 'payments content', 'utf8')
-      const synced = await syncManifest(manifestWithSource(), { rootDir: dir })
-      await writeFile(join(dir, 'carto.json'), serializeManifest(synced), 'utf8')
+      const { manifest: synced } = await syncManifest(manifestWithSource(), { rootDir: dir })
+      await writeManifest(dir, synced)
       await writeFile(join(dir, 'payments.md'), 'mutated content', 'utf8')
 
       const { logs } = await runAndCaptureExit()
@@ -113,8 +112,8 @@ describe('carto status', () => {
   it('prints the stored anchor commit next to a stale source', async () => {
     await withTempCwd(async (dir) => {
       await writeFile(join(dir, 'payments.md'), 'payments content', 'utf8')
-      const synced = await syncManifest(manifestWithSource(), { rootDir: dir, commit: 'abc1234567890' })
-      await writeFile(join(dir, 'carto.json'), serializeManifest(synced), 'utf8')
+      const { manifest: synced } = await syncManifest(manifestWithSource(), { rootDir: dir, commit: 'abc1234567890' })
+      await writeManifest(dir, synced)
       await writeFile(join(dir, 'payments.md'), 'mutated content', 'utf8')
 
       const { logs } = await runAndCaptureExit()

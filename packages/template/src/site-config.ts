@@ -1,4 +1,4 @@
-import { childrenOf, nodesById, slugOf, urlPath, type Graph, type DocSet, type Manifest, type Node } from '@carto/core'
+import { childrenOf, nodesById, urlPath, type Graph, type DocSet, type Manifest, type Node } from '@carto/core'
 import { existsSync } from 'node:fs'
 import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
@@ -69,7 +69,7 @@ function resolveHomeId(manifest: Manifest): string | undefined {
 }
 
 function labelFor(manifest: Manifest, node: Node, titles: Map<string, string>, keyPrefix: string): Pick<SidebarEntry, 'label' | 'translations'> {
-  const label = titles.get(`${keyPrefix}${node.id}:${manifest.defaultLocale}`) ?? slugOf(node)
+  const label = titles.get(`${keyPrefix}${node.id}:${manifest.defaultLocale}`) ?? node.id
   let translations: Record<string, string> | undefined
   for (const locale of manifest.locales) {
     if (locale === manifest.defaultLocale) continue

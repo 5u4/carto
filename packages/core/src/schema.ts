@@ -41,44 +41,33 @@ export const federatedGitSchema = z.object({
 
 export const federatedSchema = z.discriminatedUnion('type', [federatedFileSchema, federatedGitSchema])
 
-export const nodeSchema = z.object({
-  id: z.string().regex(ID_PATTERN),
-  slug: z.string().regex(ID_PATTERN).optional(),
+export const nodeFileSchema = z.object({
   parent: z.string().regex(ID_PATTERN).optional(),
   sources: z.array(sourceSchema).default([])
 })
 
-export const manifestSchema = z
+export const configSchema = z
   .object({
     version: z.literal(1),
     locales: z.array(z.string().min(1)).min(1),
     defaultLocale: z.string().min(1),
-    updated_at: z.string().min(1),
     codeRoot: z.string().min(1).optional(),
     home: z.string().regex(ID_PATTERN).optional(),
-    federated: z.array(federatedSchema).default([]),
-    nodes: z.array(nodeSchema)
+    federated: z.array(federatedSchema).default([])
   })
-  .superRefine((manifest, ctx) => {
+  .superRefine((config, ctx) => {
     const seenLocales = new Set<string>()
-    for (const locale of manifest.locales) {
+    for (const locale of config.locales) {
       if (seenLocales.has(locale)) {
         ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['locales'], message: `duplicate locale ${locale}` })
       }
       seenLocales.add(locale)
     }
-    if (!manifest.locales.includes(manifest.defaultLocale)) {
+    if (!config.locales.includes(config.defaultLocale)) {
       ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['defaultLocale'], message: 'defaultLocale must be a member of locales' })
     }
-    const seenIds = new Set<string>()
-    manifest.nodes.forEach((node, index) => {
-      if (seenIds.has(node.id)) {
-        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['nodes', index, 'id'], message: `duplicate node id ${node.id}` })
-      }
-      seenIds.add(node.id)
-    })
     const seenAliases = new Set<string>()
-    manifest.federated.forEach((entry, index) => {
+    config.federated.forEach((entry, index) => {
       if (entry.alias === 'self') {
         ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['federated', index, 'alias'], message: 'alias "self" is reserved' })
       }
@@ -93,5 +82,7 @@ export type Source = z.infer<typeof sourceSchema>
 export type FederatedFile = z.infer<typeof federatedFileSchema>
 export type FederatedGit = z.infer<typeof federatedGitSchema>
 export type Federated = z.infer<typeof federatedSchema>
-export type Node = z.infer<typeof nodeSchema>
-export type Manifest = z.infer<typeof manifestSchema>
+export type NodeFile = z.infer<typeof nodeFileSchema>
+export type Config = z.infer<typeof configSchema>
+export type Node = NodeFile & { id: string }
+export type Manifest = Config & { nodes: Node[] }

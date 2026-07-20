@@ -14,12 +14,11 @@ function manifest(): Manifest {
     version: 1,
     locales: ['en', 'zh'],
     defaultLocale: 'en',
-    updated_at: '2026-07-08T00:00:00Z',
     federated: [],
     nodes: [
       node({ id: 'overview' }),
-      node({ id: 'api', slug: 'backend' }),
-      node({ id: 'payments', slug: 'billing', parent: 'api' })
+      node({ id: 'api' }),
+      node({ id: 'payments', parent: 'api' })
     ]
   }
 }
@@ -44,13 +43,13 @@ describe('buildLocales', () => {
 describe('buildSidebar', () => {
   it('has exactly the root nodes at the top level, in array order', () => {
     const sidebar = buildSidebar(manifest())
-    expect(sidebar.map((entry) => entry.label)).toEqual(['overview', 'backend'])
+    expect(sidebar.map((entry) => entry.label)).toEqual(['overview', 'api'])
   })
 
   it('nests children under their parent as items', () => {
     const [, api] = buildSidebar(manifest())
     const items = api?.items ?? []
-    expect(items.map((entry) => entry.label)).toEqual(['backend', 'billing'])
+    expect(items.map((entry) => entry.label)).toEqual(['api', 'payments'])
   })
 
   it('gives every leaf a link equal to urlPath for the defaultLocale', () => {
@@ -61,7 +60,7 @@ describe('buildSidebar', () => {
     expect(overview?.link).toBe(urlPath(m, 'overview', 'en'))
     expect(apiSelf?.link).toBe(urlPath(m, 'api', 'en'))
     expect(payments?.link).toBe(urlPath(m, 'payments', 'en'))
-    expect(payments?.link).toBe('/backend/billing/')
+    expect(payments?.link).toBe('/api/payments/')
   })
 
   it('leaves a childless node without an items array', () => {
@@ -69,7 +68,6 @@ describe('buildSidebar', () => {
       version: 1,
       locales: ['en'],
       defaultLocale: 'en',
-      updated_at: '2026-07-08T00:00:00Z',
       federated: [],
       nodes: [node({ id: 'solo' })]
     }
@@ -86,10 +84,10 @@ describe('buildSidebar', () => {
     expect(sidebar.map((entry) => entry.label)).toEqual(['What is carto', 'Backend API'])
   })
 
-  it('falls back to the slug when a node has no title', () => {
+  it('falls back to the id when a node has no title', () => {
     const titles = new Map([['overview:en', 'What is carto']])
     const [, api] = buildSidebar(manifest(), titles)
-    expect(api?.label).toBe('backend')
+    expect(api?.label).toBe('api')
   })
 
   it('carries non-default-locale titles as sidebar translations', () => {
@@ -123,13 +121,13 @@ describe('buildRedirects', () => {
     const base = manifest()
     const m: Manifest = { ...base, nodes: [base.nodes[1]!, base.nodes[0]!, base.nodes[2]!] }
     expect(buildRedirects(m)['/']).toBe(urlPath(m, 'api', 'en'))
-    expect(buildRedirects(m)['/']).toBe('/backend/')
+    expect(buildRedirects(m)['/']).toBe('/api/')
   })
 
   it('honors an explicit home field pointing at any node, root or not', () => {
     const m = { ...manifest(), home: 'payments' }
     expect(buildRedirects(m)['/']).toBe(urlPath(m, 'payments', 'en'))
-    expect(buildRedirects(m)['/']).toBe('/backend/billing/')
+    expect(buildRedirects(m)['/']).toBe('/api/payments/')
   })
 
   it('falls back to the first root node when home points at an unknown id', () => {
@@ -142,7 +140,6 @@ describe('buildRedirects', () => {
       version: 1,
       locales: ['en'],
       defaultLocale: 'en',
-      updated_at: '2026-07-08T00:00:00Z',
       federated: [],
       nodes: []
     }
@@ -237,7 +234,6 @@ describe('collectTitles', () => {
       version: 1,
       locales: ['en', 'zh'],
       defaultLocale: 'en',
-      updated_at: '2026-07-08T00:00:00Z',
       federated: [],
       nodes: [node({ id: 'overview' })]
     }
@@ -253,7 +249,6 @@ describe('collectTitles', () => {
       version: 1,
       locales: ['en'],
       defaultLocale: 'en',
-      updated_at: '2026-07-08T00:00:00Z',
       federated: [],
       nodes: [node({ id: 'overview' })]
     }
@@ -275,7 +270,6 @@ describe('buildGraphSidebar', () => {
         version: 1,
         locales: ['en'],
         defaultLocale: 'en',
-        updated_at: '2026-07-08T00:00:00Z',
         federated: [],
         nodes: [node({ id: 'overview' })]
       }
@@ -287,9 +281,8 @@ describe('buildGraphSidebar', () => {
         version: 1,
         locales: ['fr'],
         defaultLocale: 'fr',
-        updated_at: '2026-07-08T00:00:00Z',
         federated: [],
-        nodes: [node({ id: 'terms', slug: 'terms' })]
+        nodes: [node({ id: 'terms' })]
       }
     })
     const graph: Graph = { federated: true, root, byHash: new Map([['aaaa', root], ['bbbb', child]]) }

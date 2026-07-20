@@ -110,7 +110,6 @@ describe('statusReport', () => {
         version: 1,
         locales: ['en'],
         defaultLocale: 'en',
-        updated_at: '2026-07-08T00:00:00Z',
         federated: [],
         nodes: [
           { id: 'payments', sources: [{ file: 'a.ts', hash: '2cf24dba5fb0a30e' }] },

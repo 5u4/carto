@@ -3,7 +3,7 @@ import { runCommand } from 'citty'
 import { mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { parseManifest } from '@carto/core'
+import { parseConfig } from '@carto/core'
 import { initCommand } from './init'
 
 class ProcessExitSignal extends Error {
@@ -45,7 +45,9 @@ describe('carto init', () => {
       const exitCode = await runAndCaptureExit()
       expect(exitCode).toBeNull()
       const raw = JSON.parse(await readFile(join(dir, 'carto.json'), 'utf8'))
-      expect(() => parseManifest(raw)).not.toThrow()
+      expect(() => parseConfig(raw)).not.toThrow()
+      expect(raw).not.toHaveProperty('nodes')
+      expect(raw).not.toHaveProperty('updated_at')
       const docsStat = await stat(join(dir, 'docs'))
       expect(docsStat.isDirectory()).toBe(true)
     })

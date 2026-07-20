@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { spawnSync } from 'node:child_process'
-import { cpSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { join } from 'node:path'
 
@@ -94,7 +94,7 @@ describe.skipIf(!runE2E)('agent e2e: document a mini codebase with carto', () =>
         expect(init.status, `init failed: ${init.stderr}`).toBe(0)
 
         const generate = agent(
-          'Document a TypeScript codebase with carto. The doc root is the current directory and already has carto.json (locales en, zh, codeRoot "../sample-app") and docs/. The code being documented lives at ../sample-app; read ../sample-app/src/user.ts, ../sample-app/src/post.ts, ../sample-app/src/feed.ts. Design a carto node tree, write docs/<id>/<locale>.mdx for every node and every locale, and register each node\'s sources in carto.json as paths relative to codeRoot (i.e. src/user.ts, src/post.ts, src/feed.ts). Link related nodes with carto: links. Every .mdx file must begin with a YAML frontmatter block containing a `title:` field. Run carto sync and carto validate, then run carto build, fixing issues until both carto validate and carto build succeed. Do not stop until carto build succeeds.',
+          'Document a TypeScript codebase with carto. The doc root is the current directory and already has carto.json (locales en, zh, codeRoot "../sample-app") and docs/. The code being documented lives at ../sample-app; read ../sample-app/src/user.ts, ../sample-app/src/post.ts, ../sample-app/src/feed.ts. Design a carto node tree. For every node write docs/<id>/node.json holding { "parent"?, "sources": [ { "file": ... } ] } with each source file path relative to codeRoot (i.e. src/user.ts, src/post.ts, src/feed.ts), and write docs/<id>/<locale>.mdx for every node and every locale. The node id is the directory name under docs/. Link related nodes with carto: links. Every .mdx file must begin with a YAML frontmatter block containing a `title:` field. Run carto sync and carto validate, then run carto build, fixing issues until both carto validate and carto build succeed. Do not stop until carto build succeeds.',
           docRoot,
           sessionDir,
           false
@@ -104,8 +104,10 @@ describe.skipIf(!runE2E)('agent e2e: document a mini codebase with carto', () =>
         const validate1 = carto(['validate'], docRoot)
         expect(validate1.status, `validate not green after generate:\n${validate1.stdout}\n${validate1.stderr}`).toBe(0)
 
-        const manifest1 = JSON.parse(readFileSync(join(docRoot, 'carto.json'), 'utf8'))
-        expect(manifest1.nodes.length).toBeGreaterThanOrEqual(3)
+        const nodeCount = readdirSync(join(docRoot, 'docs'), { withFileTypes: true }).filter(
+          (e) => e.isDirectory() && existsSync(join(docRoot, 'docs', e.name, 'node.json'))
+        ).length
+        expect(nodeCount).toBeGreaterThanOrEqual(3)
 
         const coverage1 = carto(['coverage'], docRoot)
         expect(coverage1.status, `coverage failed after generate:\n${coverage1.stderr}`).toBe(0)
@@ -124,11 +126,11 @@ describe.skipIf(!runE2E)('agent e2e: document a mini codebase with carto', () =>
 
         cpSync(mutation, join(codeRoot, 'src', 'user.ts'))
 
-        const staleBeforeRefresh = carto(['validate'], docRoot)
-        expect(staleBeforeRefresh.status, 'validate should be non-zero after mutating sample-app/src/user.ts').not.toBe(0)
+        const staleBeforeRefresh = carto(['status'], docRoot)
+        expect(staleBeforeRefresh.status, 'carto status should be non-zero after mutating sample-app/src/user.ts').not.toBe(0)
 
         const refresh = agent(
-          '../sample-app/src/user.ts changed: the User interface gained a `handle: string` field and createUser now takes a handle argument. Run carto status to see which node is stale, update the affected docs/<id>/<locale>.mdx to describe the new handle field (mention the handle field explicitly), then run carto sync so the source hashes update, then carto validate and carto build. After editing any mdx you MUST run carto sync again. Do not stop until carto validate exits 0 and carto build succeeds.',
+          '../sample-app/src/user.ts changed: the User interface gained a `handle: string` field and createUser now takes a handle argument. Run carto status to see which node is stale, update the affected docs/<id>/<locale>.mdx to describe the new handle field (mention the handle field explicitly), then run `carto sync <id>` naming that stale node so its source hash and commit update. After editing any mdx you MUST run carto sync for that node id again. Then run carto validate and carto build. Do not stop until carto status exits 0 (the node is fresh again) and carto build succeeds.',
           docRoot,
           sessionDir,
           true
@@ -137,6 +139,9 @@ describe.skipIf(!runE2E)('agent e2e: document a mini codebase with carto', () =>
 
         const validate2 = carto(['validate'], docRoot)
         expect(validate2.status, `validate not green after refresh:\n${validate2.stdout}\n${validate2.stderr}`).toBe(0)
+
+        const status2 = carto(['status'], docRoot)
+        expect(status2.status, `carto status not green after refresh (source not re-blessed):\n${status2.stdout}\n${status2.stderr}`).toBe(0)
 
         const build2 = carto(['build'], docRoot)
         expect(build2.status, `build failed after refresh:\n${build2.stdout}\n${build2.stderr}`).toBe(0)
@@ -156,15 +161,14 @@ describe.skipIf(!runE2E)('agent e2e: document a mini codebase with carto', () =>
               version: 1,
               locales: ['en', 'zh'],
               defaultLocale: 'en',
-              updated_at: '2026-01-01T00:00:00Z',
-              home: 'terms',
-              nodes: [{ id: 'terms', slug: 'terms', sources: [] }]
+              home: 'terms'
             },
             null,
             2
           )}\n`,
           'utf8'
         )
+        writeFileSync(join(glossaryRoot, 'docs', 'terms', 'node.json'), `${JSON.stringify({ sources: [] }, null, 2)}\n`, 'utf8')
         writeFileSync(join(glossaryRoot, 'docs', 'terms', 'en.mdx'), '---\ntitle: "Glossary"\n---\n\n# Glossary\n\nA **feed** is a ranked list of posts.\n', 'utf8')
         writeFileSync(join(glossaryRoot, 'docs', 'terms', 'zh.mdx'), '---\ntitle: "术语表"\n---\n\n# 术语表\n\n**feed** 是一组排序后的帖子。\n', 'utf8')
 

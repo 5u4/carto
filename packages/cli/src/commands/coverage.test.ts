@@ -4,7 +4,7 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type { Manifest } from '@carto/core'
-import { serializeManifest } from '@carto/core'
+import { writeManifest } from '@carto/core'
 import { coverageCommand } from './coverage'
 
 class ProcessExitSignal extends Error {
@@ -51,7 +51,7 @@ async function withTempCwd<T>(fn: (dir: string) => Promise<T>): Promise<T> {
 }
 
 function manifest(nodes: Manifest['nodes']): Manifest {
-  return { version: 1, locales: ['en'], defaultLocale: 'en', updated_at: '2026-01-01T00:00:00.000Z', federated: [], nodes }
+  return { version: 1, locales: ['en'], defaultLocale: 'en', federated: [], nodes }
 }
 
 describe('carto coverage', () => {
@@ -59,7 +59,7 @@ describe('carto coverage', () => {
     await withTempCwd(async (dir) => {
       await writeFile(join(dir, 'tracked.ts'), 'a', 'utf8')
       await writeFile(join(dir, 'orphan.ts'), 'b', 'utf8')
-      await writeFile(join(dir, 'carto.json'), serializeManifest(manifest([{ id: 'n', sources: [{ file: 'tracked.ts' }] }])), 'utf8')
+      await writeManifest(dir, manifest([{ id: 'n', sources: [{ file: 'tracked.ts' }] }]))
 
       const { exitCode, logs } = await runAndCaptureExit()
       expect(exitCode).toBe(0)
@@ -71,7 +71,7 @@ describe('carto coverage', () => {
   it('exits 1 with --fail-on-uncovered when files are uncovered', async () => {
     await withTempCwd(async (dir) => {
       await writeFile(join(dir, 'orphan.ts'), 'b', 'utf8')
-      await writeFile(join(dir, 'carto.json'), serializeManifest(manifest([])), 'utf8')
+      await writeManifest(dir, manifest([]))
 
       const { exitCode } = await runAndCaptureExit(['--fail-on-uncovered'])
       expect(exitCode).toBe(1)
@@ -81,7 +81,7 @@ describe('carto coverage', () => {
   it('exits 0 and reports full coverage when nothing is uncovered', async () => {
     await withTempCwd(async (dir) => {
       await writeFile(join(dir, 'only.ts'), 'x', 'utf8')
-      await writeFile(join(dir, 'carto.json'), serializeManifest(manifest([{ id: 'n', sources: [{ file: 'only.ts' }] }])), 'utf8')
+      await writeManifest(dir, manifest([{ id: 'n', sources: [{ file: 'only.ts' }] }]))
 
       const { exitCode, logs } = await runAndCaptureExit(['--fail-on-uncovered'])
       expect(exitCode).toBe(0)

@@ -1,5 +1,4 @@
 import { defineCommand } from 'citty'
-import { join } from 'node:path'
 import { readManifest, statusReport, codeRootDir, ManifestError, type Manifest } from '@carto/core'
 
 export const statusCommand = defineCommand({
@@ -8,7 +7,7 @@ export const statusCommand = defineCommand({
     const root = process.cwd()
     let manifest: Manifest
     try {
-      manifest = await readManifest(join(root, 'carto.json'))
+      manifest = await readManifest(root)
     } catch (error) {
       console.error(`error: ${error instanceof ManifestError ? error.message : String(error)}`)
       process.exit(1)

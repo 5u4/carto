@@ -1,9 +1,10 @@
-import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import { loadGraph, FederationError } from './graph.js'
-import type { Federated } from './schema.js'
+import { writeManifest } from './manifest.js'
+import type { Federated, Manifest } from './schema.js'
 
 const dirs: string[] = []
 
@@ -19,16 +20,14 @@ async function tempRoot(): Promise<string> {
 
 async function writeDocSet(root: string, sub: string, federated: Federated[] = []): Promise<string> {
   const dir = join(root, sub)
-  await mkdir(join(dir, 'docs'), { recursive: true })
-  const manifest = {
+  const manifest: Manifest = {
     version: 1,
     locales: ['en'],
     defaultLocale: 'en',
-    updated_at: '2026-01-01T00:00:00Z',
     federated,
     nodes: [{ id: 'overview', sources: [] }]
   }
-  await writeFile(join(dir, 'carto.json'), JSON.stringify(manifest), 'utf8')
+  await writeManifest(dir, manifest)
   return dir
 }
 
