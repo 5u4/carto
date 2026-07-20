@@ -61,12 +61,10 @@ Given a scope:
    (node id + docs/<id>/<locale>.mdx path) and wait for the go-ahead before
    reading code and editing. This is a deliberate checkpoint, not a formality.
 
-3. Write the node.json files for the in-scope nodes only.
-   Each docs/<id>/node.json holds { parent?, sources[] }; each source lists
-   `file` only (no hash). Touch only the nodes in scope.
+3. Write the node.json files for the in-scope nodes only, and touch no others.
 
 4. Write the .mdx pages: docs/<id>/<locale>.mdx for every in-scope node and
-   every declared locale. Each begins with YAML frontmatter carrying `title:`.
+   every declared locale.
 
 5. carto sync <id> [<id> ...]   Bless exactly the nodes you just wrote — the CLI
    recomputes their source hashes and stamps the current commit. Naming the ids
@@ -184,8 +182,10 @@ reported by `carto status`, and rejected by `carto validate` until you run
 
 ### docs/&lt;id&gt;/&lt;locale&gt;.mdx — the prose
 
-One per node per locale, carrying the page's `title:` (and optional
-`description:`) in YAML frontmatter, per locale. This is where all prose lives.
+One per node per locale. Each **MUST begin with a YAML frontmatter block**
+carrying a `title:` field (translated per locale), and MAY add a
+`description:`. Everything after the frontmatter is the page's prose — this is
+where all prose lives.
 
 ## carto: links and code anchors
 
