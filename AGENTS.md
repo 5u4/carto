@@ -18,7 +18,6 @@ restating the code. Carry intent in names, types, and structure instead.
 
 The only allowed comments:
 
-- `// SAFETY:` immediately above an `unsafe` block, justifying its soundness.
 - an `SPDX-License-Identifier` header, where one is legally required.
 - a `/* @vite-ignore */` marker on a runtime-only dynamic `import()`, where Vite
   cannot statically analyze the specifier.
