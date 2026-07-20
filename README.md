@@ -136,8 +136,8 @@ by hand after changing a SKILL.md:
 
 ```sh
 pnpm build            # the carto bin must exist (see Setup)
-waza run evals/carto/eval.yaml
-waza run evals/documenting-component/eval.yaml
+waza run evals/carto/eval.yaml --context-dir evals/carto/fixtures
+waza run evals/documenting-component/eval.yaml --context-dir evals/documenting-component/fixtures
 ```
 
 waza uses its bundled GitHub Copilot CLI; authenticate once with

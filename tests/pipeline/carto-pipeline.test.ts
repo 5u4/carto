@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { beforeAll, describe, expect, it } from 'vitest'
 import { spawnSync } from 'node:child_process'
 import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
@@ -41,6 +41,12 @@ function readAll(dir: string, ext: string): string {
 }
 
 describe('carto pipeline: deterministic sync/validate/build over hand-written docs', () => {
+  beforeAll(() => {
+    if (!existsSync(cartoCli)) {
+      throw new Error(`carto CLI not built at ${cartoCli}; run \`pnpm build\` before \`pnpm test:pipeline\``)
+    }
+  })
+
   it(
     'builds, detects staleness after a source change, refreshes, then federates a second doc-set',
     () => {
