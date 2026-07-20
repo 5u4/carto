@@ -74,13 +74,16 @@ async function writeEmptyState(root: string): Promise<void> {
     '',
     '# Nothing here yet',
     '',
-    'This carto site has no pages. To add your first one, run:',
+    'This carto site has no pages yet. carto documents a codebase through a',
+    'coding agent: ask your agent to document your code with carto and tell it',
+    'what to cover — the scope. For example:',
     '',
     '```',
-    'carto document <dir-or-files>',
+    '/carto document the auth module',
     '```',
     '',
-    'Then run `carto dev` again.',
+    'The agent reads the code, writes the pages, and runs the carto CLI for you.',
+    'Once it has generated pages, run `carto dev` again.',
     ''
   ]
   await writeFile(join(contentDir, 'index.mdx'), lines.join('\n'), 'utf8')

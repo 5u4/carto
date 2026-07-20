@@ -35,7 +35,7 @@ if grep -q 'http-equiv="refresh"' "$home_html"; then
   exit 1
 fi
 
-if ! grep -q 'carto document' "$home_html"; then
+if ! grep -q '/carto' "$home_html"; then
   echo "check-build-empty: empty-state guidance not found in $home_html" >&2
   exit 1
 fi
