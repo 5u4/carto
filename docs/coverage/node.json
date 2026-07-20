@@ -1,0 +1,10 @@
+{
+  "parent": "overview",
+  "sources": [
+    {
+      "file": "packages/core/src/coverage.ts",
+      "hash": "8a6ac7e271313cd8",
+      "commit": "59d86e576e9dea007f0af7e172d2b317489124cd"
+    }
+  ]
+}

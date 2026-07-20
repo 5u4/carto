@@ -1,0 +1,51 @@
+---
+title: Freshness
+description: How carto content-addresses each tracked source, classifies it as fresh/unsynced/stale/missing, and anchors it to a git commit.
+---
+
+Docs drift from code silently. Freshness is carto's answer: every tracked source file carries a **content hash** recorded at the moment its node was blessed, so carto can later re-hash the file on disk and tell — deterministically, without reading a word of prose — whether the documentation still describes the code it points at. This is the machinery [carto status](carto:cli) reports and [carto sync](carto:manifest) writes.
+
+## The digest: 16 hex chars of sha256
+
+A source's identity is one string. `hashContent` takes the file's raw bytes, runs sha256, and keeps the first 16 hex characters — `packages/core/src/hash.ts:4-6`. `hashFile` is just `readFile` then `hashContent` — `packages/core/src/hash.ts:8-10`. That 16-char digest is what gets stored on the source as its `hash` field (`packages/core/src/schema.ts:20`) and what every later comparison is against.
+
+Sixteen hex chars is 64 bits — short enough to keep `node.json` readable, wide enough that an accidental collision between two versions of the same file is not a concern. The digest is over content only: rename the file and the hash is unchanged; change one byte and it changes completely.
+
+```
+hello   -> 2cf24dba5fb0a30e
+goodbye -> 82e35a63ceba37e9
+```
+
+(The `hello` digest is the exact fixture in `packages/core/src/status.test.ts:43`.)
+
+## Four states, decided per source
+
+Every source resolves to one [FreshnessState](carto:freshness): `fresh | unsynced | stale | missing` — `packages/core/src/status.ts:5`. `classifySource` decides which by re-hashing the file and comparing against the stored hash — `packages/core/src/status.ts:36-47`:
+
+- **missing** — hashing threw `ENOENT`; the file carto is supposed to document no longer exists — `packages/core/src/status.ts:42`. Any other error rethrows (`packages/core/src/status.ts:43`), so a source pointing at a directory is a hard failure, not a silent `missing`.
+- **unsynced** — the file exists but has no stored hash; it was declared but never blessed — `packages/core/src/status.ts:45`.
+- **fresh** — stored hash equals the freshly computed hash; the doc still matches the code — `packages/core/src/status.ts:46`.
+- **stale** — the file exists and has a stored hash, but the two differ; the code moved out from under the doc — `packages/core/src/status.ts:46`.
+
+Freshness is derived from the **hash alone**. The stored commit is carried along the whole way but never enters the decision — `packages/core/src/status.test.ts:38` pins exactly this ("derives freshness from hash alone, ignoring the stored commit anchor").
+
+## Rolling sources up to a node
+
+A node has many sources; `carto status` reports one state per node. `classifyNode` classifies each source, then folds them to the **worst** state via a `reduce` seeded at `fresh` — `packages/core/src/status.ts:27-33`. The ordering is fixed by `PRIORITY`: `fresh(0) < unsynced(1) < stale(2) < missing(3)` — `packages/core/src/status.ts:21`. So a node with one `missing` source among ten `fresh` ones reports `missing`; the reduce keeps whichever source is unhealthiest. A zero-source node stays at the `fresh` seed. `statusReport` maps `classifyNode` over every node in the manifest — `packages/core/src/status.ts:49-53`.
+
+## The commit anchor
+
+Alongside the hash, a blessed source records the git commit it was verified against. `headCommit` shells out to `git rev-parse HEAD` and is deliberately **best-effort**: any failure — or running outside a git repo — is swallowed and returns `undefined` — `packages/cli/src/git.ts:3-9`. So carto never fails a sync just because git is unavailable; `sync` outside a repo simply writes no `commit` key (`packages/cli/src/commands/sync.test.ts:76`), and the schema enforces that a `commit` can only exist beside a `hash` (`packages/core/src/schema.ts:23-25`).
+
+The anchor exists for the *refresh* moment, not the freshness check. When a source goes stale, `carto status` prints the stored commit next to it — `(was <commit>)` — `packages/cli/src/commands/status.ts:21`. That commit tells whoever refreshes the doc exactly which revision it was last correct at, so they can `git diff <commit> -- <file>` to read precisely what changed rather than re-reading the whole file. The commit is an affordance for the human or agent updating prose; carto itself only compares hashes.
+
+## Worked example: fresh → stale → fresh
+
+Say node `payments` tracks `payments.md`, and the working tree is a git repo at commit `c0`.
+
+1. **Bless it.** `carto sync` re-hashes each unsynced source and stamps the current commit. The source becomes `{ file: "payments.md", hash: "2cf24dba5fb0a30e", commit: "c0" }`. `carto status` → `fresh` — the on-disk hash equals the stored one (`packages/core/src/status.ts:46`).
+2. **Edit the code.** A byte changes in `payments.md`; its content hash is now `82e35a63ceba37e9`. Nothing in `node.json` moved.
+3. **Detect drift.** `carto status` re-hashes, `82e3… !== 2cf2…`, so the source — and the node — reports `stale`, printed with `(was c0)` (`packages/cli/src/commands/status.ts:21`). [carto validate](carto:cli) turns the same `stale` state into a warning.
+4. **Refresh.** After updating the prose, `carto sync payments` re-hashes the file and re-stamps the head commit; the source is `fresh` again.
+
+The last step **names the id** on purpose. A bare `carto sync` only blesses *unsynced* sources — sources with no stored hash — and leaves already-stamped sources untouched even when they changed on disk (`packages/cli/src/commands/sync.test.ts:101`). Refreshing a stale source is an explicit act: you point [carto sync](carto:manifest) at the node so it re-hashes and re-anchors that source deliberately, rather than accidentally rubber-stamping every drift in the tree. The [manifest](carto:manifest) sync engine is where that targeted-vs-bare split lives.

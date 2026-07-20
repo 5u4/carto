@@ -1,0 +1,136 @@
+---
+title: The manifest model
+description: The on-disk data model — carto.json and node.json — its Zod schema, canonical I/O, and the two-mode sync engine.
+---
+
+Everything carto knows about a doc-set lives in two kinds of file on disk. This
+component is their **shape** (a Zod schema that is the single source of truth)
+and their **I/O plus sync engine** (`packages/core/src/schema.ts` and
+`packages/core/src/manifest.ts`). Downstream, [freshness](carto:freshness)
+consumes the source hashes this model stores, the [CLI](carto:cli) commands
+call the read/write/sync functions here, and the `federated` array defined by
+the schema feeds [link resolution](carto:links).
+
+## Two file kinds, id = directory name
+
+There is no central node list. The doc-set is reconstructed from the filesystem:
+
+- **`carto.json`** — one per doc root, the `Config`: `version`, `locales`,
+  `defaultLocale`, optional `codeRoot`/`home`, and an optional `federated`
+  array (`packages/core/src/schema.ts:49`). It holds *no* nodes.
+- **`docs/<id>/node.json`** — one per page, the `NodeFile`: an optional
+  `parent` and a `sources` array (`packages/core/src/schema.ts:44`).
+
+The node id is never written inside the file — it **is the directory name**.
+`readNode` derives it from the path and `parseNodeFile` injects it, returning
+`{ id, ...data }` (`packages/core/src/manifest.ts:34`). So a node file describes
+the page; its location names it.
+
+## The schema is the single source of truth
+
+Both files are validated by Zod schemas; nothing else re-checks their shape.
+
+- **`ID_PATTERN`** — `/^[a-z0-9][a-z0-9-]*$/`
+  (`packages/core/src/schema.ts:3`). Every node id, `parent`, `home`, and
+  federated `alias` must match it. Directory scanning enforces it too (below).
+- **`sourceSchema`** — a source is `{ file, hash?, commit? }`. `file` must be a
+  **relative path with no `..` segments** — `isRelativeFile` rejects absolute
+  paths, drive-rooted paths (`C:`), and any `..` component
+  (`packages/core/src/schema.ts:11`, refined at
+  `packages/core/src/schema.ts:19`). A trailing `.refine` enforces that
+  **`commit` requires `hash`** — you cannot stamp a commit without a content
+  fingerprint (`packages/core/src/schema.ts:23`).
+- **`configSchema.superRefine`** — cross-field rules beyond per-field types:
+  locales must be **unique**, `defaultLocale` must be **a member of `locales`**,
+  and federated aliases must be neither the **reserved `self`** nor a
+  **duplicate** (`packages/core/src/schema.ts:58`). The federated entry itself
+  is a discriminated union on `type` — `file` (relative `path`) or `git`
+  (`url` + `ref`, optional `subdir`) (`packages/core/src/schema.ts:42`); the
+  `git` variant powers [federation](carto:links).
+- **Defaults fill absence.** Both `sources` and `federated` default to `[]`
+  (`packages/core/src/schema.ts:46`, `packages/core/src/schema.ts:56`), so a
+  `{}` node file parses to `{ sources: [] }` and a config without federation is
+  just an empty array — no downstream code branches on "missing".
+
+### The type ladder
+
+The exported types build up in layers
+(`packages/core/src/schema.ts:81`):
+
+- `Source` = one tracked file `{ file, hash?, commit? }`.
+- `NodeFile` = what is on disk: `{ parent?, sources }`.
+- `Config` = what `carto.json` holds.
+- `Node` = `NodeFile & { id }` — the file plus its directory-derived id
+  (`packages/core/src/schema.ts:87`).
+- `Manifest` = `Config & { nodes: Node[] }` — the config joined with every node
+  scanned off disk (`packages/core/src/schema.ts:88`).
+
+`readManifest` is precisely the function that turns the on-disk `Config` +
+directory tree into that in-memory `Manifest`.
+
+## Canonical I/O
+
+`manifest.ts` is the only reader and writer of these files. Two invariants make
+its output diff-stable:
+
+- **Validation is centralized.** `parseConfig` / `parseNodeFile` run the schema
+  and, on failure, throw a **`ManifestError`** carrying every Zod issue as a
+  joined `path: message` string (`packages/core/src/manifest.ts:21`,
+  `packages/core/src/manifest.ts:29`). `ManifestError`
+  (`packages/core/src/manifest.ts:10`) is the one error type this layer raises.
+- **Serialization is canonical.** `serializeConfig` / `serializeNodeFile` emit
+  keys in a **fixed order**, optional keys only when present, `2`-space JSON,
+  and a **trailing newline** (`packages/core/src/manifest.ts:37`,
+  `packages/core/src/manifest.ts:49`). `orderSource` even omits `commit` unless
+  `hash` is also set (`packages/core/src/manifest.ts:56`), mirroring the schema
+  invariant so writes never contradict reads.
+
+Reading composes bottom-up: `readManifest` = `readConfig` +
+`readNodeIds` + `readNode` for each id (`packages/core/src/manifest.ts:122`).
+
+- `readConfig` reads `docs`-root `carto.json`, wrapping a JSON parse failure in
+  a `ManifestError` (`packages/core/src/manifest.ts:70`).
+- `readNodeIds` scans `docs/`, **skips non-directories**, throws on any name
+  that fails `ID_PATTERN`, and returns the surviving ids **sorted**
+  (`packages/core/src/manifest.ts:82`) — a deterministic node order.
+- `codeRootDir` resolves source paths against `manifest.codeRoot ?? '.'`, the
+  root all hashing is relative to (`packages/core/src/manifest.ts:6`).
+
+:::note
+**Absence is not an error.** A missing `docs/` directory makes `readNodeIds`
+return `[]` (`packages/core/src/manifest.ts:88`), and a missing `node.json`
+makes `readNode` return `undefined` (`packages/core/src/manifest.ts:111`) — both
+via the shared `isNotFound` ENOENT check (`packages/core/src/manifest.ts:17`).
+Any *other* fs error propagates. An empty doc-set is a valid one.
+:::
+
+## The sync engine
+
+`syncManifest` is what "blessing" a page means: it recomputes source hashes and
+stamps a commit, returning a new `Manifest` plus the list of node ids that
+`changed` (`packages/core/src/manifest.ts:208`). It has **two modes**, selected
+by whether `options.targets` is given (`packages/core/src/manifest.ts:227`):
+
+- **No targets → `syncUnsynced`.** Only sources **lacking a hash** get hashed;
+  an already-hashed source is left untouched (`packages/core/src/manifest.ts:187`).
+  This fills in the blanks without disturbing existing freshness.
+- **With targets → `syncSources`.** Every in-scope source is **re-hashed**, and
+  the node is marked `changed` if *either* the hash *or* the commit differs from
+  what was stored (`packages/core/src/manifest.ts:170`). This is how naming ids
+  on `carto sync` re-blesses exactly those pages.
+
+Two guards frame the walk:
+
+- **Unknown targets throw.** Any target id not in the manifest raises a
+  `ManifestError` before any hashing (`packages/core/src/manifest.ts:213`).
+- **Missing source files throw.** A source that hits ENOENT during hashing is
+  collected into `missing`; if `missing` is non-empty at the end, sync throws
+  rather than silently writing a half-synced manifest
+  (`packages/core/src/manifest.ts:233`).
+
+**Out-of-scope nodes pass through untouched** — when targets are set, a node not
+in the target set is pushed onto the result verbatim, its sources and freshness
+preserved (`packages/core/src/manifest.ts:223`). That pass-through is exactly
+why scoped syncs don't churn unrelated pages; [freshness](carto:freshness)
+explains why that scoping is the heart of sustainable updates, and the
+[CLI page](carto:cli) shows the `sync`/`validate` commands that call in here.

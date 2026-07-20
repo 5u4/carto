@@ -1,0 +1,71 @@
+---
+title: CLI
+description: The carto binary — a citty dispatch table over seven subcommands that read, report, bless, and render a doc root.
+---
+
+## Intent
+
+`carto` is the single binary a user runs. It turns the pure machinery of `@carto/core` — [the manifest](carto:manifest), [freshness](carto:freshness), [coverage](carto:coverage), [links](carto:links) — into seven imperative verbs with process exit codes. Every command answers one question about *the current directory* and reports the answer to a human via stdout/stderr, then exits `0` for success or `1` for failure so CI can gate on it.
+
+The entry point is a [citty](https://github.com/unjs/citty) dispatch table — no logic, just a registry mapping subcommand name to its `defineCommand` module (`packages/cli/src/index.ts:11-24`), run by `runMain(main)` (`packages/cli/src/index.ts:24`).
+
+```text
+carto init       scaffold a doc root
+carto status     report per-node freshness       (exit 1 if any not fresh)
+carto sync       recompute + write source hashes
+carto coverage   report uncovered files          (exit 1 only with --fail-on-uncovered)
+carto validate   schema + tree + sync + links    (exit 1 on any error)
+carto dev        preview the site
+carto build      build the static site
+```
+
+### The shared shape
+
+Every command that touches an existing doc root follows the same three-beat opening, which is worth internalizing once:
+
+1. **Doc root = `process.cwd()`.** No `--root` flag; you `cd` to the directory holding `carto.json` (`packages/cli/src/commands/status.ts:7`, `packages/cli/src/commands/sync.ts:11`).
+2. **Read the manifest inside a try/catch.** `readManifest(root)` is wrapped so a `ManifestError` becomes `console.error(...)` + `process.exit(1)` rather than a stack trace (`packages/cli/src/commands/status.ts:9-14`).
+3. **Locate code via `codeRootDir`.** The doc root and the code it documents may differ; `codeRootDir(manifest, root)` resolves `manifest.codeRoot ?? '.'` against the doc root (`packages/core/src/manifest.ts:6-8`), and that path is what freshness/coverage hash against (`packages/cli/src/commands/status.ts:15`).
+
+The rest of this page groups the seven verbs into four mental models.
+
+## Read-only reporters — status, coverage
+
+These never write. They compute a report from core and print it; the only decision is what exit code to hand back.
+
+**`status`** drives [freshness](carto:freshness). It calls `statusReport(manifest, codeRootDir(...))` and prints one line per node — `state` padded, then the node id (`packages/cli/src/commands/status.ts:15-17`). For any non-`fresh` node it indents the offending sources, tagging a stale one with the commit it was last blessed at (`packages/cli/src/commands/status.ts:18-24`). The exit code is the whole point: `1` if **any** node is not fresh, else `0` (`packages/cli/src/commands/status.ts:27-28`). That makes `carto status` a drift alarm.
+
+**`coverage`** drives [coverage](carto:coverage). It calls `coverageReport(...)`, prints `covered X / Y files (Z%)`, and lists the uncovered paths (`packages/cli/src/commands/coverage.ts:18-26`). By default it is advisory — it reports and exits `0`. Only with `--fail-on-uncovered` does an uncovered file force exit `1` (`packages/cli/src/commands/coverage.ts:27`). So coverage is a nudge by default, a gate on demand.
+
+## The aggregate gate — validate
+
+**`validate`** is the CI gate: one command that runs four independent checks and exits `1` if any produced an *error* (warnings never fail). It accumulates into two lists, `errors` and `warnings` (`packages/cli/src/commands/validate.ts:38-39`), and only at the end prints warnings, then errors, then exits (`packages/cli/src/commands/validate.ts:77-82`).
+
+The four checks:
+
+1. **Schema + federation** — reading the manifest at all validates the schema; `loadGraph(root)` additionally resolves federated sub-graphs, and any failure is fatal via `fail(...)` before the check loop even starts (`packages/cli/src/commands/validate.ts:24-37`).
+2. **Tree** — `checkTree(manifest.nodes)` yields parent/cycle issues, each routed to `errors` or `warnings` by its own `severity` (`packages/cli/src/commands/validate.ts:41-44`). A dangling `home` pointer is checked separately and is always an error (`packages/cli/src/commands/validate.ts:46-48`).
+3. **Sync state** — it reuses the same `statusReport` as `status`, then maps states to severities: `unsynced` and `missing` are errors, `stale` is only a warning (`packages/cli/src/commands/validate.ts:50-60`). This is why a stale doc fails `carto status` but not `carto validate` — validate tolerates drift, it does not tolerate an un-blessed or absent source.
+4. **Links** — for every node × locale it opens `docs/<id>/<locale>.mdx`, and a missing file is an error (`packages/cli/src/commands/validate.ts:62-68`). Otherwise it runs `extractCartoTargets(text)` — a regex pulling every `carto:` target out of Markdown link syntax (`packages/cli/src/links.ts:1-9`) — and resolves each through `resolveCartoLink(...)`, collecting broken links as errors (`packages/cli/src/commands/validate.ts:69-73`). This is [the link layer](carto:links) enforced across the whole doc set.
+
+:::note
+`validate` is the union of `status`'s freshness check (downgraded — stale is a warning) plus schema, tree, and link integrity. It is the command CI should run.
+:::
+
+## The write path — sync, init
+
+These are the only commands that mutate the doc root.
+
+**`sync`** blesses. It parses positional node ids straight from `rawArgs`, dropping anything that starts with `-` (`packages/cli/src/commands/sync.ts:12`). It calls `syncManifest(manifest, { rootDir: codeRoot, commit: headCommit(codeRoot), targets })`, where `targets` is the id list or `undefined` to mean "every unsynced source" (`packages/cli/src/commands/sync.ts:16-20`). The current commit comes from `git rev-parse HEAD`, degrading to `undefined` outside a repo (`packages/cli/src/git.ts:3-8`). It then writes back **only** the nodes core reports as `changed` (`packages/cli/src/commands/sync.ts:21-25`). Crucially the whole body is inside one try/catch: on any error nothing is written and it exits `1` (`packages/cli/src/commands/sync.ts:27-30`) — sync is all-or-nothing.
+
+**`init`** scaffolds a fresh doc root and refuses to clobber. If `carto.json` already exists it errors and exits `1` before touching anything (`packages/cli/src/commands/init.ts:16-19`). Otherwise it builds a `Config`, validates it via `parseConfig` (`packages/cli/src/commands/init.ts:28-33`), then writes `carto.json`, creates `docs/`, and — only if absent — drops a `carto.config.mjs` starlight stub (`packages/cli/src/commands/init.ts:34-40`). The console line reports exactly which of the three it created.
+
+## The template bridge — dev, build
+
+`dev` and `build` are twins. Neither contains site logic; both delegate to `runTemplateScript(command)` (`packages/cli/src/commands/dev.ts:33-38`, `packages/cli/src/commands/build.ts:4-9`), which is [the rendering layer](carto:rendering) invoked as a child process.
+
+`runTemplateScript` locates the installed `@carto/template` package by resolving its `package.json` (`packages/cli/src/commands/dev.ts:6-13`). If it is missing — the template hasn't been built — it errors with `run pnpm build first` and exits `1` (`packages/cli/src/commands/dev.ts:17-20`). Otherwise it spawns `pnpm run dev` (or `build:site` for build) **in the template directory**, inheriting stdio and passing the user's doc root through as the `CARTO_ROOT` env var (`packages/cli/src/commands/dev.ts:21-26`). That env var is how the template — running in its own directory — knows which doc root to render. The child's exit code becomes the CLI's exit code (`packages/cli/src/commands/dev.ts:31`).
+
+:::caution
+`dev`/`build` shell out to `pnpm`. A spawn failure (pnpm not on `PATH`) is caught and reported distinctly from a missing template (`packages/cli/src/commands/dev.ts:27-30`).
+:::

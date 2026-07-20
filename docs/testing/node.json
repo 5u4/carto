@@ -1,0 +1,20 @@
+{
+  "parent": "overview",
+  "sources": [
+    {
+      "file": "tests/pipeline/carto-pipeline.test.ts",
+      "hash": "8f2e8f9b2a83889e",
+      "commit": "59d86e576e9dea007f0af7e172d2b317489124cd"
+    },
+    {
+      "file": "vitest.pipeline.config.ts",
+      "hash": "b1cf836f4ddd9994",
+      "commit": "59d86e576e9dea007f0af7e172d2b317489124cd"
+    },
+    {
+      "file": "vitest.config.ts",
+      "hash": "7b21f05ac4401bad",
+      "commit": "59d86e576e9dea007f0af7e172d2b317489124cd"
+    }
+  ]
+}

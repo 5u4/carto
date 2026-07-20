@@ -1,0 +1,51 @@
+---
+title: 新鲜度
+description: carto 如何为每个被追踪的源文件做内容寻址、将其分类为 fresh/unsynced/stale/missing，并将其锚定到某个 git commit。
+---
+
+文档会悄无声息地与代码脱节。新鲜度是 carto 给出的答案：每个被追踪的源文件都带有一个在其节点被祝福（bless）那一刻记录下来的**内容哈希**，因此 carto 之后可以对磁盘上的文件重新哈希，并且——完全确定性地、无需读一个字的正文——判断文档是否仍然描述着它所指向的代码。这就是 [carto status](carto:cli) 所报告、[carto sync](carto:manifest) 所写入的机制。
+
+## 摘要：sha256 的前 16 个十六进制字符
+
+一个源的身份就是一个字符串。`hashContent` 取文件的原始字节，运行 sha256，并保留前 16 个十六进制字符 —— `packages/core/src/hash.ts:4-6`。`hashFile` 只是先 `readFile` 再 `hashContent` —— `packages/core/src/hash.ts:8-10`。这个 16 字符的摘要就是被存储在源上的 `hash` 字段（`packages/core/src/schema.ts:20`），也是之后每一次比较所针对的对象。
+
+16 个十六进制字符即 64 位——短到足以让 `node.json` 保持可读，宽到足以让同一文件的两个版本之间发生意外碰撞不成为顾虑。摘要只针对内容：重命名文件，哈希不变；改动一个字节，它就完全改变。
+
+```
+hello   -> 2cf24dba5fb0a30e
+goodbye -> 82e35a63ceba37e9
+```
+
+（`hello` 的摘要正是 `packages/core/src/status.test.ts:43` 中的那个测试夹具。）
+
+## 四种状态，逐源判定
+
+每个源都归结为一个 [FreshnessState](carto:freshness)：`fresh | unsynced | stale | missing` —— `packages/core/src/status.ts:5`。`classifySource` 通过重新哈希文件并与存储的哈希比较来判定属于哪一种 —— `packages/core/src/status.ts:36-47`：
+
+- **missing** —— 哈希抛出了 `ENOENT`；carto 本应记录的文件已不复存在 —— `packages/core/src/status.ts:42`。任何其他错误都会重新抛出（`packages/core/src/status.ts:43`），因此一个指向目录的源是硬性失败，而非默默变成 `missing`。
+- **unsynced** —— 文件存在但没有存储的哈希；它被声明过却从未被祝福 —— `packages/core/src/status.ts:45`。
+- **fresh** —— 存储的哈希等于刚计算出的哈希；文档仍与代码相符 —— `packages/core/src/status.ts:46`。
+- **stale** —— 文件存在且有存储的哈希，但两者不同；代码在文档之下发生了移动 —— `packages/core/src/status.ts:46`。
+
+新鲜度**仅**由哈希推导得出。存储的 commit 会一路被携带，但从不参与判定 —— `packages/core/src/status.test.ts:38` 正好钉住了这一点（“derives freshness from hash alone, ignoring the stored commit anchor”）。
+
+## 将各个源汇总到节点
+
+一个节点有许多源；`carto status` 为每个节点报告一个状态。`classifyNode` 先分类每个源，然后通过一个以 `fresh` 为种子的 `reduce`，将它们折叠为**最差**的状态 —— `packages/core/src/status.ts:27-33`。这一排序由 `PRIORITY` 固定：`fresh(0) < unsynced(1) < stale(2) < missing(3)` —— `packages/core/src/status.ts:21`。因此，一个节点若在十个 `fresh` 源中夹杂一个 `missing` 源，就报告 `missing`；reduce 会保留其中最不健康的那个源。一个零源节点则停留在 `fresh` 种子上。`statusReport` 将 `classifyNode` 映射到清单中的每一个节点 —— `packages/core/src/status.ts:49-53`。
+
+## commit 锚点
+
+在哈希之外，一个被祝福的源还记录它所对照验证的 git commit。`headCommit` 调用 `git rev-parse HEAD`，并且刻意采取**尽力而为**的方式：任何失败——或在 git 仓库之外运行——都会被吞掉并返回 `undefined` —— `packages/cli/src/git.ts:3-9`。因此 carto 绝不会仅仅因为 git 不可用就让一次 sync 失败；在仓库之外运行 `sync` 只是不写 `commit` 键（`packages/cli/src/commands/sync.test.ts:76`），而 schema 强制要求 `commit` 只能与 `hash` 并存（`packages/core/src/schema.ts:23-25`）。
+
+锚点是为*刷新*时刻而存在的，而非为新鲜度检查。当一个源变为 stale 时，`carto status` 会在它旁边打印存储的 commit —— `(was <commit>)` —— `packages/cli/src/commands/status.ts:21`。那个 commit 告诉刷新文档的人：它上一次正确时正是在哪个版本，于是他们可以 `git diff <commit> -- <file>` 来精确读出改动了什么，而不必重读整个文件。这个 commit 是给更新正文的人或 agent 的一种便利手段；carto 本身只比较哈希。
+
+## 一个完整示例：fresh → stale → fresh
+
+假设节点 `payments` 追踪 `payments.md`，且工作树是一个处于 commit `c0` 的 git 仓库。
+
+1. **祝福它。** `carto sync` 重新哈希每个 unsynced 源并盖上当前 commit。该源变为 `{ file: "payments.md", hash: "2cf24dba5fb0a30e", commit: "c0" }`。`carto status` → `fresh`——磁盘上的哈希等于存储的哈希（`packages/core/src/status.ts:46`）。
+2. **修改代码。** `payments.md` 中改动一个字节；它的内容哈希现在是 `82e35a63ceba37e9`。`node.json` 里没有任何东西移动。
+3. **检测漂移。** `carto status` 重新哈希，`82e3… !== 2cf2…`，于是该源——以及该节点——报告 `stale`，并打印 `(was c0)`（`packages/cli/src/commands/status.ts:21`）。[carto validate](carto:cli) 会把同一个 `stale` 状态变成一条警告。
+4. **刷新。** 在更新正文之后，`carto sync payments` 重新哈希该文件并重新盖上 head commit；该源再次变为 `fresh`。
+
+最后一步**指名了 id**，这是有意为之。一次裸的 `carto sync` 只祝福*unsynced*源——即没有存储哈希的源——并且即使已盖章的源在磁盘上发生了改变，也保持它们不动（`packages/cli/src/commands/sync.test.ts:101`）。刷新一个 stale 源是一个显式的动作：你把 [carto sync](carto:manifest) 指向该节点，让它有意地重新哈希并重新锚定那个源，而不是不小心为树中每一处漂移盖章放行。[manifest](carto:manifest) 的 sync 引擎正是这个“指名 vs. 裸跑”分野所在之处。

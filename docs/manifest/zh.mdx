@@ -1,0 +1,128 @@
+---
+title: 清单模型
+description: 磁盘上的数据模型 —— carto.json 与 node.json —— 及其 Zod schema、规范化 I/O 与双模式同步引擎。
+---
+
+carto 对一套文档的全部认知都存放在磁盘上的两类文件中。本组件即这两类文件的
+**形状**（一份作为唯一真相来源的 Zod schema）以及它们的 **I/O 与同步引擎**
+（`packages/core/src/schema.ts` 与 `packages/core/src/manifest.ts`）。在下游，
+[freshness](carto:freshness) 消费本模型存储的源文件哈希，[CLI](carto:cli) 命令
+调用这里的读/写/同步函数，而 schema 定义的 `federated` 数组则馈入
+[链接解析](carto:links)。
+
+## 两类文件，id = 目录名
+
+这里没有中央节点清单。整套文档是从文件系统重建出来的：
+
+- **`carto.json`** —— 每个文档根一份，即 `Config`：`version`、`locales`、
+  `defaultLocale`、可选的 `codeRoot`/`home`，以及一个可选的 `federated` 数组
+  （`packages/core/src/schema.ts:49`）。它*不*保存任何节点。
+- **`docs/<id>/node.json`** —— 每页一份，即 `NodeFile`：一个可选的 `parent`
+  和一个 `sources` 数组（`packages/core/src/schema.ts:44`）。
+
+节点 id 从不写进文件内部 —— 它**就是目录名**。`readNode` 从路径派生出它，
+`parseNodeFile` 将其注入，返回 `{ id, ...data }`
+（`packages/core/src/manifest.ts:34`）。因此节点文件描述页面，其所在位置为它命名。
+
+## schema 是唯一真相来源
+
+两类文件都由 Zod schema 校验；再无其他地方复检它们的形状。
+
+- **`ID_PATTERN`** —— `/^[a-z0-9][a-z0-9-]*$/`
+  （`packages/core/src/schema.ts:3`）。每个节点 id、`parent`、`home` 以及
+  federated `alias` 都必须匹配它。目录扫描同样强制执行它（见下）。
+- **`sourceSchema`** —— 一个 source 为 `{ file, hash?, commit? }`。`file` 必须是
+  **不含 `..` 片段的相对路径** —— `isRelativeFile` 拒绝绝对路径、盘符根路径
+  （`C:`）以及任何 `..` 组成部分（`packages/core/src/schema.ts:11`，在
+  `packages/core/src/schema.ts:19` 处细化）。末尾的 `.refine` 强制
+  **`commit` 需要 `hash`** —— 没有内容指纹就无法盖上 commit
+  （`packages/core/src/schema.ts:23`）。
+- **`configSchema.superRefine`** —— 超出逐字段类型的跨字段规则：locales 必须
+  **唯一**，`defaultLocale` 必须是 **`locales` 的成员**，且 federated 别名既不能
+  是**保留的 `self`** 也不能**重复**（`packages/core/src/schema.ts:58`）。
+  federated 条目本身是基于 `type` 的可辨识联合 —— `file`（相对 `path`）或
+  `git`（`url` + `ref`，可选 `subdir`）（`packages/core/src/schema.ts:42`）；
+  其中 `git` 变体驱动 [federation](carto:links)。
+- **默认值填补缺省。** `sources` 与 `federated` 都默认为 `[]`
+  （`packages/core/src/schema.ts:46`、`packages/core/src/schema.ts:56`），因此
+  一个 `{}` 节点文件解析为 `{ sources: [] }`，而没有 federation 的配置就是一个
+  空数组 —— 下游代码无需就“缺失”分支。
+
+### 类型阶梯
+
+导出的类型逐层构建（`packages/core/src/schema.ts:81`）：
+
+- `Source` = 一个被追踪的文件 `{ file, hash?, commit? }`。
+- `NodeFile` = 磁盘上的内容：`{ parent?, sources }`。
+- `Config` = `carto.json` 所保存的内容。
+- `Node` = `NodeFile & { id }` —— 文件加上由目录派生的 id
+  （`packages/core/src/schema.ts:87`）。
+- `Manifest` = `Config & { nodes: Node[] }` —— 配置与从磁盘扫描出的每个节点
+  相联结（`packages/core/src/schema.ts:88`）。
+
+`readManifest` 恰恰就是把磁盘上的 `Config` + 目录树转化为那个内存 `Manifest`
+的函数。
+
+## 规范化 I/O
+
+`manifest.ts` 是这些文件唯一的读者与写者。两条不变式使其输出具备 diff 稳定性：
+
+- **校验被集中化。** `parseConfig` / `parseNodeFile` 运行 schema，失败时抛出
+  **`ManifestError`**，其中携带每一条 Zod issue，以拼接的 `path: message`
+  字符串呈现（`packages/core/src/manifest.ts:21`、
+  `packages/core/src/manifest.ts:29`）。`ManifestError`
+  （`packages/core/src/manifest.ts:10`）是本层抛出的唯一错误类型。
+- **序列化是规范化的。** `serializeConfig` / `serializeNodeFile` 以**固定顺序**
+  输出键，仅在可选键存在时输出它，采用 `2` 空格 JSON，并带一个**尾随换行**
+  （`packages/core/src/manifest.ts:37`、`packages/core/src/manifest.ts:49`）。
+  `orderSource` 甚至在 `hash` 未设置时省略 `commit`
+  （`packages/core/src/manifest.ts:56`），映射了 schema 的不变式，使写入永不与
+  读取相矛盾。
+
+读取自底向上组合：`readManifest` = `readConfig` + `readNodeIds` + 对每个 id
+调用 `readNode`（`packages/core/src/manifest.ts:122`）。
+
+- `readConfig` 读取 `docs` 根下的 `carto.json`，把 JSON 解析失败包装成
+  `ManifestError`（`packages/core/src/manifest.ts:70`）。
+- `readNodeIds` 扫描 `docs/`，**跳过非目录**，对任何未通过 `ID_PATTERN` 的名字
+  抛错，并返回幸存下来的、**已排序**的 id
+  （`packages/core/src/manifest.ts:82`）—— 一个确定性的节点顺序。
+- `codeRootDir` 将源路径针对 `manifest.codeRoot ?? '.'` 解析，那是所有哈希计算
+  相对的根（`packages/core/src/manifest.ts:6`）。
+
+:::note
+**缺席并非错误。** 缺失的 `docs/` 目录使 `readNodeIds` 返回 `[]`
+（`packages/core/src/manifest.ts:88`），缺失的 `node.json` 使 `readNode` 返回
+`undefined`（`packages/core/src/manifest.ts:111`）—— 两者都经由共享的
+`isNotFound` ENOENT 检查（`packages/core/src/manifest.ts:17`）。任何*其他* fs
+错误则向上传播。一套空文档也是一套有效的文档。
+:::
+
+## 同步引擎
+
+`syncManifest` 便是“为一页盖章赐福”的含义：它重新计算源文件哈希并盖上 commit，
+返回一个新的 `Manifest` 外加发生 `changed` 的节点 id 列表
+（`packages/core/src/manifest.ts:208`）。它有**两种模式**，由是否给出
+`options.targets` 来选择（`packages/core/src/manifest.ts:227`）：
+
+- **无 targets → `syncUnsynced`。** 仅**缺少 hash** 的源文件会被哈希；已带 hash
+  的源文件保持不动（`packages/core/src/manifest.ts:187`）。这在不扰动既有
+  freshness 的前提下填补空白。
+- **带 targets → `syncSources`。** 每个在范围内的源文件都会被**重新哈希**，并且
+  当哈希*或* commit 中任一与已存储的不同时，该节点被标记为 `changed`
+  （`packages/core/src/manifest.ts:170`）。这就是在 `carto sync` 上指名 id
+  为何能恰好重新赐福那些页面。
+
+两道防护框住了这次遍历：
+
+- **未知 targets 抛错。** 任何不在清单中的 target id 都会在任何哈希计算之前触发
+  `ManifestError`（`packages/core/src/manifest.ts:213`）。
+- **缺失的源文件抛错。** 哈希计算时命中 ENOENT 的源文件会被收进 `missing`；
+  若结束时 `missing` 非空，同步宁可抛错，也不静默写出一份半同步的清单
+  （`packages/core/src/manifest.ts:233`）。
+
+**范围外的节点原样通过** —— 当设置了 targets 时，不在 target 集合中的节点会被
+逐字推入结果，其 sources 与 freshness 得以保留
+（`packages/core/src/manifest.ts:223`）。正是这种直通，使得受限范围的同步不会
+搅动无关页面；[freshness](carto:freshness) 解释了为何这种范围限定是可持续更新的
+核心，而 [CLI 页](carto:cli) 展示了调用到这里的 `sync`/`validate` 命令。

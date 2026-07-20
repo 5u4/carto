@@ -1,0 +1,71 @@
+---
+title: 命令行工具
+description: carto 二进制 —— 一张 citty 分发表，覆盖七个读取、报告、盖章、渲染文档根的子命令。
+---
+
+## 意图
+
+`carto` 是用户运行的唯一二进制。它把 `@carto/core` 的纯机制 —— [清单](carto:manifest)、[新鲜度](carto:freshness)、[覆盖率](carto:coverage)、[链接](carto:links) —— 转化为七个带进程退出码的命令式动词。每个命令都针对*当前目录*回答一个问题，通过 stdout/stderr 把答案报告给人类，然后成功退出 `0`、失败退出 `1`，从而让 CI 可以据此把关。
+
+入口点是一张 [citty](https://github.com/unjs/citty) 分发表 —— 没有逻辑，只是一个把子命令名映射到其 `defineCommand` 模块的注册表（`packages/cli/src/index.ts:11-24`），由 `runMain(main)` 运行（`packages/cli/src/index.ts:24`）。
+
+```text
+carto init       脚手架一个文档根
+carto status     报告每个节点的新鲜度            (任一非 fresh 则退出 1)
+carto sync       重算并写入源哈希
+carto coverage   报告未覆盖文件                  (仅 --fail-on-uncovered 时退出 1)
+carto validate   schema + tree + sync + links   (任一错误则退出 1)
+carto dev        预览站点
+carto build      构建静态站点
+```
+
+### 共享的结构
+
+每个触及既有文档根的命令都遵循相同的三拍开场，值得一次性内化：
+
+1. **文档根 = `process.cwd()`。** 没有 `--root` 标志；你 `cd` 到包含 `carto.json` 的目录（`packages/cli/src/commands/status.ts:7`、`packages/cli/src/commands/sync.ts:11`）。
+2. **在 try/catch 内读取清单。** `readManifest(root)` 被包裹起来，使 `ManifestError` 变成 `console.error(...)` + `process.exit(1)`，而非一段堆栈跟踪（`packages/cli/src/commands/status.ts:9-14`）。
+3. **通过 `codeRootDir` 定位代码。** 文档根与它所记录的代码可能不同；`codeRootDir(manifest, root)` 把 `manifest.codeRoot ?? '.'` 相对文档根解析（`packages/core/src/manifest.ts:6-8`），而该路径正是新鲜度/覆盖率所哈希的对象（`packages/cli/src/commands/status.ts:15`）。
+
+本页余下部分把这七个动词归入四种心智模型。
+
+## 只读报告者 —— status、coverage
+
+它们从不写入。它们从 core 计算一份报告并打印；唯一的决策是交回什么退出码。
+
+**`status`** 驱动[新鲜度](carto:freshness)。它调用 `statusReport(manifest, codeRootDir(...))` 并逐节点打印一行 —— `state` 补齐宽度，然后是节点 id（`packages/cli/src/commands/status.ts:15-17`）。对任何非 `fresh` 的节点，它缩进列出违规的源，并给陈旧的源标注它上次盖章所在的提交（`packages/cli/src/commands/status.ts:18-24`）。退出码才是重点：**任一**节点非 fresh 则 `1`，否则 `0`（`packages/cli/src/commands/status.ts:27-28`）。这使 `carto status` 成为一个漂移警报。
+
+**`coverage`** 驱动[覆盖率](carto:coverage)。它调用 `coverageReport(...)`，打印 `covered X / Y files (Z%)`，并列出未覆盖的路径（`packages/cli/src/commands/coverage.ts:18-26`）。默认情况下它只是建议性的 —— 报告并退出 `0`。只有带 `--fail-on-uncovered` 时，未覆盖文件才强制退出 `1`（`packages/cli/src/commands/coverage.ts:27`）。因此覆盖率默认是一记提醒，按需才是一道关卡。
+
+## 聚合关卡 —— validate
+
+**`validate`** 是 CI 关卡：一个命令运行四项独立检查，任一项产生*错误*即退出 `1`（警告永不导致失败）。它把结果累积到两个列表 `errors` 和 `warnings`（`packages/cli/src/commands/validate.ts:38-39`），最后才先打印警告、再打印错误、然后退出（`packages/cli/src/commands/validate.ts:77-82`）。
+
+四项检查：
+
+1. **Schema + 联邦** —— 读取清单本身就验证了 schema；`loadGraph(root)` 额外解析联邦子图，任何失败都在检查循环开始前就经由 `fail(...)` 致命退出（`packages/cli/src/commands/validate.ts:24-37`）。
+2. **树** —— `checkTree(manifest.nodes)` 产出父/环问题，每个按其自身的 `severity` 路由到 `errors` 或 `warnings`（`packages/cli/src/commands/validate.ts:41-44`）。悬空的 `home` 指针单独检查，且始终是错误（`packages/cli/src/commands/validate.ts:46-48`）。
+3. **同步状态** —— 它复用与 `status` 相同的 `statusReport`，然后把状态映射为严重度：`unsynced` 与 `missing` 是错误，`stale` 仅是警告（`packages/cli/src/commands/validate.ts:50-60`）。这就是为何一份陈旧文档会让 `carto status` 失败却不会让 `carto validate` 失败 —— validate 容忍漂移，但不容忍未盖章或缺失的源。
+4. **链接** —— 对每个节点 × 语言环境，它打开 `docs/<id>/<locale>.mdx`，缺失文件即错误（`packages/cli/src/commands/validate.ts:62-68`）。否则它运行 `extractCartoTargets(text)` —— 一个从 Markdown 链接语法中抽取每个 `carto:` 目标的正则（`packages/cli/src/links.ts:1-9`）—— 并把每个目标经 `resolveCartoLink(...)` 解析，将失效链接收集为错误（`packages/cli/src/commands/validate.ts:69-73`）。这就是[链接层](carto:links)在整个文档集上的强制执行。
+
+:::note
+`validate` 是 `status` 的新鲜度检查（降级 —— stale 成为警告）加上 schema、树与链接完整性的并集。它是 CI 应当运行的命令。
+:::
+
+## 写入路径 —— sync、init
+
+它们是仅有的会改动文档根的命令。
+
+**`sync`** 盖章。它直接从 `rawArgs` 解析位置节点 id，丢弃任何以 `-` 开头的项（`packages/cli/src/commands/sync.ts:12`）。它调用 `syncManifest(manifest, { rootDir: codeRoot, commit: headCommit(codeRoot), targets })`，其中 `targets` 是 id 列表，或以 `undefined` 表示"每一个未同步的源"（`packages/cli/src/commands/sync.ts:16-20`）。当前提交来自 `git rev-parse HEAD`，在仓库之外则降级为 `undefined`（`packages/cli/src/git.ts:3-8`）。随后它**仅**写回 core 报告为 `changed` 的节点（`packages/cli/src/commands/sync.ts:21-25`）。关键在于整个函数体都在一个 try/catch 内：任何错误都不会写入并退出 `1`（`packages/cli/src/commands/sync.ts:27-30`）—— sync 是全有或全无。
+
+**`init`** 脚手架一个全新文档根，且拒绝覆盖。若 `carto.json` 已存在，它在触碰任何东西之前就报错并退出 `1`（`packages/cli/src/commands/init.ts:16-19`）。否则它构造一个 `Config`，经 `parseConfig` 验证（`packages/cli/src/commands/init.ts:28-33`），然后写入 `carto.json`、创建 `docs/`，并 —— 仅当缺失时 —— 放置一个 `carto.config.mjs` starlight 桩（`packages/cli/src/commands/init.ts:34-40`）。控制台那行精确报告它创建了三者中的哪些。
+
+## 模板桥 —— dev、build
+
+`dev` 与 `build` 是双胞胎。二者都不含站点逻辑；都委托给 `runTemplateScript(command)`（`packages/cli/src/commands/dev.ts:33-38`、`packages/cli/src/commands/build.ts:4-9`），后者是作为子进程调用的[渲染层](carto:rendering)。
+
+`runTemplateScript` 通过解析 `@carto/template` 包的 `package.json` 来定位已安装的该包（`packages/cli/src/commands/dev.ts:6-13`）。若它缺失 —— 模板尚未构建 —— 它以 `run pnpm build first` 报错并退出 `1`（`packages/cli/src/commands/dev.ts:17-20`）。否则它**在模板目录中**生成 `pnpm run dev`（build 时为 `build:site`），继承 stdio，并把用户的文档根作为 `CARTO_ROOT` 环境变量传入（`packages/cli/src/commands/dev.ts:21-26`）。该环境变量正是模板 —— 在其自身目录中运行 —— 得知该渲染哪个文档根的方式。子进程的退出码成为 CLI 的退出码（`packages/cli/src/commands/dev.ts:31`）。
+
+:::caution
+`dev`/`build` 会外壳调用 `pnpm`。生成失败（pnpm 不在 `PATH` 上）会被捕获，并与模板缺失区分开来报告（`packages/cli/src/commands/dev.ts:27-30`）。
+:::

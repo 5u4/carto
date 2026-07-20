@@ -1,0 +1,125 @@
+---
+title: Links & the federation graph
+description: "How carto: link targets are parsed and resolved to URLs, and how the federation graph binds many doc-sets into one addressable namespace."
+---
+
+A carto page never hard-codes a URL. It writes a Markdown link whose target is `carto:<id>` and lets the
+tooling resolve that target to a real path at validate and build time. This node
+covers the two halves of that machinery: the **resolver** that turns one
+`carto:` target into a URL (or a typed error), and the **federation graph** that
+gives cross-doc-set links a namespace to resolve against.
+
+The [manifest](carto:manifest) defines the on-disk format these links live in and
+the federation entries the graph walks; [validate](carto:cli) is the command that
+resolves every link to catch dead targets; [rendering](carto:rendering)
+materializes the surviving links into concrete URLs.
+
+## Parsing: `parseCartoLink`
+
+`parseCartoLink` is pure string surgery, no I/O
+(`packages/core/src/resolver.ts:10-19`). It rejects anything not prefixed
+`carto:` by returning `null`, strips the prefix, then splits off a `#` anchor.
+What remains is the *path*. A `/` **before** the anchor means a federation
+target: everything left of the first slash is the `alias`, everything right is
+the `id`. No slash means an internal target — the whole path is the `id`.
+
+```
+carto:payments          -> { kind: 'internal',   id: 'payments' }
+carto:payments#refunds  -> { kind: 'internal',   id: 'payments', anchor: 'refunds' }
+carto:web/auth          -> { kind: 'federation', alias: 'web', id: 'auth' }
+```
+
+The separators are unambiguous by construction: ids match
+`ID_PATTERN = /^[a-z0-9][a-z0-9-]*$/` (`packages/core/src/schema.ts:3`), so an id
+can never itself contain `.` or `/`. The first `/` is therefore always the
+alias boundary and never part of an id. `splitAnchor` runs first
+(`packages/core/src/resolver.ts:21-25`), so a `#` always ends the path regardless
+of alias.
+
+## Resolving: `resolveCartoLink`
+
+`resolveCartoLink` takes a target plus a `ResolveContext` — the current
+`manifest`, `locale`, an optional url `prefix`, and an optional `federation`
+context (`packages/core/src/resolver.ts:41-46`). It returns a discriminated
+`ResolveResult`: `{ ok: true, url, id }` or `{ ok: false, error }`
+(`packages/core/src/resolver.ts:48-50`). Every failure is a typed `ResolveError`
+kind, never an exception (`packages/core/src/resolver.ts:27-33`).
+
+**Internal targets** (`packages/core/src/resolver.ts:56-61`):
+
+1. `ID_PATTERN.test(id)` — a malformed id (uppercase, leading dash, dots) is
+   `malformed`.
+2. `nodesById(manifest.nodes).get(id)` — a missing node is `unknown-id`.
+3. `urlPath(...)` builds the URL from the node's root chain, applying the locale
+   prefix and the context `prefix` (`packages/core/src/tree.ts:26-29`). The
+   anchor, if any, is appended as `#anchor`.
+
+**Federation targets** (`packages/core/src/resolver.ts:64-79`) need a
+`FederationContext` — its `byHash` map, `aliasToHash` map, and
+`siteDefaultLocale` (`packages/core/src/resolver.ts:35-39`). The walk is
+alias → hash → DocSet → node:
+
+1. No federation context at all → `federation-unsupported`
+   (`packages/core/src/resolver.ts:68`). A single-doc-set site simply never
+   passes one, so any `alias/id` link is rejected up front.
+2. `alias` or `id` failing `ID_PATTERN` → `malformed`
+   (`packages/core/src/resolver.ts:69-71`).
+3. `aliasToHash.get(alias)` misses → `unknown-alias`
+   (`packages/core/src/resolver.ts:72-75`).
+4. The target DocSet's `nodesById` misses → `unknown-federated-id`
+   (`packages/core/src/resolver.ts:76-77`).
+5. Success builds the URL against the *target* DocSet's manifest and `prefix`,
+   so a federated link lands under that doc-set's namespace
+   (`packages/core/src/resolver.ts:78`).
+
+## Extraction: `extractCartoTargets`
+
+Links only resolve if they can be found. `extractCartoTargets` scans an MDX
+string with `/\]\((carto:[^)\s]+)\)/g` and returns every captured target
+(`packages/cli/src/links.ts:1-9`). The `](` prefix in the pattern is the whole
+point: it matches a `carto:` URL **only** as a Markdown link target, never as
+bare prose text and never inside a JSX prop. This is why a carto link must be
+written as a Markdown link target, with the `carto:` string inside the link's parentheses — a `carto:` string anywhere else is invisible to
+the extractor and will silently never be validated.
+
+Its sole consumer is the `validate` command, which reads each locale's MDX,
+extracts every target, and resolves it — reporting any `ok: false` as an error
+keyed by file (`packages/cli/src/commands/validate.ts:70-73`).
+
+## The federation graph: `loadGraph`
+
+`loadGraph` walks federation entries from a `federalRoot` and returns a `Graph`
+of `DocSet`s keyed by hash (`packages/core/src/graph.ts:41-86`). A `DocSet`
+bundles a doc-set's `hash`, url `prefix`, `docRoot`, parsed `manifest`, and its
+own `aliasToHash` map (`packages/core/src/graph.ts:7-13`).
+
+**Identity** is content-addressed by path, not by alias. `identity` canonicalizes
+the doc-root relative to the federal root (resolving symlinks via `realpath`),
+then hashes `sha256('file:' + canonical)` and takes the first 8 hex chars
+(`packages/core/src/graph.ts:28-32`). Two aliases pointing at the same directory
+collapse to the same hash — a diamond loads one DocSet, and a cycle terminates
+because `load` is memoized on `byHash` (`packages/core/src/graph.ts:47-49`).
+
+**Loading** is recursive: for each `manifest.federated` entry, `resolveEntry`
+turns it into a child doc-root, `identity` hashes it, the alias→hash edge is
+recorded, and `load` recurses (`packages/core/src/graph.ts:54-68`). The root
+manifest is reused rather than re-read (`packages/core/src/graph.ts:50`).
+
+:::caution
+`resolveEntry` throws a `FederationError` for `git`-type entries — git federation
+is not yet implemented; only `file` entries load
+(`packages/core/src/graph.ts:34-39`).
+:::
+
+**Prefixes** are assigned after the full graph is known
+(`packages/core/src/graph.ts:75-83`):
+
+- Non-federated root → `''` (URLs sit at the site root).
+- Federated root → `/self`.
+- Every child → `/<minAlias>-<hash>`, where `minAlias` is the lexically smallest
+  alias that references that DocSet (`packages/core/src/graph.ts:80-82`). Choosing
+  the smallest alias keeps the prefix stable when a doc-set is reachable under
+  several names.
+
+These prefixes are exactly what `resolveCartoLink` feeds to `urlPath`, so a
+`carto:web/auth` link resolves to a URL under `web`'s `/web-<hash>` namespace.
