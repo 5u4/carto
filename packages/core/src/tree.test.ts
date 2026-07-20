@@ -31,31 +31,21 @@ describe('urlPath', () => {
       version: 1,
       locales: ['en', 'zh'],
       defaultLocale: 'en',
-      updated_at: '2026-07-08T00:00:00Z',
       federated: [],
-      nodes: [
-        node({ id: 'api', slug: 'backend' }),
-        node({ id: 'payments', slug: 'billing', parent: 'api' })
-      ]
+      nodes: [node({ id: 'api' }), node({ id: 'payments', parent: 'api' })]
     }
   }
 
-  it('builds a path with no prefix for the default locale, using slug overrides', () => {
-    expect(urlPath(manifest(), 'payments', 'en')).toBe('/backend/billing/')
+  it('builds a path with no prefix for the default locale, using ids as segments', () => {
+    expect(urlPath(manifest(), 'payments', 'en')).toBe('/api/payments/')
   })
 
   it('builds a path with a locale prefix for a non-default locale', () => {
-    expect(urlPath(manifest(), 'payments', 'zh')).toBe('/zh/backend/billing/')
+    expect(urlPath(manifest(), 'payments', 'zh')).toBe('/zh/api/payments/')
   })
 })
 
 describe('checkTree', () => {
-  it('reports one duplicate-sibling-slug error', () => {
-    const nodes = [node({ id: 'a', slug: 'x' }), node({ id: 'b', slug: 'x' })]
-    const issues = checkTree(nodes)
-    expect(issues).toEqual([{ severity: 'error', kind: 'duplicate-sibling-slug', parent: null, slug: 'x', ids: ['a', 'b'] }])
-  })
-
   it('reports one dangling-parent warning for an absent parent', () => {
     const nodes = [node({ id: 'a', parent: 'ghost' })]
     const issues = checkTree(nodes)

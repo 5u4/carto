@@ -1,7 +1,7 @@
 import { defineCommand } from 'citty'
 import { access, mkdir, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
-import { serializeManifest, parseManifest, ManifestError, type Manifest } from '@carto/core'
+import { serializeConfig, parseConfig, ManifestError, type Config } from '@carto/core'
 
 export const initCommand = defineCommand({
   meta: { name: 'init', description: 'Scaffold carto.json and docs/ in the current directory' },
@@ -18,23 +18,21 @@ export const initCommand = defineCommand({
       process.exit(1)
     }
     const locales = args.locales.split(',').map((l) => l.trim()).filter(Boolean)
-    const manifest: Manifest = {
+    const config: Config = {
       version: 1,
       locales,
       defaultLocale: args.defaultLocale,
-      updated_at: new Date().toISOString(),
       federated: [],
-      ...(args.codeRoot ? { codeRoot: args.codeRoot } : {}),
-      nodes: []
+      ...(args.codeRoot ? { codeRoot: args.codeRoot } : {})
     }
     try {
-      parseManifest(manifest)
+      parseConfig(config)
     } catch (error) {
       console.error(`error: ${error instanceof ManifestError ? error.message : String(error)}`)
       process.exit(1)
     }
     await mkdir(join(root, 'docs'), { recursive: true })
-    await writeFile(manifestPath, serializeManifest(manifest), 'utf8')
+    await writeFile(manifestPath, serializeConfig(config), 'utf8')
     const configPath = join(root, 'carto.config.mjs')
     const wroteConfig = !(await exists(configPath))
     if (wroteConfig) await writeFile(configPath, configStub(), 'utf8')

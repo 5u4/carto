@@ -31,18 +31,17 @@ describe('resolveCartoLink', () => {
       version: 1,
       locales: ['en', 'zh'],
       defaultLocale: 'en',
-      updated_at: '2026-07-08T00:00:00Z',
       federated: [],
       nodes: [
-        node({ id: 'api', slug: 'backend' }),
-        node({ id: 'payments', slug: 'billing', parent: 'api' })
+        node({ id: 'api' }),
+        node({ id: 'payments', parent: 'api' })
       ]
     }
   }
 
   it('resolves an internal link to the node urlPath for the context locale', () => {
     const result = resolveCartoLink('carto:payments', { manifest: manifest(), locale: 'en' })
-    expect(result).toEqual({ ok: true, url: '/backend/billing/', id: 'payments' })
+    expect(result).toEqual({ ok: true, url: '/api/payments/', id: 'payments' })
   })
 
   it('appends the anchor to the resolved url', () => {
@@ -70,9 +69,8 @@ describe('resolveCartoLink', () => {
         version: 1,
         locales: ['en'],
         defaultLocale: 'en',
-        updated_at: '2026-07-08T00:00:00Z',
         federated: [],
-        nodes: [node({ id: 'auth', slug: 'auth' })]
+        nodes: [node({ id: 'auth' })]
       },
       aliasToHash: new Map()
     }

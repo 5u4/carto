@@ -6,10 +6,6 @@ export function nodesById(nodes: Node[]): Map<string, Node> {
   return map
 }
 
-export function slugOf(node: Node): string {
-  return node.slug ?? node.id
-}
-
 export function childrenOf(nodes: Node[], parentId: string | null): Node[] {
   return nodes.filter((node) => (node.parent ?? null) === parentId)
 }
@@ -29,33 +25,17 @@ export function rootChain(nodes: Node[], id: string): Node[] {
 
 export function urlPath(manifest: Manifest, id: string, locale: string, docPrefix = '', siteDefaultLocale = manifest.defaultLocale): string {
   const localePrefix = locale === siteDefaultLocale ? '' : `/${locale}`
-  const segments = rootChain(manifest.nodes, id).map((node) => slugOf(node))
+  const segments = rootChain(manifest.nodes, id).map((node) => node.id)
   return `${localePrefix}${docPrefix}/${segments.join('/')}/`
 }
 
 export type TreeIssue =
-  | { severity: 'error'; kind: 'duplicate-sibling-slug'; parent: string | null; slug: string; ids: string[] }
   | { severity: 'error'; kind: 'parent-cycle'; ids: string[] }
   | { severity: 'warning'; kind: 'dangling-parent'; id: string; parent: string }
 
 export function checkTree(nodes: Node[]): TreeIssue[] {
   const issues: TreeIssue[] = []
   const byId = nodesById(nodes)
-
-  const bySibling = new Map<string, Map<string, string[]>>()
-  for (const node of nodes) {
-    const parentKey = node.parent ?? '\u0000root'
-    const slugMap = bySibling.get(parentKey) ?? new Map<string, string[]>()
-    const slug = slugOf(node)
-    slugMap.set(slug, [...(slugMap.get(slug) ?? []), node.id])
-    bySibling.set(parentKey, slugMap)
-  }
-  for (const [parentKey, slugMap] of bySibling) {
-    const parent = parentKey === '\u0000root' ? null : parentKey
-    for (const [slug, ids] of slugMap) {
-      if (ids.length > 1) issues.push({ severity: 'error', kind: 'duplicate-sibling-slug', parent, slug, ids })
-    }
-  }
 
   for (const node of nodes) {
     if (node.parent !== undefined && !byId.has(node.parent)) {

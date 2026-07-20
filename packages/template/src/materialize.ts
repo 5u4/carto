@@ -8,7 +8,6 @@ import {
   parseCartoLink,
   resolveCartoLink,
   rootChain,
-  slugOf,
   statusReport,
   type DocSet,
   type FederationContext,
@@ -75,20 +74,23 @@ async function writeEmptyState(root: string): Promise<void> {
     '',
     '# Nothing here yet',
     '',
-    'This carto site has no pages. To add your first one, run:',
+    'This carto site has no pages yet. carto documents a codebase through a',
+    'coding agent: ask your agent to document your code with carto and tell it',
+    'what to cover — the scope. For example:',
     '',
     '```',
-    'carto document <dir-or-files>',
+    '/carto document the auth module',
     '```',
     '',
-    'Then run `carto dev` again.',
+    'The agent reads the code, writes the pages, and runs the carto CLI for you.',
+    'Once it has generated pages, run `carto dev` again.',
     ''
   ]
   await writeFile(join(contentDir, 'index.mdx'), lines.join('\n'), 'utf8')
 }
 
 function targetPath(docSet: DocSet, node: Node, locale: string, siteDefaultLocale: string): string {
-  const chain = rootChain(docSet.manifest.nodes, node.id).map((n) => slugOf(n)).join('/')
+  const chain = rootChain(docSet.manifest.nodes, node.id).map((n) => n.id).join('/')
   const localePrefix = locale === siteDefaultLocale ? '' : `${locale}/`
   const docPrefix = docSet.prefix ? `${docSet.prefix.slice(1)}/` : ''
   return join(contentDir, `${localePrefix}${docPrefix}${chain}.mdx`)

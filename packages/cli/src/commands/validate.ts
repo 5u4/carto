@@ -22,7 +22,7 @@ export const validateCommand = defineCommand({
     const root = process.cwd()
     let manifest: Manifest
     try {
-      manifest = await readManifest(join(root, 'carto.json'))
+      manifest = await readManifest(root)
     } catch (error) {
       fail(error instanceof ManifestError ? error.message : String(error))
       return
@@ -52,7 +52,7 @@ export const validateCommand = defineCommand({
       if (node.state === 'unsynced') errors.push(`node ${node.id} is unsynced; run carto sync`)
       else if (node.state === 'stale') {
         const changed = node.sources.filter((s) => s.state === 'stale').map((s) => s.file).join(', ')
-        errors.push(`node ${node.id} is stale; changed: ${changed}; run carto sync`)
+        warnings.push(`node ${node.id} is stale; changed: ${changed}; run carto sync ${node.id}`)
       } else if (node.state === 'missing') {
         const missing = node.sources.filter((s) => s.state === 'missing').map((s) => s.file).join(', ')
         errors.push(`node ${node.id} has a missing source file: ${missing}`)
@@ -99,8 +99,6 @@ async function exists(path: string): Promise<boolean> {
 
 function formatTreeIssue(issue: TreeIssue): string {
   switch (issue.kind) {
-    case 'duplicate-sibling-slug':
-      return `duplicate sibling slug "${issue.slug}" under parent ${issue.parent ?? '(root)'}: ${issue.ids.join(', ')}`
     case 'parent-cycle':
       return `parent cycle: ${issue.ids.join(' -> ')}`
     case 'dangling-parent':

@@ -4,7 +4,7 @@ import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type { Manifest } from '@carto/core'
-import { serializeManifest, syncManifest } from '@carto/core'
+import { writeManifest, syncManifest } from '@carto/core'
 import { validateCommand } from './validate'
 
 class ProcessExitSignal extends Error {
@@ -65,7 +65,6 @@ function baseManifest(): Manifest {
     version: 1,
     locales: ['en'],
     defaultLocale: 'en',
-    updated_at: '2026-01-01T00:00:00.000Z',
     federated: [],
     nodes: [
       { id: 'payments', sources: [{ file: 'payments.md' }] },
@@ -77,8 +76,8 @@ function baseManifest(): Manifest {
 async function writeSyncedManifest(dir: string, manifest: Manifest): Promise<void> {
   await writeFile(join(dir, 'payments.md'), 'payments source', 'utf8')
   await writeFile(join(dir, 'billing.md'), 'billing source', 'utf8')
-  const synced = await syncManifest(manifest, { rootDir: dir })
-  await writeFile(join(dir, 'carto.json'), serializeManifest(synced), 'utf8')
+  const { manifest: synced } = await syncManifest(manifest, { rootDir: dir })
+  await writeManifest(dir, synced)
 }
 
 describe('carto validate', () => {
@@ -106,24 +105,13 @@ describe('carto validate', () => {
     })
   })
 
-  it('exits 1 when two nodes share the same id', async () => {
+  it('exits 1 when the manifest has a structural schema error', async () => {
     await withTempCwd(async (dir) => {
-      const duplicateManifest = {
-        version: 1,
-        locales: ['en'],
-        defaultLocale: 'en',
-        updated_at: '2026-01-01T00:00:00.000Z',
-        federated: [],
-        nodes: [
-          { id: 'payments', sources: [] },
-          { id: 'payments', sources: [] }
-        ]
-      }
-      await writeFile(join(dir, 'carto.json'), JSON.stringify(duplicateManifest, null, 2), 'utf8')
+      await writeFile(join(dir, 'carto.json'), JSON.stringify({ version: 2 }, null, 2), 'utf8')
 
       const { exitCode, errors } = await runAndCaptureExit()
       expect(exitCode).toBe(1)
-      expect(errors.some((line) => line.includes('payments'))).toBe(true)
+      expect(errors.length).toBeGreaterThan(0)
     })
   })
 
@@ -156,13 +144,12 @@ describe('carto validate', () => {
         version: 1,
         locales: ['en'],
         defaultLocale: 'en',
-        updated_at: '2026-01-01T00:00:00.000Z',
         federated: [],
         nodes: [{ id: 'payments', parent: 'ghost-parent', sources: [{ file: 'payments.md' }] }]
       }
       await writeFile(join(dir, 'payments.md'), 'payments source', 'utf8')
-      const synced = await syncManifest(manifest, { rootDir: dir })
-      await writeFile(join(dir, 'carto.json'), serializeManifest(synced), 'utf8')
+      const { manifest: synced } = await syncManifest(manifest, { rootDir: dir })
+      await writeManifest(dir, synced)
       await writeDoc(dir, 'payments', 'en', 'Payments overview.')
 
       const { exitCode, warnings, logs } = await runAndCaptureExit()
@@ -196,16 +183,43 @@ describe('carto validate', () => {
     })
   })
 
-  it('names the changed file in the stale error', async () => {
+  it('exits 0 with a stale warning naming the changed file, not an error', async () => {
     await withTempCwd(async (dir) => {
       await writeSyncedManifest(dir, baseManifest())
       await writeDoc(dir, 'payments', 'en', 'Payments overview.')
       await writeDoc(dir, 'billing', 'en', 'Billing overview.')
       await writeFile(join(dir, 'payments.md'), 'mutated payments source', 'utf8')
 
+      const { exitCode, warnings, errors } = await runAndCaptureExit()
+      expect(exitCode).toBeNull()
+      expect(warnings.some((line) => line.includes('is stale') && line.includes('payments.md'))).toBe(true)
+      expect(errors).toHaveLength(0)
+    })
+  })
+
+  it('exits 1 when a source is unsynced', async () => {
+    await withTempCwd(async (dir) => {
+      await writeFile(join(dir, 'payments.md'), 'payments source', 'utf8')
+      await writeFile(join(dir, 'billing.md'), 'billing source', 'utf8')
+      await writeManifest(dir, baseManifest())
+      await writeDoc(dir, 'payments', 'en', 'Payments overview.')
+      await writeDoc(dir, 'billing', 'en', 'Billing overview.')
+
       const { exitCode, errors } = await runAndCaptureExit()
       expect(exitCode).toBe(1)
-      expect(errors.some((line) => line.includes('is stale') && line.includes('payments.md'))).toBe(true)
+      expect(errors.some((line) => line.includes('unsynced'))).toBe(true)
+    })
+  })
+
+  it('exits 1 when a source file is missing', async () => {
+    await withTempCwd(async (dir) => {
+      await writeManifest(dir, baseManifest())
+      await writeDoc(dir, 'payments', 'en', 'Payments overview.')
+      await writeDoc(dir, 'billing', 'en', 'Billing overview.')
+
+      const { exitCode, errors } = await runAndCaptureExit()
+      expect(exitCode).toBe(1)
+      expect(errors.some((line) => line.includes('missing source file'))).toBe(true)
     })
   })
 })
