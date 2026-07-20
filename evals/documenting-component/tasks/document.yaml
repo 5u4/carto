@@ -1,0 +1,35 @@
+id: document-component-001
+name: Document one component to the floor
+description: |
+  The agent writes a single component page for the TokenBucket rate limiter,
+  meeting the documenting-component floor.
+tags:
+  - documenting-component
+  - happy-path
+
+inputs:
+  prompt: |
+    Write one documentation page (Markdown) for the component in
+    ./src/token-bucket.ts. Save it as component.md in the current directory.
+
+    The page must meet the floor:
+    - Intent: what problem the component solves and its role.
+    - Mental model: the core concepts inside it and how they relate.
+    - A `path:line` anchor (e.g. src/token-bucket.ts:18) on every load-bearing
+      claim, verified against the actual code.
+
+    Keep the page narrow: document only this component.
+  files:
+    - path: src/token-bucket.ts
+
+expected:
+  outcomes:
+    - type: task_completed
+
+graders:
+  - type: program
+    name: page_meets_floor
+    config:
+      command: python3
+      args: ["evals/documenting-component/graders/check_page.py"]
+      timeout: 60

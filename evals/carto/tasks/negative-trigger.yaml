@@ -1,0 +1,28 @@
+id: carto-negative-trigger-001
+name: Unrelated prompt must not trigger carto
+description: |
+  A prompt about an unrelated coding task should not activate the carto skill.
+tags:
+  - carto
+  - negative-trigger
+
+inputs:
+  prompt: "Write a JavaScript regular expression that matches a US phone number and show me a quick example."
+
+expected:
+  outcomes:
+    - type: task_completed
+
+graders:
+  - type: trigger
+    name: carto_should_not_fire
+    config:
+      skill_path: skills/carto/SKILL.md
+      mode: negative
+      threshold: 0.6
+  - type: skill_invocation
+    name: carto_not_invoked
+    config:
+      forbidden_skills:
+        - carto
+      allow_extra: true

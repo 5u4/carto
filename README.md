@@ -116,31 +116,32 @@ tooling needs it. Only `.mjs`/`.js` config files are supported.
 
 ## Testing
 
-- `pnpm test` — the fast unit suite (vitest). Deterministic, no network.
-- `pnpm e2e` — deterministic pipeline smoke test (`scripts/e2e.sh`): drives the
-  `carto` binary through sync → status → validate → build and asserts staleness
-  detection. No LLM.
-- `pnpm test:e2e` — the **real agent** end-to-end test
-  (`tests/e2e/agent.e2e.test.ts`). It spins up a temp doc root, then runs a live
-  agent (`omp`, headless) that reads a tiny `user`/`post`/`feed` codebase and
-  drives the full carto authoring loop: generate all pages from zero, then
-  refresh after a source file changes. Each phase asserts `carto validate` is
-  green, `carto build` renders, known source symbols reach the built HTML, and
-  every `carto:` link resolves.
+Two layers, split by what they defend:
 
-This test is **ignored by default** — it costs money and takes minutes. It is
-skipped unless `CARTO_E2E` is set, which is loaded from a git-ignored
-`.env.e2e`. To run it:
+- `pnpm test` — the fast unit suite (vitest). Deterministic, no network.
+- `pnpm test:pipeline` — a deterministic system test
+  (`tests/pipeline/carto-pipeline.test.ts`). It copies hand-written fixture
+  doc-sets into a temp root and drives the real `carto` CLI through the full
+  loop: sync → validate → build, then mutates a source file to assert staleness
+  detection (status red → sync → green), then federates a second doc-set. Each
+  phase asserts `carto build` renders, known source symbols reach the built
+  HTML, every `carto:` link resolves, and the federated pages mount under their
+  alias-hash and `/self` prefixes. No LLM, no secrets — runs in CI.
+
+Skill quality (does an agent *follow* `skills/carto` and
+`skills/documenting-component`) is measured separately with
+[waza](https://github.com/microsoft/waza) under `evals/`. Those evals call a
+real model, so they are a **local-only** tool — never wired into CI. Run them
+by hand after changing a SKILL.md:
 
 ```sh
-cp .env.example .env.e2e   # then set CARTO_E2E=1 and E2E_MODEL
-pnpm build                 # the carto bin must exist (see Setup)
-pnpm test:e2e
+pnpm build            # the carto bin must exist (see Setup)
+waza run evals/carto/eval.yaml
+waza run evals/documenting-component/eval.yaml
 ```
 
-`.env.example` is the tracked template; `.env.e2e` is your local, ignored copy.
-`E2E_MODEL` picks the agent model (default `claude-haiku-4.5` — the fixture is
-deliberately simple so a small, cheap model can document it).
+waza uses its bundled GitHub Copilot CLI; authenticate once with
+`copilot login` (machine-level, no token file).
 
 ## Project layout / where to look next
 
@@ -150,4 +151,5 @@ deliberately simple so a small, cheap model can document it).
 - `skills/carto/SKILL.md` — carto's doc-authoring skill (CLI, manifest, links, node-tree mapping)
 - `docs/` + `carto.json` — carto's own self-documentation (dogfooded)
 - `plans/` — implementation plans for this repo
-- `pnpm e2e` — end-to-end smoke test that carto can document its own repo
+- `tests/pipeline/` — the deterministic system test and its fixture doc-sets
+- `evals/` — waza skill evals (local-only, real model)

@@ -8,8 +8,7 @@
     "typecheck": "pnpm -r typecheck",
     "test": "vitest run",
     "lint": "bash scripts/lint-comments.sh",
-    "e2e": "bash scripts/e2e.sh",
-    "test:e2e": "vitest run --config vitest.e2e.config.ts"
+    "test:pipeline": "vitest run --config vitest.pipeline.config.ts"
   },
   "devDependencies": {
     "@carto/cli": "workspace:*",

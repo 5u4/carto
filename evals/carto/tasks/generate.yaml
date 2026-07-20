@@ -1,0 +1,48 @@
+id: carto-generate-001
+name: Generate carto docs from zero and build
+description: |
+  The agent documents a tiny user/post/feed TypeScript codebase with carto,
+  from an empty doc root, and must drive the loop until `carto build` renders.
+tags:
+  - carto
+  - generate
+  - happy-path
+
+inputs:
+  prompt: |
+    Document the TypeScript codebase in ./sample-app using carto. The current
+    directory is the doc root. The carto CLI is installed and on PATH.
+
+    Steps:
+    - Run `carto init --code-root ./sample-app --locales en,zh` if no carto.json
+      exists yet.
+    - Read ./sample-app/src/user.ts, ./sample-app/src/post.ts,
+      ./sample-app/src/feed.ts and design a carto node tree.
+    - For every node write docs/<id>/node.json and docs/<id>/<locale>.mdx for
+      every declared locale. Every .mdx MUST begin with a YAML frontmatter block
+      containing a `title:` field.
+    - Link related nodes with carto: links.
+    - Run carto sync, carto validate, and carto build.
+
+    Do not stop until `carto validate` exits 0 and `carto build` succeeds.
+  files:
+    - path: sample-app/src/user.ts
+    - path: sample-app/src/post.ts
+    - path: sample-app/src/feed.ts
+
+expected:
+  outcomes:
+    - type: task_completed
+
+graders:
+  - type: program
+    name: build_renders_real_docs
+    config:
+      command: python3
+      args: ["evals/carto/graders/check_build.py"]
+      timeout: 60
+  - type: file
+    name: wrote_nodes
+    config:
+      must_exist:
+        - "carto.json"

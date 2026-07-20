@@ -8,8 +8,7 @@ packages/template/tests/
 tsconfig*.json
 *.config.*
 scripts/
-tests/e2e/fixtures/
-.env.example
+tests/pipeline/fixtures/
 /pnpm-workspace.yaml
 /wrangler.jsonc
 /install.sh

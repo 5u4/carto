@@ -1,0 +1,20 @@
+name: carto-eval
+description: |
+  Evaluates whether an agent following skills/carto correctly documents a small
+  TypeScript codebase end-to-end: designs a node tree, writes node.json + mdx,
+  runs the carto CLI, and drives the authoring loop until `carto build` renders.
+skill: carto
+schemaVersion: "1.2"
+version: "1.0"
+
+config:
+  trials_per_task: 3
+  timeout_seconds: 900
+  parallel: false
+  executor: copilot-sdk
+  model: claude-sonnet-4.6
+  skill_directories:
+    - ../../skills
+
+tasks:
+  - "tasks/*.yaml"

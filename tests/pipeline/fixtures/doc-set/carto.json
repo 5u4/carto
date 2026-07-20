@@ -1,0 +1,7 @@
+{
+  "version": 1,
+  "locales": ["en", "zh"],
+  "defaultLocale": "en",
+  "codeRoot": "../sample-app",
+  "home": "overview"
+}

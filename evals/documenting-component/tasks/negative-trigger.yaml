@@ -1,0 +1,29 @@
+id: documenting-component-negative-001
+name: Unrelated prompt must not trigger documenting-component
+description: |
+  A prompt asking to implement a feature should not activate the
+  documenting-component skill.
+tags:
+  - documenting-component
+  - negative-trigger
+
+inputs:
+  prompt: "Implement a function that reverses a linked list in place and add a couple of unit tests for it."
+
+expected:
+  outcomes:
+    - type: task_completed
+
+graders:
+  - type: trigger
+    name: documenting_should_not_fire
+    config:
+      skill_path: skills/documenting-component/SKILL.md
+      mode: negative
+      threshold: 0.6
+  - type: skill_invocation
+    name: documenting_not_invoked
+    config:
+      forbidden_skills:
+        - documenting-component
+      allow_extra: true
