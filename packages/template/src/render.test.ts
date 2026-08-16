@@ -103,7 +103,7 @@ describe('site rendering', () => {
       expect(valueAfter(args, '--host')).toBe('0.0.0.0')
       expect(valueAfter(args, '--port')).toBe('49152')
       expect(valueAfter(args, '--outDir')).toBe(join(docRoot, 'dist-site'))
-      return child(async () => ({ code: null, signal: 'SIGTERM' }))
+      return child(async () => ({ code: 0, signal: null }))
     })
 
     await previewSite(docRoot, { host: '0.0.0.0', port: 49_152 })
@@ -111,6 +111,15 @@ describe('site rendering', () => {
     expect(log).toHaveBeenCalledWith('Previewing http://0.0.0.0:49152/')
     expect(existsSync(workspace)).toBe(false)
     log.mockRestore()
+  })
+
+  it('rejects preview when Astro receives an unsolicited signal', async () => {
+    const docRoot = await emptyDocRoot()
+    await mkdir(join(docRoot, 'dist-site'))
+
+    vi.mocked(spawn).mockImplementation(() => child(async () => ({ code: null, signal: 'SIGTERM' })))
+
+    await expect(previewSite(docRoot)).rejects.toThrow('Astro preview failed with signal SIGTERM')
   })
 })
 

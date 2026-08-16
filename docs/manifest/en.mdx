@@ -17,7 +17,8 @@ There is no central node list. The doc-set is reconstructed from the filesystem:
 
 - **`carto.json`** — one per doc root, the `Config`: `version`, `locales`,
   `defaultLocale`, optional `codeRoot`/`home`, and an optional `federated`
-  array (`packages/core/src/schema.ts:49`). It holds *no* nodes.
+  array (`packages/core/src/schema.ts:49`). `codeRoot` is a relative,
+  forward-slash path and may point to a parent directory. The config holds *no* nodes.
 - **`docs/<id>/node.json`** — one per page, the `NodeFile`: an optional
   `parent` and a `sources` array (`packages/core/src/schema.ts:44`).
 

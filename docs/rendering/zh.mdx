@@ -50,7 +50,7 @@ carto 文档根目录本身不是网站。它是一棵 `<id>/<locale>.mdx` 文�
 
 ## 预览生命周期
 
-`previewSite` 首先要求 `<doc-root>/dist-site` 已存在。随后它直接针对该输出调用 Astro preview，不执行物化或构建。默认地址为 `http://127.0.0.1:4321/`；显式 host 与 port 会转交给 Astro，并在启动服务前打印。`SIGINT` 与 `SIGTERM` 会转发给子进程，因此终止命令不会遗留 Astro 进程。
+`previewSite` 首先要求 `<doc-root>/dist-site` 已存在。随后它直接针对该输出调用 Astro preview，不执行物化或构建。默认地址为 `http://127.0.0.1:4321/`；显式 host 与 port 会转交给 Astro，并在启动服务前打印。Carto 收到的 `SIGINT` 与 `SIGTERM` 会转发给子进程并视为干净关闭；若信号独立送达 Astro，则会报告为 preview 失败。
 
 
 ## 陈旧横幅

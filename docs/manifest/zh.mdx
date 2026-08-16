@@ -16,7 +16,8 @@ carto 对一套文档的全部认知都存放在磁盘上的两类文件中。�
 
 - **`carto.json`** —— 每个文档根一份，即 `Config`：`version`、`locales`、
   `defaultLocale`、可选的 `codeRoot`/`home`，以及一个可选的 `federated` 数组
-  （`packages/core/src/schema.ts:49`）。它*不*保存任何节点。
+  （`packages/core/src/schema.ts:49`）。`codeRoot` 使用正斜杠相对路径，也可以指向父目录。
+  该配置*不*保存任何节点。
 - **`docs/<id>/node.json`** —— 每页一份，即 `NodeFile`：一个可选的 `parent`
   和一个 `sources` 数组（`packages/core/src/schema.ts:44`）。
 

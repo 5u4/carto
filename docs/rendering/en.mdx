@@ -50,7 +50,7 @@ The target path combines a locale prefix, a federated doc-set prefix, and the no
 
 ## Preview lifecycle
 
-`previewSite` first requires `<doc-root>/dist-site` to exist. It then invokes Astro preview against exactly that output, with no materialization or build step. The default address is `http://127.0.0.1:4321/`; explicit host and port values are forwarded to Astro and printed before serving. `SIGINT` and `SIGTERM` are forwarded to the child process so termination does not leave an Astro process behind.
+`previewSite` first requires `<doc-root>/dist-site` to exist. It then invokes Astro preview against exactly that output, with no materialization or build step. The default address is `http://127.0.0.1:4321/`; explicit host and port values are forwarded to Astro and printed before serving. `SIGINT` and `SIGTERM` received by Carto are forwarded to the child process and treated as a clean shutdown; a signal delivered independently to Astro is surfaced as a preview failure.
 
 ## Staleness banner
 

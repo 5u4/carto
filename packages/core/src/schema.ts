@@ -50,7 +50,7 @@ export const configSchema = z
     version: z.literal(1),
     locales: z.array(z.string().min(1)).min(1),
     defaultLocale: z.string().min(1),
-    codeRoot: z.string().min(1).optional(),
+    codeRoot: z.string().min(1).refine(isRelativePath, 'codeRoot must use forward slashes and be relative').optional(),
     home: z.string().regex(ID_PATTERN).optional(),
     federated: z.array(federatedSchema).default([])
   })

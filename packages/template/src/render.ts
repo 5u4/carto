@@ -196,7 +196,7 @@ async function runAstro(args: string[], env: Record<string, string>, termination
   for (const handler of handlers) process.on(handler.signal, handler.forward)
   try {
     const result = await childResult(child)
-    if (result.code === 0 || (terminationIsSuccess && (terminationRequested || result.signal !== null))) return
+    if (result.code === 0 || (terminationIsSuccess && terminationRequested)) return
     const outcome = result.signal === null ? `exit code ${result.code ?? 1}` : `signal ${result.signal}`
     throw new Error(`Astro ${args[0]} failed with ${outcome}`)
   } finally {

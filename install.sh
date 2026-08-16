@@ -4,6 +4,10 @@ set -euo pipefail
 : "${HOME:?HOME is not set; cannot determine install paths}"
 REPO_URL="${CARTO_REPO_URL:-https://github.com/5u4/carto.git}"
 CARTO_HOME="${CARTO_DIR:-$HOME/.carto}"
+case "$CARTO_HOME" in
+  /*) ;;
+  *) CARTO_HOME="$PWD/$CARTO_HOME" ;;
+esac
 REPO_DIR="$CARTO_HOME/repo"
 BIN_DIR="$HOME/.local/bin"
 CLI_LINK="$BIN_DIR/carto"
@@ -178,6 +182,8 @@ select_shell_rc() {
     bash)
       if [ -f "$HOME/.bash_profile" ]; then
         printf '%s\n' "$HOME/.bash_profile"
+      elif [ -f "$HOME/.bash_login" ]; then
+        printf '%s\n' "$HOME/.bash_login"
       else
         printf '%s\n' "$HOME/.profile"
       fi
@@ -237,7 +243,8 @@ remove_owned_path_line() {
     fi
     printf '%s\n' "$line" >> "$temp"
   done < "$rc"
-  mv "$temp" "$rc"
+  cp -p "$temp" "$rc"
+  rm -f "$temp"
 }
 
 remove_owned_path_config() {
@@ -245,7 +252,7 @@ remove_owned_path_config() {
   [ -f "$PATH_RC_FILE" ] && [ ! -L "$PATH_RC_FILE" ] || return
   IFS= read -r rc < "$PATH_RC_FILE"
   case "$rc" in
-    "$HOME/.zprofile"|"$HOME/.bash_profile"|"$HOME/.profile") ;;
+    "$HOME/.zprofile"|"$HOME/.bash_profile"|"$HOME/.bash_login"|"$HOME/.profile") ;;
     *) say "kept PATH configuration because installer state is not valid"; return ;;
   esac
   if [ -f "$rc" ]; then

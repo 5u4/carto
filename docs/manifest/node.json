@@ -3,13 +3,13 @@
   "sources": [
     {
       "file": "packages/core/src/schema.ts",
-      "hash": "33954592ac9cca8d",
-      "commit": "af8c48484d63c1c180a80ccccc7c6403cc6e7476"
+      "hash": "623636308c382984",
+      "commit": "ad5993518f6a47bf5bf38d38adbf12ba9a6aef27"
     },
     {
       "file": "packages/core/src/manifest.ts",
       "hash": "560e223da9dd2ecc",
-      "commit": "af8c48484d63c1c180a80ccccc7c6403cc6e7476"
+      "commit": "ad5993518f6a47bf5bf38d38adbf12ba9a6aef27"
     }
   ]
 }

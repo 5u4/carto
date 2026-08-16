@@ -10,6 +10,14 @@ describe('configSchema', () => {
     expect(configSchema.safeParse(baseConfig()).success).toBe(true)
   })
 
+  it('accepts a parent-relative codeRoot with forward slashes', () => {
+    expect(configSchema.safeParse({ ...baseConfig(), codeRoot: '../src' }).success).toBe(true)
+  })
+
+  it.each(['..\\src', '/src', 'C:\\src'])('rejects a non-portable codeRoot %s', (codeRoot) => {
+    expect(configSchema.safeParse({ ...baseConfig(), codeRoot }).success).toBe(false)
+  })
+
   it('rejects a defaultLocale not present in locales', () => {
     expect(configSchema.safeParse({ ...baseConfig(), locales: ['en', 'zh'], defaultLocale: 'de' }).success).toBe(false)
   })
