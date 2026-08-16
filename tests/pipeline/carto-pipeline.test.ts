@@ -63,11 +63,37 @@ async function readPreview(child: ChildProcessWithoutNullStreams, url: string): 
   throw new Error(`preview did not serve ${url}:\n${output}`)
 }
 
+const closeTimeout = Symbol('close timeout')
+
 async function stopPreview(child: ChildProcessWithoutNullStreams): Promise<number | null> {
-  if (child.exitCode !== null) return child.exitCode
-  const closed = new Promise<number | null>((resolve) => child.once('close', resolve))
+  if (child.exitCode !== null || child.signalCode !== null) return child.exitCode
+  const graceful = waitForClose(child, 5_000)
   child.kill('SIGTERM')
-  return closed
+  const gracefulResult = await graceful
+  if (gracefulResult !== closeTimeout) return gracefulResult
+  const forced = waitForClose(child, 1_000)
+  child.kill('SIGKILL')
+  const forcedResult = await forced
+  if (forcedResult === closeTimeout) throw new Error('preview did not exit after SIGKILL')
+  return forcedResult
+}
+
+function waitForClose(
+  child: ChildProcessWithoutNullStreams,
+  timeoutMs: number
+): Promise<number | null | typeof closeTimeout> {
+  if (child.exitCode !== null || child.signalCode !== null) return Promise.resolve(child.exitCode)
+  return new Promise((resolve) => {
+    const onClose = (code: number | null) => {
+      clearTimeout(timer)
+      resolve(code)
+    }
+    const timer = setTimeout(() => {
+      child.off('close', onClose)
+      resolve(closeTimeout)
+    }, timeoutMs)
+    child.once('close', onClose)
+  })
 }
 
 function walk(dir: string): string[] {

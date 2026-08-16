@@ -38,7 +38,7 @@ fixtures** 上走完整条文档循环，驱动的是*真实构建出来的二�
 `spawnSync(process.execPath, [cartoCli, ...args])` 调用它
 （`carto-pipeline.test.ts:18-24`），捕获退出状态、stdout 与 stderr。因为它驱动的是构建
 产物，一个 `beforeAll` 守卫会在二进制缺失时失败——先运行 `pnpm build`，再运行
-`pnpm test:pipeline`（`carto-pipeline.test.ts:90-95`）。
+`pnpm test:pipeline`（`carto-pipeline.test.ts:116-121`）。
 
 :::note
 无 LLM、无密钥、无网络。每个 fixture 都是手工签入的，每条断言都是确定性的，因此流水线测试可
@@ -48,30 +48,30 @@ fixtures** 上走完整条文档循环，驱动的是*真实构建出来的二�
 ### 它所走的循环
 
 每个阶段都把 fixtures 复制进一个全新的 `mkdtemp` 根目录并断言可观测结果，全部包在
-`try/finally` 中，最终删除临时根目录（`carto-pipeline.test.ts:100-106`，清理见
-`carto-pipeline.test.ts:189-190`）。
+`try/finally` 中，最终删除临时根目录（`carto-pipeline.test.ts:126-134`，清理见
+`carto-pipeline.test.ts:215-216`）。
 
 **Sync → validate → 节点计数。** 它复制 `sample-app/src` 与 `doc-set`，运行
 `carto sync`，要求 `carto validate` 为绿，再断言至少存在三个 node 目录
-（`carto-pipeline.test.ts:107-119`）。
+（`carto-pipeline.test.ts:136-145`）。
 
 **Coverage 走的是代码，而非文档。** `carto coverage` 必须报告 `/ 3 files`，证明
 [coverage](carto:coverage) 走的是代码根，而非文档根
-（`carto-pipeline.test.ts:121-123`）。
+（`carto-pipeline.test.ts:147-149`）。
 
 **Build 与 preview 演练真实产物。** `carto build` 必须渲染真实符号 `authorId`、
-`buildFeed`，且不留下未解析的 `carto:` href（`carto-pipeline.test.ts:125-131`）。随后测试
+`buildFeed`，且不留下未解析的 `carto:` href（`carto-pipeline.test.ts:151-157`）。随后测试
 在空闲的 localhost 端口启动 `carto preview`，抓取 `/overview/feed/`、检查返回的 HTML，
-并干净地终止预览进程（`carto-pipeline.test.ts:133-140`）。
+并使用有界的 SIGTERM 到 SIGKILL 降级终止预览进程（`carto-pipeline.test.ts:159-166`）。
 
 **陈旧检测。** 它修改 `src/user.ts` 并要求 `carto status` 失败。复制刷新后的正文并运行
 定向的 `carto sync user` 后，status 恢复为绿；重建结果同时包含新符号 `handle` 与原有符号
-（`carto-pipeline.test.ts:142-161`）。
+（`carto-pipeline.test.ts:168-187`）。
 
 **联邦。** 它注册第二个 `glossary` doc-set，并在两种语言中加入
-`carto:glossary/terms` 链接（`carto-pipeline.test.ts:163-177`）。最终构建必须把联邦页
+`carto:glossary/terms` 链接（`carto-pipeline.test.ts:189-199`）。最终构建必须把联邦页
 挂载在 `glossary-<8 位十六进制>` 下，把根页面挂载在 `/self` 下，并解析跨 doc-set URL
-（`carto-pipeline.test.ts:178-188`）。
+（`carto-pipeline.test.ts:201-214`）。
 
 ### 为什么要驱动二进制
 

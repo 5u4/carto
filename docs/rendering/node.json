@@ -3,33 +3,33 @@
   "sources": [
     {
       "file": "packages/template/src/render.ts",
-      "hash": "c90665b4b5eecb1e",
-      "commit": "af8c48484d63c1c180a80ccccc7c6403cc6e7476"
+      "hash": "91b4a5779770fa28",
+      "commit": "a462b9776cf628f9a1e77243f5fc0eef87361606"
     },
     {
       "file": "packages/template/src/materialize.ts",
       "hash": "1c8086242c5c918b",
-      "commit": "af8c48484d63c1c180a80ccccc7c6403cc6e7476"
+      "commit": "a462b9776cf628f9a1e77243f5fc0eef87361606"
     },
     {
       "file": "packages/template/src/site-config.ts",
       "hash": "1fbe7d4dccc9d030",
-      "commit": "af8c48484d63c1c180a80ccccc7c6403cc6e7476"
+      "commit": "a462b9776cf628f9a1e77243f5fc0eef87361606"
     },
     {
       "file": "packages/template/src/staleness-banner.ts",
       "hash": "6bccccd65f12bf11",
-      "commit": "af8c48484d63c1c180a80ccccc7c6403cc6e7476"
+      "commit": "a462b9776cf628f9a1e77243f5fc0eef87361606"
     },
     {
       "file": "packages/template/src/remark-join-cjk.ts",
       "hash": "11a1593a397791a2",
-      "commit": "af8c48484d63c1c180a80ccccc7c6403cc6e7476"
+      "commit": "a462b9776cf628f9a1e77243f5fc0eef87361606"
     },
     {
       "file": "packages/template/astro.config.mjs",
       "hash": "c6e3ed15e043487b",
-      "commit": "af8c48484d63c1c180a80ccccc7c6403cc6e7476"
+      "commit": "a462b9776cf628f9a1e77243f5fc0eef87361606"
     }
   ]
 }

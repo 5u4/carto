@@ -96,12 +96,13 @@ async function linkDependencies(workspace: string, docRoot: string): Promise<voi
 
 async function linkPackageDirectory(source: string, destination: string, copiedPackage: string): Promise<void> {
   for (const entry of await readdir(source, { withFileTypes: true })) {
-    if (entry.name.startsWith('.')) continue
+    if (entry.name.startsWith('.') || (!entry.isDirectory() && !entry.isSymbolicLink())) continue
     const sourcePath = join(source, entry.name)
     if (entry.name.startsWith('@') && entry.isDirectory()) {
       const scopeDestination = join(destination, entry.name)
       await mkdir(scopeDestination, { recursive: true })
       for (const packageEntry of await readdir(sourcePath, { withFileTypes: true })) {
+        if (packageEntry.name.startsWith('.') || (!packageEntry.isDirectory() && !packageEntry.isSymbolicLink())) continue
         await linkPackage(join(sourcePath, packageEntry.name), join(scopeDestination, packageEntry.name), copiedPackage)
       }
       continue
@@ -113,6 +114,7 @@ async function linkPackageDirectory(source: string, destination: string, copiedP
 async function linkPackage(source: string, destination: string, copiedPackage: string): Promise<void> {
   if (await exists(destination)) return
   const resolvedPackage = await realpath(source)
+  if (!(await stat(resolvedPackage)).isDirectory()) return
   if (resolvedPackage === copiedPackage) {
     await cp(resolvedPackage, destination, { recursive: true, dereference: true })
   } else {

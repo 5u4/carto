@@ -26,6 +26,10 @@ afterEach(async () => {
 describe('site rendering', () => {
   it('builds in an isolated workspace, publishes on success, and cleans temporary state', async () => {
     const docRoot = await emptyDocRoot()
+    await mkdir(join(docRoot, 'node_modules', '@fixture', 'package'), { recursive: true })
+    await writeFile(join(docRoot, 'node_modules', 'NOTICE'), 'notice', 'utf8')
+    await writeFile(join(docRoot, 'node_modules', '@fixture', 'NOTICE'), 'notice', 'utf8')
+    await writeFile(join(docRoot, 'node_modules', '@fixture', '.metadata'), 'metadata', 'utf8')
     const destination = join(docRoot, 'dist-site')
     await mkdir(destination)
     await writeFile(join(destination, 'old.txt'), 'old', 'utf8')
@@ -42,6 +46,10 @@ describe('site rendering', () => {
         expect(await readFile(join(workspace, 'astro.config.mjs'), 'utf8')).toContain('packages/template/astro.config.mjs')
         expect(await readFile(join(workspace, 'src', 'content', 'docs', 'index.mdx'), 'utf8')).toContain('Nothing here yet')
         expect(existsSync(join(workspace, '.astro', 'cache'))).toBe(true)
+        expect(existsSync(join(workspace, 'node_modules', '@fixture', 'package'))).toBe(true)
+        expect(existsSync(join(workspace, 'node_modules', 'NOTICE'))).toBe(false)
+        expect(existsSync(join(workspace, 'node_modules', '@fixture', 'NOTICE'))).toBe(false)
+        expect(existsSync(join(workspace, 'node_modules', '@fixture', '.metadata'))).toBe(false)
         await mkdir(output, { recursive: true })
         await writeFile(join(output, 'index.html'), 'new', 'utf8')
         return { code: 0, signal: null }
