@@ -10,6 +10,14 @@ describe('configSchema', () => {
     expect(configSchema.safeParse(baseConfig()).success).toBe(true)
   })
 
+  it('accepts a parent-relative codeRoot with forward slashes', () => {
+    expect(configSchema.safeParse({ ...baseConfig(), codeRoot: '../src' }).success).toBe(true)
+  })
+
+  it.each(['..\\src', '/src', 'C:\\src'])('rejects a non-portable codeRoot %s', (codeRoot) => {
+    expect(configSchema.safeParse({ ...baseConfig(), codeRoot }).success).toBe(false)
+  })
+
   it('rejects a defaultLocale not present in locales', () => {
     expect(configSchema.safeParse({ ...baseConfig(), locales: ['en', 'zh'], defaultLocale: 'de' }).success).toBe(false)
   })
@@ -24,6 +32,10 @@ describe('configSchema', () => {
 
   it('accepts a config with a file federated entry', () => {
     expect(configSchema.safeParse({ ...baseConfig(), federated: [{ alias: 'web', type: 'file', path: '../web' }] }).success).toBe(true)
+  })
+
+  it('rejects backslashes in a federated file path', () => {
+    expect(configSchema.safeParse({ ...baseConfig(), federated: [{ alias: 'web', type: 'file', path: '..\\web' }] }).success).toBe(false)
   })
 
   it('rejects an absolute federated file path', () => {
@@ -64,6 +76,10 @@ describe('nodeFileSchema', () => {
 
   it('accepts a source with file but no hash', () => {
     expect(nodeFileSchema.safeParse({ sources: [{ file: 'src/payment.ts' }] }).success).toBe(true)
+  })
+
+  it('rejects backslashes in relative source file paths', () => {
+    expect(nodeFileSchema.safeParse({ sources: [{ file: 'src\\payment.ts' }] }).success).toBe(false)
   })
 
   it('rejects a parent that is not a valid id', () => {

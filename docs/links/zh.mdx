@@ -80,25 +80,25 @@ Markdown 链接目标写出，置于链接括号内——出现在其他任何�
 ## 联邦图：`loadGraph`
 
 `loadGraph` 从一个 `federalRoot` 遍历联邦条目，返回一个以 hash 为键的 `DocSet` 的
-`Graph`（`packages/core/src/graph.ts:41-86`）。一个 `DocSet` 捆绑了一个 doc-set 的
+`Graph`（`packages/core/src/graph.ts:44-89`）。一个 `DocSet` 捆绑了一个 doc-set 的
 `hash`、url `prefix`、`docRoot`、已解析的 `manifest`，以及它自己的 `aliasToHash`
 映射（`packages/core/src/graph.ts:7-13`）。
 
-**身份**是按路径内容寻址的，而非按 alias。`identity` 把 doc-root 相对于 federal
-root 规范化（通过 `realpath` 解析符号链接），然后对
-`sha256('file:' + canonical)` 求哈希并取前 8 个十六进制字符
-（`packages/core/src/graph.ts:28-32`）。指向同一目录的两个 alias 会折叠成同一个
-hash——菱形结构只加载一个 DocSet，而环也会终止，因为 `load` 在 `byHash` 上做了记
-忆化（`packages/core/src/graph.ts:47-49`）。
+**身份**是按路径内容寻址的，而非按 alias。`identity` 通过 `realpath` 解析符号链接，
+取得 doc-root 相对于 federal root 的路径；`federationHash` 在求
+`sha256('file:' + canonical)` 并取前 8 个十六进制字符之前，会把宿主路径分隔符统一为
+`/`（`packages/core/src/graph.ts:28-35`）。因此同一拓扑在 POSIX 与 Windows 上保持
+相同的公开前缀。指向同一目录的 alias 会折叠成一个 hash；菱形结构与环会终止，因为
+`load` 在 `byHash` 上做了记忆化（`packages/core/src/graph.ts:50-56`）。
 
 **加载**是递归的：对 `manifest.federated` 中的每个条目，`resolveEntry` 把它转换成
 一个子 doc-root，`identity` 对其求哈希，记录 alias→hash 边，然后 `load` 递归
-（`packages/core/src/graph.ts:54-68`）。根 manifest 会被复用而非重新读取
-（`packages/core/src/graph.ts:50`）。
+（`packages/core/src/graph.ts:57-70`）。根 manifest 会被复用而非重新读取
+（`packages/core/src/graph.ts:47-53`）。
 
 :::caution
 `resolveEntry` 对 `git` 类型的条目抛出 `FederationError`——git 联邦尚未实现；只有
-`file` 条目会被加载（`packages/core/src/graph.ts:34-39`）。
+`file` 条目会被加载（`packages/core/src/graph.ts:37-41`）。
 :::
 
 **前缀**在整个图已知之后才分配（`packages/core/src/graph.ts:75-83`）：

@@ -25,10 +25,13 @@ export class FederationError extends Error {
   }
 }
 
-async function identity(federalRoot: string, docRoot: string): Promise<{ hash: string; canonical: string }> {
-  const canonical = relative(await realpath(federalRoot), await realpath(docRoot))
-  const hash = createHash('sha256').update(`file:${canonical}`).digest('hex').slice(0, 8)
-  return { hash, canonical }
+export function federationHash(relativePath: string): string {
+  const canonical = relativePath.replaceAll('\\', '/')
+  return createHash('sha256').update(`file:${canonical}`).digest('hex').slice(0, 8)
+}
+
+async function identity(federalRoot: string, docRoot: string): Promise<string> {
+  return federationHash(relative(await realpath(federalRoot), await realpath(docRoot)))
 }
 
 function resolveEntry(currentDocRoot: string, entry: Federated): string {
@@ -54,7 +57,7 @@ export async function loadGraph(federalRoot: string): Promise<Graph> {
     for (const entry of manifest.federated) {
       const childRoot = resolveEntry(docRoot, entry)
       try {
-        const { hash: childHash } = await identity(federalRoot, childRoot)
+        const childHash = await identity(federalRoot, childRoot)
         aliasToHash.set(entry.alias, childHash)
         const aliases = aliasesByHash.get(childHash) ?? new Set<string>()
         aliases.add(entry.alias)
@@ -69,7 +72,7 @@ export async function loadGraph(federalRoot: string): Promise<Graph> {
     return docSet
   }
 
-  const rootHash = (await identity(federalRoot, federalRoot)).hash
+  const rootHash = await identity(federalRoot, federalRoot)
   const root = await load(federalRoot, rootHash)
 
   for (const docSet of byHash.values()) {

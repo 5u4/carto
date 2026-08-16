@@ -1,6 +1,5 @@
-import { mkdir, readFile, rm, writeFile } from 'node:fs/promises'
+import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { basename, dirname, join } from 'node:path'
-import { fileURLToPath } from 'node:url'
 import {
   childrenOf,
   codeRootDir,
@@ -12,23 +11,17 @@ import {
   type DocSet,
   type FederationContext,
   type Graph,
-  type Manifest,
   type Node,
   type NodeStatus
 } from '@carto/core'
 import { injectStalenessBanner } from './staleness-banner.js'
 import { collectGraphTitles } from './site-config.js'
 
-const here = dirname(fileURLToPath(import.meta.url))
-const contentDir = join(here, '..', 'src', 'content', 'docs')
-
-async function main(): Promise<void> {
-  const root = process.env.CARTO_ROOT ?? process.cwd()
+export async function materialize(root: string, contentDir: string): Promise<void> {
   const graph = await loadGraph(root)
-  await rm(contentDir, { recursive: true, force: true })
   await mkdir(contentDir, { recursive: true })
   if (childrenOf(graph.root.manifest.nodes, null).length === 0 && !graph.federated) {
-    await writeEmptyState(root)
+    await writeEmptyState(root, contentDir)
     return
   }
   const siteLocales = graph.root.manifest.locales
@@ -47,7 +40,7 @@ async function main(): Promise<void> {
         const raw = await readFile(source, 'utf8')
         const rewritten = rewriteLinks(raw, docSet, locale, siteDefaultLocale, titles, federation)
         const withBanner = injectStalenessBanner(rewritten, freshness.get(`${docSet.hash}:${node.id}`))
-        const target = targetPath(docSet, node, locale, siteDefaultLocale)
+        const target = targetPath(contentDir, docSet, node, locale, siteDefaultLocale)
         await mkdir(dirname(target), { recursive: true })
         await writeFile(target, withBanner, 'utf8')
       }
@@ -64,8 +57,7 @@ async function collectFreshness(graph: Graph): Promise<Map<string, NodeStatus>> 
   return freshness
 }
 
-
-async function writeEmptyState(root: string): Promise<void> {
+async function writeEmptyState(root: string, contentDir: string): Promise<void> {
   const title = basename(root).replace(/\\/g, '\\\\').replace(/"/g, '\\"')
   const lines = [
     '---',
@@ -79,17 +71,17 @@ async function writeEmptyState(root: string): Promise<void> {
     'what to cover — the scope. For example:',
     '',
     '```',
-    '/carto document the auth module',
+    'Use the carto skill to document the auth module.',
     '```',
     '',
     'The agent reads the code, writes the pages, and runs the carto CLI for you.',
-    'Once it has generated pages, run `carto dev` again.',
+    'Once it has generated pages, run `carto build` and then `carto preview`.',
     ''
   ]
   await writeFile(join(contentDir, 'index.mdx'), lines.join('\n'), 'utf8')
 }
 
-function targetPath(docSet: DocSet, node: Node, locale: string, siteDefaultLocale: string): string {
+function targetPath(contentDir: string, docSet: DocSet, node: Node, locale: string, siteDefaultLocale: string): string {
   const chain = rootChain(docSet.manifest.nodes, node.id).map((n) => n.id).join('/')
   const localePrefix = locale === siteDefaultLocale ? '' : `${locale}/`
   const docPrefix = docSet.prefix ? `${docSet.prefix.slice(1)}/` : ''
@@ -130,4 +122,3 @@ function titleFor(
   )
 }
 
-await main()

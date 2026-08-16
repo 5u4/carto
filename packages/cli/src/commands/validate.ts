@@ -52,7 +52,7 @@ export const validateCommand = defineCommand({
       if (node.state === 'unsynced') errors.push(`node ${node.id} is unsynced; run carto sync`)
       else if (node.state === 'stale') {
         const changed = node.sources.filter((s) => s.state === 'stale').map((s) => s.file).join(', ')
-        warnings.push(`node ${node.id} is stale; changed: ${changed}; run carto sync ${node.id}`)
+        warnings.push(`node ${node.id} is stale; changed: ${changed}; review source changes and update prose, then run carto sync ${node.id}`)
       } else if (node.state === 'missing') {
         const missing = node.sources.filter((s) => s.state === 'missing').map((s) => s.file).join(', ')
         errors.push(`node ${node.id} has a missing source file: ${missing}`)
@@ -74,6 +74,7 @@ export const validateCommand = defineCommand({
       }
     }
 
+    if (manifest.nodes.length === 0) console.log('no documentation nodes')
     for (const warning of warnings) console.warn(`warning: ${warning}`)
     if (errors.length > 0) {
       for (const error of errors) console.error(`error: ${error}`)

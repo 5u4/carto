@@ -109,6 +109,21 @@ describe('carto status', () => {
     })
   })
 
+  it('tells users to review changes and update prose before targeted sync', async () => {
+    await withTempCwd(async (dir) => {
+      await writeFile(join(dir, 'payments.md'), 'payments content', 'utf8')
+      const { manifest: synced } = await syncManifest(manifestWithSource(), { rootDir: dir })
+      await writeManifest(dir, synced)
+      await writeFile(join(dir, 'payments.md'), 'mutated content', 'utf8')
+
+      const { logs } = await runAndCaptureExit()
+      const guidance = logs.find((line) => line.includes('review source changes')) ?? ''
+      expect(guidance).toBe('  review source changes and update prose, then run carto sync payments')
+      expect(guidance.indexOf('review source changes')).toBeLessThan(guidance.indexOf('update prose'))
+      expect(guidance.indexOf('update prose')).toBeLessThan(guidance.indexOf('carto sync payments'))
+    })
+  })
+
   it('prints the stored anchor commit next to a stale source', async () => {
     await withTempCwd(async (dir) => {
       await writeFile(join(dir, 'payments.md'), 'payments content', 'utf8')
@@ -118,6 +133,23 @@ describe('carto status', () => {
 
       const { logs } = await runAndCaptureExit()
       expect(logs.some((line) => line.includes('stale') && line.includes('payments.md') && line.includes('(was abc1234567890)'))).toBe(true)
+    })
+  })
+
+  it('exits 0 and says when the manifest has no documentation nodes', async () => {
+    await withTempCwd(async (dir) => {
+      await writeManifest(dir, {
+        version: 1,
+        locales: ['en'],
+        defaultLocale: 'en',
+        federated: [],
+        nodes: []
+      })
+
+      const { exitCode, logs, errors } = await runAndCaptureExit()
+      expect(exitCode).toBe(0)
+      expect(logs).toContain('no documentation nodes')
+      expect(errors).toHaveLength(0)
     })
   })
 

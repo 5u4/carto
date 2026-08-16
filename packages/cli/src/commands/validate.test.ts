@@ -93,6 +93,24 @@ describe('carto validate', () => {
     })
   })
 
+  it('exits 0 and says when the manifest has no documentation nodes', async () => {
+    await withTempCwd(async (dir) => {
+      await writeManifest(dir, {
+        version: 1,
+        locales: ['en'],
+        defaultLocale: 'en',
+        federated: [],
+        nodes: []
+      })
+
+      const { exitCode, logs, errors } = await runAndCaptureExit()
+      expect(exitCode).toBeNull()
+      expect(logs).toContain('no documentation nodes')
+      expect(logs).toContain('validate: ok')
+      expect(errors).toHaveLength(0)
+    })
+  })
+
   it('exits 1 when an mdx links to an unknown id', async () => {
     await withTempCwd(async (dir) => {
       await writeSyncedManifest(dir, baseManifest())
@@ -192,7 +210,10 @@ describe('carto validate', () => {
 
       const { exitCode, warnings, errors } = await runAndCaptureExit()
       expect(exitCode).toBeNull()
-      expect(warnings.some((line) => line.includes('is stale') && line.includes('payments.md'))).toBe(true)
+      const warning = warnings.find((line) => line.includes('node payments is stale')) ?? ''
+      expect(warning).toBe('warning: node payments is stale; changed: payments.md; review source changes and update prose, then run carto sync payments')
+      expect(warning.indexOf('review source changes')).toBeLessThan(warning.indexOf('update prose'))
+      expect(warning.indexOf('update prose')).toBeLessThan(warning.indexOf('carto sync payments'))
       expect(errors).toHaveLength(0)
     })
   })

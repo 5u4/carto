@@ -7,7 +7,7 @@ description: carto 二进制 —— 一张 citty 分发表，覆盖七个读取�
 
 `carto` 是用户运行的唯一二进制。它把 `@carto/core` 的纯机制 —— [清单](carto:manifest)、[新鲜度](carto:freshness)、[覆盖率](carto:coverage)、[链接](carto:links) —— 转化为七个带进程退出码的命令式动词。每个命令都针对*当前目录*回答一个问题，通过 stdout/stderr 把答案报告给人类，然后成功退出 `0`、失败退出 `1`，从而让 CI 可以据此把关。
 
-入口点是一张 [citty](https://github.com/unjs/citty) 分发表 —— 没有逻辑，只是一个把子命令名映射到其 `defineCommand` 模块的注册表（`packages/cli/src/index.ts:11-24`），由 `runMain(main)` 运行（`packages/cli/src/index.ts:24`）。
+可执行入口委托给 `packages/cli/src/main.ts` 中的 [citty](https://github.com/unjs/citty) 分发表；`packages/cli/src/index.ts` 只负责把它传给 `runMain`。
 
 ```text
 carto init       脚手架一个文档根
@@ -15,7 +15,7 @@ carto status     报告每个节点的新鲜度            (任一非 fresh 则�
 carto sync       重算并写入源哈希
 carto coverage   报告未覆盖文件                  (仅 --fail-on-uncovered 时退出 1)
 carto validate   schema + tree + sync + links   (任一错误则退出 1)
-carto dev        预览站点
+carto preview    提供既有静态站点的预览
 carto build      构建静态站点
 ```
 
@@ -60,12 +60,12 @@ carto build      构建静态站点
 
 **`init`** 脚手架一个全新文档根，且拒绝覆盖。若 `carto.json` 已存在，它在触碰任何东西之前就报错并退出 `1`（`packages/cli/src/commands/init.ts:16-19`）。否则它构造一个 `Config`，经 `parseConfig` 验证（`packages/cli/src/commands/init.ts:28-33`），然后写入 `carto.json`、创建 `docs/`，并 —— 仅当缺失时 —— 放置一个 `carto.config.mjs` starlight 桩（`packages/cli/src/commands/init.ts:34-40`）。控制台那行精确报告它创建了三者中的哪些。
 
-## 模板桥 —— dev、build
+## 渲染接缝 —— build、preview
 
-`dev` 与 `build` 是双胞胎。二者都不含站点逻辑；都委托给 `runTemplateScript(command)`（`packages/cli/src/commands/dev.ts:33-38`、`packages/cli/src/commands/build.ts:4-9`），后者是作为子进程调用的[渲染层](carto:rendering)。
+`build` 与 `preview` 调用 `@carto/template` 的小型渲染接口。CLI 只提供当前目录，并把渲染错误转换成简洁消息与退出码 `1`；工作区和 Astro 进程的细节都封装在 template 包中。
 
-`runTemplateScript` 通过解析 `@carto/template` 包的 `package.json` 来定位已安装的该包（`packages/cli/src/commands/dev.ts:6-13`）。若它缺失 —— 模板尚未构建 —— 它以 `run pnpm build first` 报错并退出 `1`（`packages/cli/src/commands/dev.ts:17-20`）。否则它**在模板目录中**生成 `pnpm run dev`（build 时为 `build:site`），继承 stdio，并把用户的文档根作为 `CARTO_ROOT` 环境变量传入（`packages/cli/src/commands/dev.ts:21-26`）。该环境变量正是模板 —— 在其自身目录中运行 —— 得知该渲染哪个文档根的方式。子进程的退出码成为 CLI 的退出码（`packages/cli/src/commands/dev.ts:31`）。
+**`build`** 会创建一个唯一的操作系统临时 Astro 根目录。物化后的页面、Astro 的 `.astro/cache` 与构建输出都位于该工作区，因此已安装的 template 保持只读，并行构建也不会共享生成状态。构建成功时替换 `<doc-root>/dist-site`；物化或 Astro 构建失败时，之前的站点保持不变。两种情况下临时工作区都会被清理。
 
-:::caution
-`dev`/`build` 会外壳调用 `pnpm`。生成失败（pnpm 不在 `PATH` 上）会被捕获，并与模板缺失区分开来报告（`packages/cli/src/commands/dev.ts:27-30`）。
-:::
+**`preview`** 通过 Astro preview 提供已经构建好的 `<doc-root>/dist-site`，既不物化页面，也不重新构建。默认监听 `127.0.0.1:4321`；`--host` 和 `--port` 可以覆盖这两个值。若 `dist-site` 不存在，命令会失败并提示先运行 `carto build`。
+
+两条路径都通过 Node 直接调用已安装的 Astro CLI。它们不会通过 shell 调用 pnpm，不会修改 `@carto/template`，也不会维护持久缓存。

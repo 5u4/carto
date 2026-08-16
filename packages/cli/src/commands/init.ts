@@ -38,6 +38,7 @@ export const initCommand = defineCommand({
     if (wroteConfig) await writeFile(configPath, configStub(), 'utf8')
     const created = wroteConfig ? 'carto.json, docs/, carto.config.mjs' : 'carto.json, docs/'
     console.log(`initialized ${created} (locales: ${locales.join(', ')})`)
+    console.log('Use the carto skill to document <scope>.')
   }
 })
 

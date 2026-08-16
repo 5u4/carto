@@ -53,6 +53,22 @@ describe('carto init', () => {
     })
   })
 
+  it('prints a copyable tool-agnostic documentation prompt after initialization', async () => {
+    await withTempCwd(async () => {
+      const logs: string[] = []
+      const logSpy = vi.spyOn(console, 'log').mockImplementation((line: string) => {
+        logs.push(line)
+      })
+      try {
+        const exitCode = await runAndCaptureExit()
+        expect(exitCode).toBeNull()
+        expect(logs.at(-1)).toBe('Use the carto skill to document <scope>.')
+      } finally {
+        logSpy.mockRestore()
+      }
+    })
+  })
+
   it('refuses to overwrite an existing carto.json and leaves it unchanged', async () => {
     await withTempCwd(async (dir) => {
       const firstExit = await runAndCaptureExit()
