@@ -81,7 +81,7 @@ async function writeEmptyState(root: string, contentDir: string): Promise<void> 
   await writeFile(join(contentDir, 'index.mdx'), lines.join('\n'), 'utf8')
 }
 
-function targetPath(contentDir: string, docSet: DocSet, node: Node, locale: string, siteDefaultLocale: string): string {
+export function targetPath(contentDir: string, docSet: DocSet, node: Node, locale: string, siteDefaultLocale: string): string {
   const chain = rootChain(docSet.manifest.nodes, node.id).map((n) => n.id).join('/')
   const localePrefix = locale === siteDefaultLocale ? '' : `${locale}/`
   const docPrefix = docSet.prefix ? `${docSet.prefix.slice(1)}/` : ''

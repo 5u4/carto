@@ -24,9 +24,16 @@ with no second page or documentation-tree plan in scope.
 
 Read the component's implementation and past its files: trace what calls it,
 what it calls, and the shared types and contracts it lives inside. Verify
-behaviour from executable code rather than trusting names or comments. Record
-current repository-relative `path/to/file:line` anchors beside the claims they
-support; include directory segments rather than citing a nested file by basename.
+behaviour from executable code rather than trusting names or comments. Record a
+literal, complete repository-relative `path/to/file:line` or
+`path/to/file:start-end` anchor beside each claim it supports. Never shorten a
+canonical citation to a basename.
+
+For Carto MDX pages, authored MDX retains these literal anchors as the canonical
+form for agents and LLMs. The built human site recognizes them and renders them
+as localized native source footnotes; that transformation is rendering-only.
+Source anchors are addresses, not source-host links or permalinks, and remain
+separate from the page's `node.json` `sources` staleness set.
 
 If a concrete `input → output` or `command → output` would make difficult
 behaviour understandable, reproduce it with the repository's existing tooling
@@ -72,10 +79,10 @@ Explain the code-supported problem or constraint the component addresses and
 its role in the system, including how it relates to its neighbours. Do not
 invent product motivation that the repository cannot establish. Give the reader
 a mental model of the few core concepts or internal mechanisms and how they
-relate. Put a valid repository-relative `path:line` anchor beside every
-load-bearing claim. Include a behavioural example only when it earns its place;
-when included, use the reproduced real input and output or command and output,
-never an invented or idealised result.
+relate. Put one of these complete repository-relative source anchors beside
+every load-bearing claim. Include a behavioural example only when it earns its
+place; when included, use the reproduced real input and output or command and
+output, never an invented or idealised result.
 
 Keep the page focused strictly on this component. Place each selected view next
 to the short text it supports, and keep only the labels, edges, code, state, and
@@ -101,7 +108,7 @@ Run this preflight before finishing:
    initial states, mutability, replaceability, or policy that the code does not
    establish.
 4. Each caller, callee, or shared contract used in the mental model has at least
-   one repository-relative anchor beside the supported claim.
+   one complete repository-relative source anchor beside the supported claim.
 5. Recheck every visual label, edge, code fragment, and example against
    repository behaviour. Remove unsupported claims and context that starts
    documenting a neighbour as a second subject.

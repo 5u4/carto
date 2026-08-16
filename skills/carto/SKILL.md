@@ -211,12 +211,16 @@ normal Markdown link whose target is `carto:<id>`:
 - Because ids forbid `.` and `/`, the separators are unambiguous: `#` is an
   in-page anchor, `/` is the federation boundary between alias and id.
 
-**Code anchors are a different concept.** To point a reader at source, write a
-plain-text `path:line` mention in prose, e.g. `packages/api/src/payment.ts:42`.
-In the MVP these render as plain text — no permalink. They are for the reader's
-eye and are **separate** from `node.json` `sources`, which is the
-machine-tracked staleness set. In practice both should point at the same
-load-bearing code.
+**Code anchors are a different concept.** Beside every supported claim, write a
+literal, complete repository-relative `path:line` or `path:start-end` anchor,
+for example `packages/api/src/payment.ts:42` or
+`packages/api/src/payment.ts:42-48`. Never shorten a canonical citation to a
+basename. Authored MDX retains these literal anchors as the canonical form for
+agents and LLMs; the built human site recognizes them and renders them as
+localized native source footnotes. That transformation is rendering-only.
+Source anchors are addresses, not source-host links or permalinks, and are
+**separate** from `node.json` `sources`, the machine-tracked staleness set. In
+practice both should point at the same load-bearing code.
 
 ## Structuring the node tree
 
@@ -236,10 +240,10 @@ carto's nodes and `sources`.
 ## Locale discipline
 
 - **Generate all locales together.** Write `defaultLocale` first, then each
-  translation. Translations preserve every `carto:` link and every `path:line`
-  anchor **verbatim** — translate the prose, never the identifiers or link
-  targets. Every node must have an `.mdx` for every declared locale, or
-  `carto validate` fails.
+  translation. Translations preserve every `carto:` link and every complete
+  repository-relative `path:line` or `path:start-end` anchor **verbatim** —
+  translate the prose, never the identifiers or link targets. Every node must
+  have an `.mdx` for every declared locale, or `carto validate` fails.
 
 ## Recovering from a failed validate
 

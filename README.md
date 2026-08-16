@@ -73,6 +73,12 @@ carto preview
 build leaves the previous output intact. `preview` serves that built output on
 `127.0.0.1`; use `--host` or `--port` to override the listening address.
 
+Authored MDX keeps complete repository-relative `path:line` and
+`path:start-end` citations beside the claims they support. The built site moves
+those addresses into localized numbered source footnotes so the prose stays
+readable while the canonical MDX remains useful to coding agents. This is a
+rendering-only transformation; source addresses are not external links.
+
 ## Work on carto itself
 
 From a source checkout:

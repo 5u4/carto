@@ -42,12 +42,12 @@ The whole of [carto's CLI](carto:cli) is exercised by one test:
 fixtures**, driving the *real built binary* rather than importing functions.
 
 It never touches `@carto/core` directly. It resolves the compiled CLI at
-`packages/cli/dist/index.js` (`carto-pipeline.test.ts:8-10`) and invokes it with
+`packages/cli/dist/index.js` (`tests/pipeline/carto-pipeline.test.ts:8-10`) and invokes it with
 `spawnSync(process.execPath, [cartoCli, ...args])`
-(`carto-pipeline.test.ts:18-24`), capturing exit status, stdout, and stderr.
+(`tests/pipeline/carto-pipeline.test.ts:18-24`), capturing exit status, stdout, and stderr.
 Because it drives the built artifact, a `beforeAll` guard fails loudly if the
 binary is missing — run `pnpm build` before `pnpm test:pipeline`
-(`carto-pipeline.test.ts:116-121`).
+(`tests/pipeline/carto-pipeline.test.ts:116-121`).
 
 :::note
 No LLM, no secrets, no network. Every fixture is checked in by hand and every
@@ -58,32 +58,32 @@ assertion is deterministic, so the pipeline suite runs in CI.
 
 Each phase copies fixtures into a fresh `mkdtemp` root and asserts an
 observable outcome, all inside a `try/finally` that removes the temp root
-(`carto-pipeline.test.ts:126-134`, cleanup at `carto-pipeline.test.ts:215-216`).
+(`tests/pipeline/carto-pipeline.test.ts:126-134`, cleanup at `tests/pipeline/carto-pipeline.test.ts:215-216`).
 
 **Sync → validate → node count.** It copies `sample-app/src` and `doc-set`, runs
 `carto sync`, requires `carto validate` to be green, then asserts that at least
-three node directories exist (`carto-pipeline.test.ts:136-145`).
+three node directories exist (`tests/pipeline/carto-pipeline.test.ts:136-145`).
 
 **Coverage walks the code, not the docs.** `carto coverage` must report
 `/ 3 files`, proving [coverage](carto:coverage) walks the code root rather than
-the doc root (`carto-pipeline.test.ts:147-149`).
+the doc root (`tests/pipeline/carto-pipeline.test.ts:147-149`).
 
 **Build and preview exercise the artifact.** `carto build` must render the real
 symbols `authorId` and `buildFeed` with no unresolved `carto:` href
-(`carto-pipeline.test.ts:151-157`). The test then starts `carto preview` on a
+(`tests/pipeline/carto-pipeline.test.ts:151-157`). The test then starts `carto preview` on a
 free localhost port, fetches `/overview/feed/`, checks the served HTML, and
-shuts preview down with a bounded SIGTERM-to-SIGKILL fallback (`carto-pipeline.test.ts:159-166`).
+shuts preview down with a bounded SIGTERM-to-SIGKILL fallback (`tests/pipeline/carto-pipeline.test.ts:159-166`).
 
 **Staleness detection.** It mutates `src/user.ts` and requires `carto status`
 to fail. After copying refreshed prose and running targeted `carto sync user`,
 status is green and a rebuild contains the new `handle` symbol alongside the
-originals (`carto-pipeline.test.ts:168-187`).
+originals (`tests/pipeline/carto-pipeline.test.ts:168-187`).
 
 **Federation.** It registers a second `glossary` doc-set and adds a
-`carto:glossary/terms` link in both locales (`carto-pipeline.test.ts:189-199`).
+`carto:glossary/terms` link in both locales (`tests/pipeline/carto-pipeline.test.ts:189-199`).
 The final build must mount federated pages under `glossary-<8 hex>`, mount the
 root pages under `/self`, and resolve the cross-doc-set URL
-(`carto-pipeline.test.ts:201-214`).
+(`tests/pipeline/carto-pipeline.test.ts:201-214`).
 
 ### Why drive the binary
 

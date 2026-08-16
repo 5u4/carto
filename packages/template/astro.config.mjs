@@ -5,12 +5,14 @@ import { join } from 'node:path'
 import { loadGraph } from '@carto/core'
 import { buildLocales, buildGraphRedirects, buildGraphSidebar, collectGraphTitles, loadUserConfig, mergeStarlight } from './dist/site-config.js'
 import remarkJoinCjkLines from './dist/remark-join-cjk.js'
+import remarkSourceFootnotes, { rehypeSourceFootnoteLabels, sourceFootnotePages } from './dist/remark-source-footnotes.js'
 
 const docRoot = process.env.CARTO_ROOT ?? process.cwd()
 const workspaceRoot = process.env.CARTO_WORKSPACE ?? process.cwd()
 const graph = await loadGraph(docRoot)
 const user = await loadUserConfig(docRoot)
 const titles = await collectGraphTitles(graph)
+const footnotePages = sourceFootnotePages(graph, join(workspaceRoot, 'src', 'content', 'docs'))
 
 export default defineConfig({
   srcDir: join(workspaceRoot, 'src'),
@@ -18,7 +20,8 @@ export default defineConfig({
   outDir: join(docRoot, 'dist-site'),
   redirects: buildGraphRedirects(graph),
   markdown: {
-    remarkPlugins: [remarkJoinCjkLines]
+    remarkPlugins: [remarkJoinCjkLines, [remarkSourceFootnotes, { pages: footnotePages }]],
+    rehypePlugins: [[rehypeSourceFootnoteLabels, { pages: footnotePages }]]
   },
   integrations: [
     mermaid({ autoTheme: true, enableLog: false }),
