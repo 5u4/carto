@@ -1,3 +1,4 @@
+from collections import Counter
 import json
 import os
 import re
@@ -27,7 +28,7 @@ REQUIRED_EVIDENCE = {
 }
 FIXTURE_ROOT = Path(__file__).resolve().parents[1] / "fixtures"
 ANCHOR_PATTERN = re.compile(
-    r"((?:/|(?:[A-Za-z0-9_@.-]+/)*)[A-Za-z0-9_@.-]+\.[A-Za-z0-9]+):(\d+)(?:-(\d+))?"
+    r"((?:/|\./|(?:[A-Za-z0-9_@.-]+/)*)[A-Za-z0-9_@.-]+\.[A-Za-z0-9]+):(\d+)(?:-(\d+))?"
 )
 FENCE_PATTERN = re.compile(r"```\s*([A-Za-z0-9_-]*)[^\n]*\n(.*?)```", re.DOTALL)
 
@@ -342,9 +343,11 @@ def validate_migration_diff(workspace: Path, text: str) -> list[str]:
     removed = [line[1:] for line in actual if line.startswith("-")]
     added = [line[1:] for line in actual if line.startswith("+")]
     context = [line[1:] for line in actual if line.startswith(" ")]
-    required_removed = set(old_lines) - set(new_lines)
-    required_added = set(new_lines) - set(old_lines)
-    if not required_removed <= set(removed) or not required_added <= set(added):
+    required_removed = Counter(old_lines) - Counter(new_lines)
+    required_added = Counter(new_lines) - Counter(old_lines)
+    missing_removed = required_removed - Counter(removed)
+    missing_added = required_added - Counter(added)
+    if missing_removed or missing_added:
         problems.append("the caller diff omits staged report-worker changes")
     if not ordered_subset(removed, old_lines) or not ordered_subset(added, new_lines):
         problems.append("the caller diff reorders staged report-worker lines")
