@@ -16,8 +16,8 @@ Freshness 回答的是"哪些文档陈旧了？"而覆盖率回答的是相反�
 
 被追踪的集合是 [manifest](carto:manifest) 中每个节点的所有 source 的并集。
 `coverageReport` 通过扁平化 `manifest.nodes` 并将每个 `source.file` 规范化为
-POSIX 相对路径来构建它（`coverage.ts:65`）。当且仅当一个文件出现在该集合中时
-它才算"已覆盖"。遍历发现、而集合省略的一切都是未覆盖（`coverage.ts:66`）。
+POSIX 相对路径来构建它（`packages/core/src/coverage.ts:65`）。当且仅当一个文件出现在该集合中时
+它才算"已覆盖"。遍历发现、而集合省略的一切都是未覆盖（`packages/core/src/coverage.ts:66`）。
 
 由于该集合恰好就是 manifest 的节点 sources，覆盖率处于文档编写的下游：你通过
 把一个文件加入某节点的 `sources` 来覆盖它，仅此而已。
@@ -26,32 +26,32 @@ POSIX 相对路径来构建它（`coverage.ts:65`）。当且仅当一个文件�
 
 另一项输入是文件列表，由遍历代码根产生。两个部件协同工作：
 
-**`buildIgnore`** 播下一个基线并在其上叠加项目规则（`coverage.ts:33-40`）。
+**`buildIgnore`** 播下一个基线并在其上叠加项目规则（`packages/core/src/coverage.ts:33-40`）。
 基线 `DEFAULT_IGNORES` 排除了 VCS 与依赖噪声以及 carto 自身的产物 ——
 `.git`、`node_modules/`、`/carto.json`、`/docs/`、`/dist-site/`、`.gitignore`、
-`.cartoignore`（`coverage.ts:12`）。随后它读取根目录下的 `.gitignore` 与
+`.cartoignore`（`packages/core/src/coverage.ts:12`）。随后它读取根目录下的 `.gitignore` 与
 `.cartoignore`（若存在），并通过 [`ignore`](https://www.npmjs.com/package/ignore)
-包加入它们的模式（`coverage.ts:14`、`coverage.ts:35-38`）。`.cartoignore` 是
+包加入它们的模式（`packages/core/src/coverage.ts:14`、`packages/core/src/coverage.ts:35-38`）。`.cartoignore` 是
 在不影响 git 行为的前提下收窄可记录集合的旋钮。
 
 **`walk`** 递归遍历代码根，将每个条目经 POSIX 规范化的相对路径与忽略匹配器
-比对，在向下递归或记录之前跳过匹配项（`coverage.ts:42-58`）。经由 `toPosix`
+比对，在向下递归或记录之前跳过匹配项（`packages/core/src/coverage.ts:42-58`）。经由 `toPosix`
 的规范化意味着相同的相对键在 Windows 与 POSIX 上都以一致方式比较
-（`coverage.ts:20-22`、`coverage.ts:47`）。
+（`packages/core/src/coverage.ts:20-22`、`packages/core/src/coverage.ts:47`）。
 
 ## 嵌套的文档根
 
 `coverageReport` 接受一个可选的 `docRoot`。默认的 `/docs/` 忽略只覆盖位于
 代码根处的文档目录。当文档根*嵌套在*代码根内部的其他路径时，它会计算该相对
 路径并将其同样加为忽略 —— 但仅当该路径非空且未以 `..` 逃逸出代码根时
-（`coverage.ts:62-63`）。这防止 carto 把自己的文档文件报告为未记录的代码。
+（`packages/core/src/coverage.ts:62-63`）。这防止 carto 把自己的文档文件报告为未记录的代码。
 实践中 CLI 传入仓库根作为 `docRoot`，并在其旁传入一个可能更窄的代码根
 （`packages/cli/src/commands/coverage.ts:18`）。
 
 ## 为何未覆盖是警告而非错误
 
 结果是 `{ total, covered, uncovered }`，其中 `uncovered` 已排序
-（`coverage.ts:66-67`）。未覆盖文件是一种正常且预期的状态 —— 一个 README、
+（`packages/core/src/coverage.ts:66-67`）。未覆盖文件是一种正常且预期的状态 —— 一个 README、
 一个测试文件、一个确实不属于任何文档节点的 evals 框架。因此
 [`carto coverage`](carto:cli) 命令默认列出它们并以 `0` 退出；只有显式的
 `--fail-on-uncovered` 标志才会把非空的未覆盖列表变为退出码 `1`

@@ -19,8 +19,8 @@ the outside.
 The tracked set is the union of every source across every node in the
 [manifest](carto:manifest). `coverageReport` builds it by flattening
 `manifest.nodes` and normalizing each `source.file` to a POSIX-relative path
-(`coverage.ts:65`). A file is "covered" iff it appears in that set. Everything
-the walk finds and the set omits is uncovered (`coverage.ts:66`).
+(`packages/core/src/coverage.ts:65`). A file is "covered" iff it appears in that set. Everything
+the walk finds and the set omits is uncovered (`packages/core/src/coverage.ts:66`).
 
 Because the set is exactly the manifest's node sources, coverage is downstream
 of documentation authoring: you cover a file by adding it to some node's
@@ -32,19 +32,19 @@ The other input is the file list, produced by walking the code root. Two pieces
 cooperate:
 
 **`buildIgnore`** seeds a baseline and layers project rules on top
-(`coverage.ts:33-40`). The baseline `DEFAULT_IGNORES` excludes VCS and
+(`packages/core/src/coverage.ts:33-40`). The baseline `DEFAULT_IGNORES` excludes VCS and
 dependency noise plus carto's own artifacts — `.git`, `node_modules/`,
 `/carto.json`, `/docs/`, `/dist-site/`, `.gitignore`, `.cartoignore`
-(`coverage.ts:12`). It then reads `.gitignore` and `.cartoignore` from the root,
+(`packages/core/src/coverage.ts:12`). It then reads `.gitignore` and `.cartoignore` from the root,
 if present, and adds their patterns through the [`ignore`](https://www.npmjs.com/package/ignore)
-package (`coverage.ts:14`, `coverage.ts:35-38`). `.cartoignore` is the knob for
+package (`packages/core/src/coverage.ts:14`, `packages/core/src/coverage.ts:35-38`). `.cartoignore` is the knob for
 narrowing the documentable set without touching git behavior.
 
 **`walk`** recurses the code root, testing each entry's POSIX-normalized
 relative path against the ignore matcher and skipping matches before it
-descends or records (`coverage.ts:42-58`). Normalization via `toPosix` means the
-same relative keys are compared on Windows and POSIX alike (`coverage.ts:20-22`,
-`coverage.ts:47`).
+descends or records (`packages/core/src/coverage.ts:42-58`). Normalization via `toPosix` means the
+same relative keys are compared on Windows and POSIX alike (`packages/core/src/coverage.ts:20-22`,
+`packages/core/src/coverage.ts:47`).
 
 ## Nested doc roots
 
@@ -52,7 +52,7 @@ same relative keys are compared on Windows and POSIX alike (`coverage.ts:20-22`,
 covers a docs directory at the code root. When the doc root sits *nested inside*
 the code root at some other path, it computes that relative path and adds it as
 an ignore too — but only when it is non-empty and does not escape the code root
-with `..` (`coverage.ts:62-63`). This stops carto from reporting its own
+with `..` (`packages/core/src/coverage.ts:62-63`). This stops carto from reporting its own
 documentation files as undocumented code. In practice the CLI passes the repo
 root as `docRoot` and a possibly-narrower code root beside it
 (`packages/cli/src/commands/coverage.ts:18`).
@@ -60,7 +60,7 @@ root as `docRoot` and a possibly-narrower code root beside it
 ## Why uncovered is a warning, not an error
 
 The result is `{ total, covered, uncovered }` with `uncovered` sorted
-(`coverage.ts:66-67`). Uncovered files are a normal, expected state — a README,
+(`packages/core/src/coverage.ts:66-67`). Uncovered files are a normal, expected state — a README,
 a test file, an evals harness that genuinely does not belong to any documentation
 node. So the [`carto coverage`](carto:cli) command lists them and exits `0` by
 default; only the explicit `--fail-on-uncovered` flag turns a non-empty

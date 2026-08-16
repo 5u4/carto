@@ -155,6 +155,11 @@ describe('carto pipeline: deterministic sync/validate/build over hand-written do
         expect(html1).toContain('authorId')
         expect(html1).toContain('buildFeed')
         expect(/href=["']carto:/i.test(html1), 'unresolved carto: link href in built HTML').toBe(false)
+        expect(html1).toContain('data-footnote-ref')
+        expect(html1).toContain('data-footnotes')
+        expect(html1).toContain('src/feed.ts:9-14')
+        expect(html1).toContain('>Sources<')
+        expect(html1).toContain('>来源<')
 
         const previewPort = await availablePort()
         const previewProcess = startPreview(docRoot, previewPort)
