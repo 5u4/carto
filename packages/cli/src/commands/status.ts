@@ -22,8 +22,13 @@ export const statusCommand = defineCommand({
             console.log(`  ${source.state.padEnd(7)} ${source.file}${anchor}`)
           }
         }
+        if (node.state === 'stale') {
+          console.log(`  review source changes and update prose, then run carto sync ${node.id}`)
+        }
       }
     }
+    if (report.length === 0) console.log('no documentation nodes')
+
     const anyNotFresh = report.some((node) => node.state !== 'fresh')
     process.exit(anyNotFresh ? 1 : 0)
   }

@@ -16,8 +16,8 @@ Carto 生成**可持续演进**的文档:一张自顶向下的代码库心智模
 
 Carto 的答案是**陈旧准星**:每一页声明它所描述行为的源文件,并存下每个文件的
 内容哈希。改动一个被跟踪的文件,它的页面就*可证明地*陈旧——由 `carto status`
-暴露、在构建出的站点里以横幅标记、并留给人来刷新。地图随代码演进,是因为漂移
-可被检测,而不是因为有谁记得去看。
+暴露、在构建出的站点里以横幅标记、并留给 coding agent 刷新。地图随代码演进,
+是因为漂移可被检测,而不是因为有谁记得去看。
 
 ## 各部分如何拼合
 
@@ -39,7 +39,7 @@ flowchart TD
   `packages/core/src/index.ts:1` 扁平重导出。
 - **[@carto/cli](carto:cli)** 是 `carto` 二进制:一层薄命令层,读取 manifest、
   把真正的工作委托给 core、打印人类可读报告,并以状态码退出。
-  `packages/cli/src/index.ts:11` 装配了七个子命令。
+  `packages/cli/src/main.ts:10` 装配了七个子命令。
 - **[@carto/template](carto:rendering)** 把解析后的 doc-set 变成一个静态的
   Starlight-on-Astro 站点,将 `carto:` 链接改写为真实 URL 并注入陈旧横幅。
 - **[测试策略](carto:testing)** 及其[技能评估](carto:evals)守护以上一切。

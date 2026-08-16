@@ -3,12 +3,17 @@
     {
       "file": "packages/core/src/index.ts",
       "hash": "4a735758e7ec5407",
-      "commit": "59d86e576e9dea007f0af7e172d2b317489124cd"
+      "commit": "af8c48484d63c1c180a80ccccc7c6403cc6e7476"
     },
     {
       "file": "packages/cli/src/index.ts",
-      "hash": "7b7dbb641c5d9210",
-      "commit": "59d86e576e9dea007f0af7e172d2b317489124cd"
+      "hash": "65e40b1c4aed0f62",
+      "commit": "af8c48484d63c1c180a80ccccc7c6403cc6e7476"
+    },
+    {
+      "file": "packages/cli/src/main.ts",
+      "hash": "88db4a45fe65b26b",
+      "commit": "af8c48484d63c1c180a80ccccc7c6403cc6e7476"
     }
   ]
 }

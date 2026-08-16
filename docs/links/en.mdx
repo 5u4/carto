@@ -89,26 +89,28 @@ keyed by file (`packages/cli/src/commands/validate.ts:70-73`).
 ## The federation graph: `loadGraph`
 
 `loadGraph` walks federation entries from a `federalRoot` and returns a `Graph`
-of `DocSet`s keyed by hash (`packages/core/src/graph.ts:41-86`). A `DocSet`
+of `DocSet`s keyed by hash (`packages/core/src/graph.ts:44-89`). A `DocSet`
 bundles a doc-set's `hash`, url `prefix`, `docRoot`, parsed `manifest`, and its
 own `aliasToHash` map (`packages/core/src/graph.ts:7-13`).
 
-**Identity** is content-addressed by path, not by alias. `identity` canonicalizes
-the doc-root relative to the federal root (resolving symlinks via `realpath`),
-then hashes `sha256('file:' + canonical)` and takes the first 8 hex chars
-(`packages/core/src/graph.ts:28-32`). Two aliases pointing at the same directory
-collapse to the same hash — a diamond loads one DocSet, and a cycle terminates
-because `load` is memoized on `byHash` (`packages/core/src/graph.ts:47-49`).
+**Identity** is content-addressed by path, not by alias. `identity` resolves
+symlinks with `realpath`, finds the doc-root relative to the federal root, and
+`federationHash` normalizes host separators to `/` before hashing
+`sha256('file:' + canonical)` and taking the first 8 hex chars
+(`packages/core/src/graph.ts:28-35`). Identical topology therefore keeps the
+same public prefix on POSIX and Windows. Two aliases pointing at the same
+directory collapse to one hash; diamonds and cycles terminate because `load`
+is memoized on `byHash` (`packages/core/src/graph.ts:50-56`).
 
 **Loading** is recursive: for each `manifest.federated` entry, `resolveEntry`
 turns it into a child doc-root, `identity` hashes it, the alias→hash edge is
-recorded, and `load` recurses (`packages/core/src/graph.ts:54-68`). The root
-manifest is reused rather than re-read (`packages/core/src/graph.ts:50`).
+recorded, and `load` recurses (`packages/core/src/graph.ts:57-70`). The root
+manifest is reused rather than re-read (`packages/core/src/graph.ts:47-53`).
 
 :::caution
 `resolveEntry` throws a `FederationError` for `git`-type entries — git federation
 is not yet implemented; only `file` entries load
-(`packages/core/src/graph.ts:34-39`).
+(`packages/core/src/graph.ts:37-41`).
 :::
 
 **Prefixes** are assigned after the full graph is known

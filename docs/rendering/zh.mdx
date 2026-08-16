@@ -3,90 +3,55 @@ title: 渲染
 description: carto 文档根目录如何通过在同一个 core Graph 之上的两阶段渲染，变成一个基于 Starlight-on-Astro 的站点。
 ---
 
-carto 文档根目录本身并不是一个网站。它是一棵 `<id>/<locale>.mdx` 文件树，外加一份
-`carto.json` manifest —— 也就是 [links](carto:links) 与 [freshness](carto:freshness)
-子系统所推理的原始素材。`@carto/template` 包的职责，就是把这些原始素材变成一个可浏览的
-[Starlight](carto:overview) 站点。它是渲染层：下面的一切都在有人执行 `carto dev` 或
-`carto build` 时运行，而这些命令由 [CLI](carto:cli) 启动，并将 `CARTO_ROOT` 指向文档根目录。
+carto 文档根目录本身不是网站。它是一棵 `<id>/<locale>.mdx` 文件树，外加一份 `carto.json` manifest —— 也就是 [links](carto:links) 与 [freshness](carto:freshness) 子系统所推理的原始素材。`@carto/template` 包通过一个深层渲染接口把这些素材变成 Starlight-on-Astro 站点：`buildSite(docRoot)` 与 `previewSite(docRoot, options)`。
 
-## 同一个 Graph，两个阶段
+`carto build` 调用前者。`carto preview` 调用后者，而且绝不重新构建。
 
-两个阶段都从同一个原语出发 —— `@carto/core` 的 `loadGraph(root)`，它读取根 manifest
-以及每一个联邦文档集，汇入单一的 `Graph`
-（`{ federated, root, byHash }`，`packages/core/src/graph.ts:15`）。template 层不会重新
-解析任何 manifest；它消费这个 `Graph` 及其 `DocSet`
-（`packages/core/src/graph.ts:7`）。
+## 事务式构建生命周期
 
-这两个阶段是两个独立的程序，依次运行：
+每次构建都独占操作系统临时目录下的一个唯一目录。渲染模块向 CLI 隐藏该工作区，并为 Astro 的每一项生成输入或可写状态提供私有位置：
 
-1. **`materialize.ts`** —— 一个独立的 Node 脚本，把 `Graph` 投影到 Astro 的内容集合
-   `src/content/docs`。它运行至完成并退出，然后 Astro 才启动。
-2. **`astro.config.mjs`** —— 在配置求值时再次加载同一个 `Graph`，并从中推导出
-   Astro/Starlight 配置（locales、sidebar、redirects、remark 插件）。
+```text
+<temporary-root>/
+  astro.config.mjs
+  node_modules/...
+  src/
+    content.config.ts
+    content/docs/...
+  .astro/cache/...
+  output/...
 
-之所以要拆分，是因为 Astro 把 `src/content/docs` 目录当作文件输入来拥有，而 carto
-的真理之源是 `<docRoot>/docs/<id>/<locale>.mdx`。阶段 1 通过复制并重写来弥合这一
-差距；阶段 2 把复制出的树接入一个带主题的站点。
+```
 
-## 阶段 1 —— materialize
+生命周期依次包含四步：
 
-`main()` 通过模块末尾的顶层 `await main()` 调用（`packages/template/src/materialize.ts:133`）。
-它读取 `CARTO_ROOT`（回退到 `process.cwd()`），加载 graph，然后**清空并重建**内容目录 ——
-先 `rm(contentDir, { recursive: true, force: true })` 再 `mkdir`
-（`packages/template/src/materialize.ts:28`）。输出是可丢弃的，每次运行都完全重建；不存在
-增量合并。
+1. 创建工作区以及私有的源、依赖视图、缓存与输出路径。
+2. 把 carto graph 物化到 `src/content/docs`；写入复用已安装 template 的工作区 Astro 与内容配置；并在不修改 template 或 doc root 依赖的前提下暴露它们。
+3. 调用已安装的 Astro CLI，显式传入临时 `--root`、工作区配置与临时 `--outDir`。
+4. 仅在 Astro 成功后，把完整输出复制到同一文件系统的暂存目录，再替换 `<doc-root>/dist-site`。如果 Astro 或发布失败，之前的 `dist-site` 仍然可用。
 
-### 空状态
+临时工作区在 `finally` 路径中清理。系统没有锁、共享生成目录或持久缓存。尤其是，构建绝不会写入 `@carto/template/src/content/docs`；已安装的包只提供配置与可执行代码，而不是工作区。
 
-如果根 manifest 没有任何节点，且 graph 不是联邦的，`main` 会写出单个引导页 `index.mdx`
-并提前返回（`packages/template/src/materialize.ts:30`，`writeEmptyState` 见
-`packages/template/src/materialize.ts:68`）。该页面提示用户让 agent 去记录代码，然后重新
-运行 `carto dev`。
+## 物化
 
-### 渲染循环
+`materialize(docRoot, contentDir)` 通过 `loadGraph(root)` 加载一个 `Graph`，然后只写入调用者提供的内容目录。该 graph 包含根 manifest 与所有联邦文档集（`{ federated, root, byHash }`）。
 
-否则，`main` 会嵌套遍历三个层级 —— **文档集 × 节点 × 站点 locale**
-（`packages/template/src/materialize.ts:38`）：
+若根 manifest 没有节点且 graph 不是联邦的，物化过程会写入单个引导页 `index.mdx`。它提示用户让 agent 记录代码，然后运行 `carto build` 与 `carto preview`。
 
-- `graph.byHash.values()` 给出每一个文档集；每个都得到一个 `FederationContext`，携带
-  `byHash`、该文档集的 `aliasToHash`，以及站点默认 locale
-  （`packages/template/src/materialize.ts:39`）。
-- 对每个节点，以及**站点**声明的每个 locale（`graph.root.manifest.locales`），它挑选一个
-  `contentLocale`：若该文档集拥有所请求的 locale 则用它，否则回退到文档集自身的
-  `defaultLocale` 并发出 `console.warn`（`packages/template/src/materialize.ts:42`）。站点
-  可以请求某个联邦文档集从未写过的 `zh` 页面；回退机制保证页面依旧存在。
+否则渲染循环会遍历 **文档集 × 节点 × 站点 locale**。每个单元都会：
 
-对每个单元，它读取 `<docRoot>/docs/<id>/<contentLocale>.mdx`
-（`packages/template/src/materialize.ts:46`），进行转换，然后写出：
+1. 在文档集提供目标 locale 时选用它，否则发出警告并回退到该文档集的默认 locale。
+2. 读取 `<docRoot>/docs/<id>/<locale>.mdx`。
+3. 通过 `resolveCartoLink` 重写可解析的 `carto:` 链接；空标签从目标标题补全，并依次回退到目标默认 locale 与 id。
+4. 在状态为 stale 或 missing 时注入页面的新鲜度横幅。
+5. 把页面写入私有内容目录。
 
-1. **`rewriteLinks`** 就地重写每一个 `carto:` 链接
-   （`packages/template/src/materialize.ts:99`）。它调用 `resolveCartoLink` —— 与
-   [links](carto:links) 节点所拥有的是同一个解析器 —— 成功时把 `carto:` 目标替换成真实的
-   `result.url`。空标签会通过 `titleFor` 从目标标题自动填充
-   （`packages/template/src/materialize.ts:110`），后者在标题映射中查找 `hash:id:locale`，
-   并依次回退到目标文档集的默认 locale、再回退到裸 id
-   （`packages/template/src/materialize.ts:126`）。无法解析的链接原样保留。
-2. **`injectStalenessBanner`** 在节点 stale 或 missing 时打上警告横幅（见下文），在 freshness
-   映射中以 `${docSet.hash}:${node.id}` 为键（`packages/template/src/materialize.ts:49`）。
-3. **`targetPath`** 计算目标位置，随后写入文件
-   （`packages/template/src/materialize.ts:52`）。
+目标路径由 locale 前缀、联邦文档集前缀和节点根链组合而成。根文档集的站点默认 locale 下的 `overview` 页面会成为 `src/content/docs/overview.mdx`；联邦 `web` 文档集的中文 `auth` 页面会成为 `src/content/docs/zh/web/auth.mdx`。每个文档集的新鲜度只针对解析后的代码根通过 `statusReport` 收集一次。
 
-### 一个页面落在何处
+## 预览生命周期
 
-`targetPath` 在 `contentDir` 之下拼接三段
-（`packages/template/src/materialize.ts:92`）：
+`previewSite` 首先要求 `<doc-root>/dist-site` 已存在。随后它直接针对该输出调用 Astro preview，不执行物化或构建。默认地址为 `http://127.0.0.1:4321/`；显式 host 与 port 会转交给 Astro，并在启动服务前打印。`SIGINT` 与 `SIGTERM` 会转发给子进程，因此终止命令不会遗留 Astro 进程。
 
-- 一个 **locale 前缀** —— 对站点默认 locale 为空，否则为 `<locale>/`；
-- 一个 **文档集前缀** —— 对根为空，否则为去掉前导 `/` 的联邦前缀；
-- **根链** —— `rootChain(nodes, id)` 映射为 id 并以 `/` 连接，从而让子节点嵌套在其父节点
-  路径之下。
-
-于是，根文档集在站点默认 locale 下的 `overview` 节点写入
-`src/content/docs/overview.mdx`，而某个联邦 `web` 文档集的 `auth` 节点的 `zh` 页面写入
-`src/content/docs/zh/web/auth.mdx`。
-
-整个 graph 的 freshness 由 `collectFreshness` 一次性预计算，它对每个文档集针对其
-`codeRootDir` 运行 `statusReport`（`packages/template/src/materialize.ts:58`）。
 
 ## 陈旧横幅
 
@@ -109,21 +74,11 @@ carto 文档根目录本身并不是一个网站。它是一棵 `<id>/<locale>.m
 Starlight 会把该 `banner:` 键渲染为页面顶部的站点级横幅，于是陈旧页面会在阅读时自行声明
 它的陈旧。
 
-## 阶段 2 —— astro.config.mjs
+## 感知工作区的 `astro.config.mjs`
 
-Astro 配置本身就是一个感知 carto 的程序（`packages/template/astro.config.mjs`）。在求值时它
-加载同一个 graph、用户配置以及标题映射（`packages/template/astro.config.mjs:9`），然后构建
-`defineConfig`：
+已安装的 Astro 配置明确区分两个根目录。`CARTO_ROOT` 标识用户的文档根，用于加载 graph 与用户配置；`CARTO_WORKSPACE` 标识 Astro 的临时根，因此 `srcDir` 与 `cacheDir` 都私有于单次构建。CLI 显式传入的 `--outDir` 则选择临时构建输出或既有预览输出。
 
-- **`outDir`** 为 `<root>/dist-site` —— 构建出的站点落在文档根目录旁边，而非 template 包内部
-  （`packages/template/astro.config.mjs:15`）。
-- **`redirects`** 来自 `buildGraphRedirects`（`packages/template/astro.config.mjs:16`）。
-- **`markdown.remarkPlugins`** 为 `[remarkJoinCjkLines]`（`packages/template/astro.config.mjs:18`）。
-- **`integrations`** 为 `mermaid`（自动主题图表）加上 `starlight`，其选项为
-  `mergeStarlight(user.starlight ?? {}, { locales, sidebar })`
-  （`packages/template/astro.config.mjs:22`）。
-
-Starlight 所需的一切都在 `site-config.ts` 中推导。
+其余行为在不同工作区之间保持一致：重定向来自 `buildGraphRedirects`，Markdown 流水线应用 `remarkJoinCjkLines`，集成项则为 Mermaid 与 Starlight。Starlight 接收 `mergeStarlight(user.starlight ?? {}, { locales, sidebar })`，既保留用户主题配置，也让 carto 继续拥有从 graph 推导出的导航。
 
 ## 配置推导（`site-config.ts`）
 

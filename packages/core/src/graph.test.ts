@@ -2,7 +2,7 @@ import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
-import { loadGraph, FederationError } from './graph.js'
+import { federationHash, loadGraph, FederationError } from './graph.js'
 import { writeManifest } from './manifest.js'
 import type { Federated, Manifest } from './schema.js'
 
@@ -30,6 +30,13 @@ async function writeDocSet(root: string, sub: string, federated: Federated[] = [
   await writeManifest(dir, manifest)
   return dir
 }
+
+describe('federationHash', () => {
+  it('hashes host-separated relative paths as portable forward-slash topology', () => {
+    expect(federationHash('../shared/docs')).toBe('4874f492')
+    expect(federationHash('..\\shared\\docs')).toBe('4874f492')
+  })
+})
 
 describe('loadGraph', () => {
   it('reports no federation when the root has no federated entries', async () => {

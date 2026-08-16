@@ -34,11 +34,11 @@ carto 的测试沿着一条断层线组织：**每套测试守护什么**。两�
 fixtures** 上走完整条文档循环，驱动的是*真实构建出来的二进制*，而非导入函数。
 
 它从不直接接触 `@carto/core`。它把已编译的 CLI 定位到
-`packages/cli/dist/index.js`（`carto-pipeline.test.ts:8`），并通过
+`packages/cli/dist/index.js`（`carto-pipeline.test.ts:8-10`），并通过
 `spawnSync(process.execPath, [cartoCli, ...args])` 调用它
-（`carto-pipeline.test.ts:17-24`），捕获退出状态、stdout 与 stderr。因为它驱动的是构建
-产物，一个 `beforeAll` 守卫会在二进制缺失时大声失败——你必须先 `pnpm build` 再
-`pnpm test:pipeline`（`carto-pipeline.test.ts:44-48`）。
+（`carto-pipeline.test.ts:18-24`），捕获退出状态、stdout 与 stderr。因为它驱动的是构建
+产物，一个 `beforeAll` 守卫会在二进制缺失时失败——先运行 `pnpm build`，再运行
+`pnpm test:pipeline`（`carto-pipeline.test.ts:90-95`）。
 
 :::note
 无 LLM、无密钥、无网络。每个 fixture 都是手工签入的，每条断言都是确定性的，因此流水线测试可
@@ -47,38 +47,31 @@ fixtures** 上走完整条文档循环，驱动的是*真实构建出来的二�
 
 ### 它所走的循环
 
-每个阶段都把 fixtures 复制进一个全新的 `mkdtemp` 根目录并断言一个可观测的结果，全部包在一个
-`try/finally` 里，最终删除该临时根目录（`carto-pipeline.test.ts:133-135`）。
+每个阶段都把 fixtures 复制进一个全新的 `mkdtemp` 根目录并断言可观测结果，全部包在
+`try/finally` 中，最终删除临时根目录（`carto-pipeline.test.ts:100-106`，清理见
+`carto-pipeline.test.ts:189-190`）。
 
-**Sync → validate → 节点计数。** 它把 `sample-app/src`（代码根）与 `doc-set`（文档根）
-复制进临时根目录（`carto-pipeline.test.ts:60-61`），运行 `carto sync` 并断言退出码 0
-（`carto-pipeline.test.ts:63-64`），随后 `carto validate` 为绿
-（`carto-pipeline.test.ts:66-67`），再统计 `docs/` 下携带 `node.json` 的目录数并断言至少
-三个节点（`carto-pipeline.test.ts:69-72`）。
+**Sync → validate → 节点计数。** 它复制 `sample-app/src` 与 `doc-set`，运行
+`carto sync`，要求 `carto validate` 为绿，再断言至少存在三个 node 目录
+（`carto-pipeline.test.ts:107-119`）。
 
-**Coverage 走的是代码，而非文档。** `carto coverage` 必须报告 `/ 3 files`——证明
-[coverage](carto:coverage) 走的是*代码*根的三个源文件，而非文档根
-（`carto-pipeline.test.ts:74-76`）。
+**Coverage 走的是代码，而非文档。** `carto coverage` 必须报告 `/ 3 files`，证明
+[coverage](carto:coverage) 走的是代码根，而非文档根
+（`carto-pipeline.test.ts:121-123`）。
 
-**Build 渲染出真实符号并解析每个链接。** 在 `carto build` 之后
-（`carto-pipeline.test.ts:78-79`），它拼接 `dist-site` 下的每个 `.html`，并断言构建出的
-HTML 包含真实的源码符号 `authorId` 与 `buildFeed`（`carto-pipeline.test.ts:81-83`），且
-输出中**不**残留任何未解析的 `carto:` href（`carto-pipeline.test.ts:84`）。
+**Build 与 preview 演练真实产物。** `carto build` 必须渲染真实符号 `authorId`、
+`buildFeed`，且不留下未解析的 `carto:` href（`carto-pipeline.test.ts:125-131`）。随后测试
+在空闲的 localhost 端口启动 `carto preview`，抓取 `/overview/feed/`、检查返回的 HTML，
+并干净地终止预览进程（`carto-pipeline.test.ts:133-140`）。
 
-**陈旧检测。** 它用一个变异后的 fixture 覆盖 `src/user.ts`（`carto-pipeline.test.ts:86`），
-并断言 `carto status` 此时退出非零——[freshness](carto:freshness) 哈希不再与源码匹配
-（`carto-pipeline.test.ts:88-89`）。它复制一个刷新后的 `user` 页，运行 `carto sync user`
-（`carto-pipeline.test.ts:91-93`），并断言 `carto status` 再次变绿
-（`carto-pipeline.test.ts:95-96`）。随后一次重建证明新符号 `handle` 与原有符号一同到达了
-HTML（`carto-pipeline.test.ts:98-105`）。
+**陈旧检测。** 它修改 `src/user.ts` 并要求 `carto status` 失败。复制刷新后的正文并运行
+定向的 `carto sync user` 后，status 恢复为绿；重建结果同时包含新符号 `handle` 与原有符号
+（`carto-pipeline.test.ts:142-161`）。
 
-**联邦。** 它复制第二个 doc-set `glossary`，并在 `carto.json` 的 `federated` 下注册它
-（`carto-pipeline.test.ts:107-111`），在两种语言的 overview 页追加一条跨 doc-set 链接
-`carto:glossary/terms`（`carto-pipeline.test.ts:113-117`），然后重建
-（`carto-pipeline.test.ts:119-123`）。接着它断言构建出的站点把联邦页挂载在一个
-`glossary-<8 位十六进制>` 别名哈希前缀下（`carto-pipeline.test.ts:126`），在联邦生效后把
-*自身*页面挂载在 `/self` 前缀下（`carto-pipeline.test.ts:127`），并断言那条跨 doc-set 的
-[链接](carto:links) 解析到带前缀的 URL（`carto-pipeline.test.ts:132`）。
+**联邦。** 它注册第二个 `glossary` doc-set，并在两种语言中加入
+`carto:glossary/terms` 链接（`carto-pipeline.test.ts:163-177`）。最终构建必须把联邦页
+挂载在 `glossary-<8 位十六进制>` 下，把根页面挂载在 `/self` 下，并解析跨 doc-set URL
+（`carto-pipeline.test.ts:178-188`）。
 
 ### 为什么要驱动二进制
 

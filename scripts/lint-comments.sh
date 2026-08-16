@@ -5,6 +5,7 @@ hits=""
 
 while IFS= read -r file; do
   [ -n "$file" ] || continue
+  [ -f "$file" ] || continue
   case "$file" in
     *.ts|*.mjs|*.js) ;;
     *) continue ;;

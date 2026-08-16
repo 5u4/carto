@@ -18,7 +18,7 @@ the doc is worse than none, because it is confidently misleading.
 Carto's answer is the **staleness crosshair**: each page declares the source
 files whose behavior it describes, and stores a content hash of each. Change a
 tracked file and its page is *provably* stale — surfaced by `carto status`,
-banner-flagged in the built site, and left for a human to refresh. The map
+banner-flagged in the built site, and left for a coding agent to refresh. The map
 evolves with the code because drift is detectable, not because anyone remembers
 to look.
 
@@ -43,7 +43,7 @@ flowchart TD
   `packages/core/src/index.ts:1`.
 - **[@carto/cli](carto:cli)** is the `carto` binary: a thin command layer that
   reads the manifest, delegates the real work to core, prints a human report,
-  and exits with a status code. `packages/cli/src/index.ts:11` wires the seven
+  and exits with a status code. `packages/cli/src/main.ts:10` wires the seven
   subcommands.
 - **[@carto/template](carto:rendering)** turns a resolved doc-set into a static
   Starlight-on-Astro site, rewriting `carto:` links to real URLs and injecting

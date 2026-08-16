@@ -6,13 +6,16 @@ import { loadGraph } from '@carto/core'
 import { buildLocales, buildGraphRedirects, buildGraphSidebar, collectGraphTitles, loadUserConfig, mergeStarlight } from './dist/site-config.js'
 import remarkJoinCjkLines from './dist/remark-join-cjk.js'
 
-const root = process.env.CARTO_ROOT ?? process.cwd()
-const graph = await loadGraph(root)
-const user = await loadUserConfig(root)
+const docRoot = process.env.CARTO_ROOT ?? process.cwd()
+const workspaceRoot = process.env.CARTO_WORKSPACE ?? process.cwd()
+const graph = await loadGraph(docRoot)
+const user = await loadUserConfig(docRoot)
 const titles = await collectGraphTitles(graph)
 
 export default defineConfig({
-  outDir: join(root, 'dist-site'),
+  srcDir: join(workspaceRoot, 'src'),
+  cacheDir: join(workspaceRoot, '.astro', 'cache'),
+  outDir: join(docRoot, 'dist-site'),
   redirects: buildGraphRedirects(graph),
   markdown: {
     remarkPlugins: [remarkJoinCjkLines]

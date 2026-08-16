@@ -22,9 +22,8 @@ template renders the result. This skill tells you how to drive the loop.
 Three prerequisites, in order. Stop and resolve each before generating.
 
 1. **The `carto` CLI must be on PATH.** Run `carto --help`. If it is not found,
-   tell the user and stop — do not try to install it yourself. There are many
-   reasons it might be missing (no pnpm, not built, not linked), and which fix
-   is right is the user's call.
+   tell the user and stop — do not try to install it yourself. Installation and
+   environment changes remain the user's call.
 2. **Know the available commands.** `carto --help` lists them; run
    `carto <command> --help` for a command's flags. Never assume a command or
    flag exists — check.
@@ -57,9 +56,14 @@ Given a scope:
    (e.g. the auth docs are already fresh), say so and stop — do not rewrite
    pages that do not need it.
 
-2. Confirm with the user. List the exact pages you intend to write or create
-   (node id + docs/<id>/<locale>.mdx path) and wait for the go-ahead before
-   reading code and editing. This is a deliberate checkpoint, not a formality.
+2. Apply the safety checkpoint. Clear ordinary creation and refresh work
+   proceeds directly from the user's stated scope; list the concrete targets
+   and continue without asking for a second confirmation. Ask for confirmation
+   before editing when the plan would delete a node, page, or source assignment;
+   rename a node id; reparent a node; make a large reassignment of an existing
+   node's sources; or when the scope remains ambiguous. In those cases, list
+   the exact affected node ids and `docs/<id>/<locale>.mdx` paths, describe the
+   structural change, and wait for approval before touching files.
 
 3. Write the node.json files for the in-scope nodes only, and touch no others.
 
@@ -71,23 +75,20 @@ Given a scope:
    is what keeps every other page's freshness untouched.
 
 6. carto validate   Checks schema, tree, and links, and that in-scope pages are
-   synced. On error, fix the mdx or node.json it names, then sync + validate
-   again. Leftover stale pages outside your scope are expected and reported as
-   warnings — not your job this run.
+   synced. On error, fix the mdx or node.json it names, then run targeted
+   `carto sync <id>` and validate again. Leftover stale pages outside your scope
+   are expected and reported as warnings — not your job this run.
 
 7. carto status   Confirm every id you set out to write or refresh is now
-   `fresh`. If one is still `stale`, you edited its prose but forgot to
-   `carto sync <id>` it — do that and re-check. A green validate alone does not
-   catch this, because validate is silent about stale pages.
+   `fresh`. If one is still `stale`, review its source changes, update its
+   prose, then run `carto sync <id>` and re-check.
 ```
 
 Never leave a run until `carto validate` exits 0 **and** `carto status` reports
-every node you touched as `fresh`. This second half matters on a refresh:
-`carto validate` is silent about stale pages (they are a legitimate state), so a
-green validate does **not** prove your edit landed. After you rewrite a stale
-page's prose you MUST `carto sync <id>` it — otherwise its source stays stale,
-validate still passes, and your work is only half done. Check `carto status`
-and confirm the ids you set out to refresh come back `fresh`.
+every node you touched as `fresh`. Stale pages are validate warnings, so a green
+validate can coexist with unfinished refresh work. After reviewing a stale
+page's source changes and rewriting its prose, run `carto sync <id>`, then check
+`carto status` and confirm every id in scope comes back `fresh`.
 
 **Why name ids on `sync`.** Bare `carto sync` blesses only *unsynced* sources
 (pages you just wrote that have no hash yet) and deliberately leaves *stale*
@@ -98,8 +99,8 @@ pages keep both their freshness signal and their diff anchor.
 
 **Refreshing a stale page — diff first.** `carto status` prints the commit a
 stale source was last synced at (`stale a.ts (was 44cc03e…)`). Run
-`git diff <commit> -- <file>` to see exactly what changed and make a targeted
-edit, rather than re-reading and rewriting the whole page. Fall back to a full
+`git diff <commit> -- <file>` to review exactly what changed, then update the
+page's prose before running targeted `carto sync <id>`. Fall back to a full
 re-read when there is no anchor, the source is not in git, or the anchor commit
 is unreachable (rebased/squashed away — `git diff` errors).
 
@@ -128,8 +129,8 @@ Two kinds of file. The CLI never invents structure — it only hashes and checks
 - `version` is always `1`.
 - `locales`: non-empty list of unique short codes. `defaultLocale` MUST be one
   of them.
-- `codeRoot`: optional path (relative to this carto.json) to the code being
-  documented; source `file` paths are relative to it. Defaults to `.`.
+- `codeRoot`: optional forward-slash path (relative to this carto.json) to the
+  code being documented; source `file` paths are relative to it. Defaults to `.`.
 - `home`: optional node `id` the site root `/` redirects to (and each locale
   root, e.g. `/zh/`). It may point at **any** node. Omit it and the root falls
   back to the first root node in id order; with no nodes, the build renders an
@@ -139,8 +140,8 @@ Two kinds of file. The CLI never invents structure — it only hashes and checks
   them with `carto:<alias>/<id>`. Omit it for an ordinary single doc-set. Each
   entry is `{ "alias", "type", ... }`:
   - `type: "file"` — `{ "alias": "web", "type": "file", "path": "../web-docs" }`;
-    `path` is relative to this carto.json's directory and points at another doc
-    root.
+    `path` uses forward slashes, is relative to this carto.json's directory,
+    and points at another doc root.
   - `type: "git"` — accepted but **not yet implemented** (the build errors). Use
     `file`.
   - `alias`: same id pattern as node ids; the label authors write in
@@ -170,7 +171,8 @@ means `git mv`-ing the directory (and every `carto:` link to it, or
   **warning, not an error** — you may generate from the middle of the tree. A
   cycle or self-parent is an error.
 - `sources`: the files whose behavior this page describes. Write **`file` only**
-  — a path relative to `codeRoot`. Leave `hash` and `commit` out; `carto sync`
+  — a forward-slash path relative to `codeRoot`. Leave `hash` and `commit` out;
+  `carto sync`
   fills them — `hash` is the content fingerprint, `commit` the git `HEAD` at
   sync time (the diff base a later refresh compares against; absent outside a
   git repo). The array may be empty for a pure-orientation page. Ids sort
@@ -246,9 +248,9 @@ on the pages you touched, but **not** on pre-existing staleness. Common cases:
 
 - **unsynced source / missing hash** — run `carto sync <id>` for the pages you
   wrote.
-- **stale source** — reported as a **warning**, exit 0. It means a source
-  changed and its page has not been refreshed; refreshing it is a deliberate
-  scoped run (`carto status` to find it), not something this validate blocks on.
+- **stale source** — reported as a **warning**, exit 0. Review the source
+  changes, update the page's prose, then run targeted `carto sync <id>`. This is
+  deliberate scoped work, not something validate blocks on.
 - **duplicate id** — two directories cannot share a name; this cannot happen on
   disk, but a malformed `node.json` id is rejected.
 - **unresolved `carto:` link** — fix the id in the link, or add the missing node.
@@ -258,7 +260,8 @@ on the pages you touched, but **not** on pre-existing staleness. Common cases:
 - **missing source file** — a `sources` entry points at a file that no longer
   exists; fix the path or drop the entry.
 
-Fix, re-run `carto sync` then `carto validate`, and repeat until it exits 0.
+Fix, re-run targeted `carto sync <id>` for each page you changed, then run
+`carto validate`. Repeat until it exits 0, and finish with `carto status`.
 
 ## Starlight syntax worth reaching for
 

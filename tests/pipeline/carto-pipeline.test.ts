@@ -1,8 +1,9 @@
 import { beforeAll, describe, expect, it } from 'vitest'
-import { spawnSync } from 'node:child_process'
+import { spawn, spawnSync, type ChildProcessWithoutNullStreams } from 'node:child_process'
 import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { join } from 'node:path'
+import { createServer } from 'node:net'
 
 const repoRoot = fileURLToPath(new URL('../../', import.meta.url))
 const cartoCli = join(repoRoot, 'packages', 'cli', 'dist', 'index.js')
@@ -21,6 +22,52 @@ function carto(args: string[], cwd: string): Run {
     maxBuffer: 64 * 1024 * 1024
   })
   return { status: r.status, stdout: r.stdout ?? '', stderr: r.stderr ?? '' }
+}
+
+function availablePort(): Promise<number> {
+  return new Promise((resolve, reject) => {
+    const server = createServer()
+    server.once('error', reject)
+    server.listen(0, '127.0.0.1', () => {
+      const address = server.address()
+      if (address === null || typeof address === 'string') {
+        server.close()
+        reject(new Error('failed to allocate preview port'))
+        return
+      }
+      server.close((error) => (error ? reject(error) : resolve(address.port)))
+    })
+  })
+}
+
+function startPreview(cwd: string, port: number): ChildProcessWithoutNullStreams {
+  return spawn(process.execPath, [cartoCli, 'preview', '--host', '127.0.0.1', '--port', String(port)], {
+    cwd,
+    stdio: 'pipe'
+  })
+}
+
+async function readPreview(child: ChildProcessWithoutNullStreams, url: string): Promise<string> {
+  let output = ''
+  child.stdout.setEncoding('utf8').on('data', (chunk) => (output += chunk))
+  child.stderr.setEncoding('utf8').on('data', (chunk) => (output += chunk))
+  for (let attempt = 0; attempt < 200; attempt += 1) {
+    if (child.exitCode !== null) throw new Error(`preview exited before serving ${url}:\n${output}`)
+    try {
+      const response = await fetch(url)
+      if (response.ok) return response.text()
+    } catch {
+      await new Promise((resolve) => setTimeout(resolve, 50))
+    }
+  }
+  throw new Error(`preview did not serve ${url}:\n${output}`)
+}
+
+async function stopPreview(child: ChildProcessWithoutNullStreams): Promise<number | null> {
+  if (child.exitCode !== null) return child.exitCode
+  const closed = new Promise<number | null>((resolve) => child.once('close', resolve))
+  child.kill('SIGTERM')
+  return closed
 }
 
 function walk(dir: string): string[] {
@@ -49,7 +96,7 @@ describe('carto pipeline: deterministic sync/validate/build over hand-written do
 
   it(
     'builds, detects staleness after a source change, refreshes, then federates a second doc-set',
-    () => {
+    async () => {
       const workDir = join(repoRoot, 'tests', 'pipeline', '.work')
       mkdirSync(workDir, { recursive: true })
       const root = mkdtempSync(join(workDir, 'carto-pipeline-'))
@@ -82,6 +129,15 @@ describe('carto pipeline: deterministic sync/validate/build over hand-written do
         expect(html1).toContain('authorId')
         expect(html1).toContain('buildFeed')
         expect(/href=["']carto:/i.test(html1), 'unresolved carto: link href in built HTML').toBe(false)
+
+        const previewPort = await availablePort()
+        const previewProcess = startPreview(docRoot, previewPort)
+        try {
+          const previewHtml = await readPreview(previewProcess, `http://127.0.0.1:${previewPort}/overview/feed/`)
+          expect(previewHtml).toContain('authorId')
+        } finally {
+          expect(await stopPreview(previewProcess)).toBe(0)
+        }
 
         cpSync(join(fixtures, 'sample-app', 'mutations', 'user-with-handle.ts'), join(codeRoot, 'src', 'user.ts'))
 

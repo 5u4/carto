@@ -8,76 +8,83 @@ three packages: `@carto/core` (schema, content hashing, node tree, link
 resolver), `@carto/cli` (the `carto` binary), and `@carto/template` (the
 bundled Astro + Starlight site).
 
-## Prerequisites
+## Requirements
 
-- Node >= 20
-- pnpm — this repo pins `pnpm@10.13.1` via `packageManager` in `package.json`
+- Bash, Git, and curl
+- Node >= 22.12.0
+- Corepack or pnpm 10; the installer uses the repository-pinned pnpm version
 
-## Setup
+## Install
 
-Run these three commands, in order, from the repo root:
-
-```sh
-pnpm install    # installs deps; the carto bin is NOT linked yet (dist/ absent)
-pnpm build      # compiles core, cli, and template -> creates packages/cli/dist
-pnpm install    # re-run: links the carto bin now that its build target exists
-```
-
-The second `pnpm install` is not optional. pnpm links a workspace package's
-`bin` entry into `node_modules/.bin` **at install time**. The `carto` bin
-target is `packages/cli/dist/index.js`, which doesn't exist on a fresh clone
-until after `pnpm build` runs — so the first install silently skips the link
-(a benign warning), and it does not retry after a later build. If you stop
-after `pnpm install && pnpm build`, `pnpm exec carto` fails with:
-
-```
-ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command "carto" not found
-```
-
-Running `pnpm install` a second time (now that `dist/index.js` exists) links
-the bin. Confirm it worked with `pnpm exec carto --help`.
-
-## Preview the docs
-
-From the repo root:
+Install the CLI and its two coding-agent skills from source:
 
 ```sh
-pnpm exec carto dev
+curl -fsSL https://raw.githubusercontent.com/5u4/carto/main/install.sh | bash
 ```
 
-This starts the Astro dev server. Open **http://localhost:4321/overview/**.
+The installer clones carto to `~/.carto/repo`, builds it, links `carto` into
+`~/.local/bin`, and links the `carto` and `documenting-component` skills into
+`~/.agents/skills`. Re-run the same command to update. If the installer adds
+`~/.local/bin` to your shell configuration, open a new shell before verifying:
 
-Notes:
-- The default locale (`en`) is unprefixed; `zh` lives under `/zh/overview/`.
-- Bare `/` (and `/en/`) 404 — there's no index route, only the node slugs.
-- All `carto` commands read `carto.json` from the current directory, so they
-  must be run from the doc root — here, the repo root.
+```sh
+carto --help
+```
+
+Carto is verified in CI on Linux. macOS is expected to work and is maintained
+through regular use, but is not covered by CI. On Windows, use WSL; native
+Windows installation is not currently supported.
+
+## Start a doc set
+
+From the root of the codebase you want to document:
+
+```sh
+carto init
+```
+
+Then ask your coding agent: `Use the carto skill to document <scope>.` The
+agent reads the code, writes the page tree and prose, and uses the CLI to hash
+and validate its work. The CLI does not call an LLM itself.
 
 ## CLI commands
 
 | Command | Description |
 |---|---|
-| `carto init` | Scaffold a starter `carto.json` and `docs/` in the current directory |
-| `carto status` | Report each node's freshness; exits non-zero if any node is stale, 0 if all are fresh |
-| `carto sync` | Recompute and write every source hash; refreshes `updated_at` |
-| `carto coverage` | List files under the doc root that no node's `sources` tracks; respects `.gitignore` + `.cartoignore`; exits 0 by default, or non-zero with `--fail-on-uncovered` |
-| `carto validate` | Validate schema, id/slug uniqueness, parent cycles, and link resolution; exits non-zero on any error |
-| `carto dev` | Preview the site for the current doc root |
-| `carto build` | Build the static site for the current doc root |
+| `carto init` | Scaffold `carto.json` and `docs/` in the current directory |
+| `carto status` | Report each node's freshness; exit non-zero if any node is not fresh |
+| `carto sync <node-id...>` | Record current source hashes for the named, reviewed documentation nodes |
+| `carto coverage` | List source files no node tracks; use `--fail-on-uncovered` to make gaps fail |
+| `carto validate` | Validate schema, tree, source state, locales, and logical links |
+| `carto build` | Build the static site into `dist-site/` |
+| `carto preview` | Serve an existing `dist-site/` locally without rebuilding it |
 
-## Build the static site
+Every command reads `carto.json` from the current directory. Run commands from
+the doc root.
 
-```sh
-pnpm exec carto build
-```
-
-Renders the production site into `./dist-site/` (gitignored). Preview the
-built output — from the repo root, with `CARTO_ROOT` pointing at the doc root so
-Astro serves `$CARTO_ROOT/dist-site` (not the template package's own dir):
+## Build and preview
 
 ```sh
-CARTO_ROOT="$PWD" pnpm --filter @carto/template exec astro preview
+carto build
+carto preview
 ```
+
+`build` publishes `dist-site/` only after a successful isolated build. A failed
+build leaves the previous output intact. `preview` serves that built output on
+`127.0.0.1`; use `--host` or `--port` to override the listening address.
+
+## Work on carto itself
+
+From a source checkout:
+
+```sh
+pnpm install --frozen-lockfile
+pnpm build
+node packages/cli/dist/index.js --help
+```
+
+The installed user command is managed by `install.sh`; contributors do not
+need a pnpm global link.
 
 ## Customize the site
 
@@ -108,11 +115,12 @@ Your options are merged into carto's Starlight config. carto keeps ownership of
 setting them here has no effect. Everything else (title, `customCss`, `plugins`,
 `logo`, `social`, component overrides, …) is yours.
 
-To use a community theme or any plugin — or to get the `@type` autocomplete —
-your doc root must be an npm project so the package resolves: run `pnpm init`
-there and `pnpm add @astrojs/starlight` (plus any theme, e.g.
-`starlight-theme-rapide`). The build itself works without this; only editor
-tooling needs it. Only `.mjs`/`.js` config files are supported.
+To use a community theme or plugin, make the doc root an npm project and
+install that dependency there, for example `pnpm init` followed by
+`pnpm add starlight-theme-rapide`. Install `@astrojs/starlight` there as well
+if you want the scaffolded `@type` annotation to resolve for editor
+autocomplete. A plain generated config needs no doc-root dependencies. Only
+`.mjs`/`.js` config files are supported.
 
 ## Testing
 
@@ -122,11 +130,12 @@ Two layers, split by what they defend:
 - `pnpm test:pipeline` — a deterministic system test
   (`tests/pipeline/carto-pipeline.test.ts`). It copies hand-written fixture
   doc-sets into a temp root and drives the real `carto` CLI through the full
-  loop: sync → validate → build, then mutates a source file to assert staleness
-  detection (status red → sync → green), then federates a second doc-set. Each
-  phase asserts `carto build` renders, known source symbols reach the built
-  HTML, every `carto:` link resolves, and the federated pages mount under their
-  alias-hash and `/self` prefixes. No LLM, no secrets — runs in CI.
+  loop: sync → validate → build → preview, then mutates a source file to assert
+  staleness detection (status red → targeted sync → green), then federates a
+  second doc-set. It fetches the previewed artifact, checks known source symbols
+  reach the HTML, verifies every `carto:` link resolves, and confirms federated
+  pages mount under their alias-hash and `/self` prefixes. No LLM or secrets;
+  it runs in CI.
 
 Skill quality (does an agent *follow* `skills/carto` and
 `skills/documenting-component`) is measured separately with

@@ -31,34 +31,34 @@ carto 对一套文档的全部认知都存放在磁盘上的两类文件中。�
 - **`ID_PATTERN`** —— `/^[a-z0-9][a-z0-9-]*$/`
   （`packages/core/src/schema.ts:3`）。每个节点 id、`parent`、`home` 以及
   federated `alias` 都必须匹配它。目录扫描同样强制执行它（见下）。
-- **`sourceSchema`** —— 一个 source 为 `{ file, hash?, commit? }`。`file` 必须是
-  **不含 `..` 片段的相对路径** —— `isRelativeFile` 拒绝绝对路径、盘符根路径
-  （`C:`）以及任何 `..` 组成部分（`packages/core/src/schema.ts:11`，在
-  `packages/core/src/schema.ts:19` 处细化）。末尾的 `.refine` 强制
-  **`commit` 需要 `hash`** —— 没有内容指纹就无法盖上 commit
-  （`packages/core/src/schema.ts:23`）。
+- **`sourceSchema`** —— 一个 source 为 `{ file, hash?, commit? }`。`file` 必须使用
+  正斜杠，且是**不含 `..` 片段的相对路径** —— `isRelativeFile` 拒绝反斜杠、
+  绝对路径、盘符根路径（`C:`）以及任何 `..` 组成部分
+  （`packages/core/src/schema.ts:11`，在 `packages/core/src/schema.ts:18` 处细化）。
+  末尾的 `.refine` 强制 **`commit` 需要 `hash`** —— 没有内容指纹就无法盖上
+  commit（`packages/core/src/schema.ts:22`）。
 - **`configSchema.superRefine`** —— 超出逐字段类型的跨字段规则：locales 必须
   **唯一**，`defaultLocale` 必须是 **`locales` 的成员**，且 federated 别名既不能
-  是**保留的 `self`** 也不能**重复**（`packages/core/src/schema.ts:58`）。
-  federated 条目本身是基于 `type` 的可辨识联合 —— `file`（相对 `path`）或
-  `git`（`url` + `ref`，可选 `subdir`）（`packages/core/src/schema.ts:42`）；
-  其中 `git` 变体驱动 [federation](carto:links)。
+  是**保留的 `self`** 也不能**重复**（`packages/core/src/schema.ts:57`）。
+  federated 条目本身是基于 `type` 的可辨识联合 —— `file`（使用正斜杠的相对
+  `path`）或 `git`（`url` + `ref`，可选 `subdir`）
+  （`packages/core/src/schema.ts:41`）；其中 `git` 变体驱动 [federation](carto:links)。
 - **默认值填补缺省。** `sources` 与 `federated` 都默认为 `[]`
-  （`packages/core/src/schema.ts:46`、`packages/core/src/schema.ts:56`），因此
+  （`packages/core/src/schema.ts:45`、`packages/core/src/schema.ts:55`），因此
   一个 `{}` 节点文件解析为 `{ sources: [] }`，而没有 federation 的配置就是一个
   空数组 —— 下游代码无需就“缺失”分支。
 
 ### 类型阶梯
 
-导出的类型逐层构建（`packages/core/src/schema.ts:81`）：
+导出的类型逐层构建（`packages/core/src/schema.ts:80`）：
 
 - `Source` = 一个被追踪的文件 `{ file, hash?, commit? }`。
 - `NodeFile` = 磁盘上的内容：`{ parent?, sources }`。
 - `Config` = `carto.json` 所保存的内容。
 - `Node` = `NodeFile & { id }` —— 文件加上由目录派生的 id
-  （`packages/core/src/schema.ts:87`）。
+  （`packages/core/src/schema.ts:86`）。
 - `Manifest` = `Config & { nodes: Node[] }` —— 配置与从磁盘扫描出的每个节点
-  相联结（`packages/core/src/schema.ts:88`）。
+  相联结（`packages/core/src/schema.ts:87`）。
 
 `readManifest` 恰恰就是把磁盘上的 `Config` + 目录树转化为那个内存 `Manifest`
 的函数。

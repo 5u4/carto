@@ -33,37 +33,37 @@ Both files are validated by Zod schemas; nothing else re-checks their shape.
 - **`ID_PATTERN`** — `/^[a-z0-9][a-z0-9-]*$/`
   (`packages/core/src/schema.ts:3`). Every node id, `parent`, `home`, and
   federated `alias` must match it. Directory scanning enforces it too (below).
-- **`sourceSchema`** — a source is `{ file, hash?, commit? }`. `file` must be a
-  **relative path with no `..` segments** — `isRelativeFile` rejects absolute
-  paths, drive-rooted paths (`C:`), and any `..` component
-  (`packages/core/src/schema.ts:11`, refined at
-  `packages/core/src/schema.ts:19`). A trailing `.refine` enforces that
+- **`sourceSchema`** — a source is `{ file, hash?, commit? }`. `file` must use
+  forward slashes and be a **relative path with no `..` segments** —
+  `isRelativeFile` rejects backslashes, absolute paths, drive-rooted paths
+  (`C:`), and any `..` component (`packages/core/src/schema.ts:11`, refined at
+  `packages/core/src/schema.ts:18`). A trailing `.refine` enforces that
   **`commit` requires `hash`** — you cannot stamp a commit without a content
-  fingerprint (`packages/core/src/schema.ts:23`).
+  fingerprint (`packages/core/src/schema.ts:22`).
 - **`configSchema.superRefine`** — cross-field rules beyond per-field types:
   locales must be **unique**, `defaultLocale` must be **a member of `locales`**,
   and federated aliases must be neither the **reserved `self`** nor a
-  **duplicate** (`packages/core/src/schema.ts:58`). The federated entry itself
-  is a discriminated union on `type` — `file` (relative `path`) or `git`
-  (`url` + `ref`, optional `subdir`) (`packages/core/src/schema.ts:42`); the
-  `git` variant powers [federation](carto:links).
+  **duplicate** (`packages/core/src/schema.ts:57`). The federated entry itself
+  is a discriminated union on `type` — `file` (a relative, forward-slash
+  `path`) or `git` (`url` + `ref`, optional `subdir`)
+  (`packages/core/src/schema.ts:41`); the `git` variant powers [federation](carto:links).
 - **Defaults fill absence.** Both `sources` and `federated` default to `[]`
-  (`packages/core/src/schema.ts:46`, `packages/core/src/schema.ts:56`), so a
+  (`packages/core/src/schema.ts:45`, `packages/core/src/schema.ts:55`), so a
   `{}` node file parses to `{ sources: [] }` and a config without federation is
   just an empty array — no downstream code branches on "missing".
 
 ### The type ladder
 
 The exported types build up in layers
-(`packages/core/src/schema.ts:81`):
+(`packages/core/src/schema.ts:80`):
 
 - `Source` = one tracked file `{ file, hash?, commit? }`.
 - `NodeFile` = what is on disk: `{ parent?, sources }`.
 - `Config` = what `carto.json` holds.
 - `Node` = `NodeFile & { id }` — the file plus its directory-derived id
-  (`packages/core/src/schema.ts:87`).
+  (`packages/core/src/schema.ts:86`).
 - `Manifest` = `Config & { nodes: Node[] }` — the config joined with every node
-  scanned off disk (`packages/core/src/schema.ts:88`).
+  scanned off disk (`packages/core/src/schema.ts:87`).
 
 `readManifest` is precisely the function that turns the on-disk `Config` +
 directory tree into that in-memory `Manifest`.

@@ -3,20 +3,19 @@ import { z } from 'zod'
 export const ID_PATTERN = /^[a-z0-9][a-z0-9-]*$/
 
 function isRelativePath(value: string): boolean {
-  if (value.startsWith('/') || value.startsWith('\\')) return false
+  if (value.startsWith('/') || value.includes('\\')) return false
   if (value.length >= 2 && value[1] === ':') return false
   return true
 }
 
 function isRelativeFile(value: string): boolean {
   if (!isRelativePath(value)) return false
-  const segments = value.split('/').flatMap((part) => part.split('\\'))
-  return !segments.includes('..')
+  return !value.split('/').includes('..')
 }
 
 export const sourceSchema = z
   .object({
-    file: z.string().min(1).refine(isRelativeFile, 'file must be a relative path without ".." segments'),
+    file: z.string().min(1).refine(isRelativeFile, 'file must use forward slashes and be a relative path without ".." segments'),
     hash: z.string().min(1).optional(),
     commit: z.string().min(1).optional()
   })
@@ -28,7 +27,7 @@ export const sourceSchema = z
 export const federatedFileSchema = z.object({
   alias: z.string().regex(ID_PATTERN),
   type: z.literal('file'),
-  path: z.string().min(1).refine(isRelativePath, 'path must be a relative path (no absolute or drive-rooted paths)')
+  path: z.string().min(1).refine(isRelativePath, 'path must use forward slashes and be relative (no absolute or drive-rooted paths)')
 })
 
 export const federatedGitSchema = z.object({
