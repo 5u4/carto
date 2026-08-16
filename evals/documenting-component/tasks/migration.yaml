@@ -1,0 +1,66 @@
+id: documenting-component-migration-001
+name: Document the retry policy migration
+description: |
+  The agent documents an explicit old-to-new retry migration and uses one
+  fixture-consistent caller diff.
+tags:
+  - documenting-component
+  - migration
+  - happy-path
+
+inputs:
+  prompt: |
+    We're moving report retries from the legacy `retryDelay` helper to
+    `RetryPolicy`. Write `docs/retry-policy-migration.md` for engineers updating
+    callers. Compare the actual old and new behavior, explain the relationship
+    to `scheduleReportRetry`, and show the exact staged change from
+    `legacy/report-worker.ts` to `src/report-worker.ts` as one focused diff.
+    Use only lines from those two files rather than illustrating another caller.
+    Keep it to this migration.
+  files:
+    - path: legacy/retry-policy.ts
+    - path: legacy/report-worker.ts
+    - path: src/retry-policy.ts
+    - path: src/report-worker.ts
+
+expected:
+  outcomes:
+    - type: task_completed
+
+graders:
+  - type: skill_invocation
+    name: documenting_component_invoked
+    config:
+      mode: any_order
+      required_skills:
+        - documenting-component
+      allow_extra: true
+  - type: program
+    name: migration_page_contract
+    config:
+      command: python3
+      args: ["evals/documenting-component/graders/check_page.py", "migration"]
+      timeout: 60
+  - type: prompt
+    name: migration_semantic_quality
+    config:
+      model: claude-sonnet-4.6
+      continue_session: true
+      prompt: |
+        Judge the documentation page produced in this session on six semantic
+        qualities:
+        1. Narrowness: it stays centered on this retry migration rather than
+           becoming a general retries guide.
+        2. Intent: it explains the code-supported contract change and practical
+           timing effect without requiring unstated product motivation.
+        3. Neighbors: it makes the policy-to-report-worker relationship clear
+           on both sides of the migration.
+        4. Mental model: a reader can reason about the old helper, the new
+           configured policy, and how a caller adopts it.
+        5. Visual usefulness: the staged report-worker diff is the page's one
+           explanatory view and makes the change easier to understand.
+        6. Evidence quality: every load-bearing claim and diff fact has a
+           nearby path:line anchor whose cited code supports it.
+        Call set_waza_grade_pass exactly once only if all six qualities are
+        satisfied. Otherwise call set_waza_grade_fail exactly once and identify
+        the weak qualities.
