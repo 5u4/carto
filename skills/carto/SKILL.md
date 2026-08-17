@@ -67,8 +67,8 @@ Given a scope:
 
 3. Write the node.json files for the in-scope nodes only, and touch no others.
 
-4. Write the .mdx pages: docs/<id>/<locale>.mdx for every in-scope node and
-   every declared locale.
+4. Build one locale-neutral evidence plan per node, then author
+   docs/<id>/<locale>.mdx directly in every declared locale.
 
 5. carto sync <id> [<id> ...]   Bless exactly the nodes you just wrote — the CLI
    recomputes their source hashes and stamps the current commit. Naming the ids
@@ -185,7 +185,7 @@ reported by `carto status`, and rejected by `carto validate` until you run
 ### docs/&lt;id&gt;/&lt;locale&gt;.mdx — the prose
 
 One per node per locale. Each **MUST begin with a YAML frontmatter block**
-carrying a `title:` field (translated per locale), and MAY add a
+carrying a `title:` field authored in that locale, and MAY add a localized
 `description:`. Everything after the frontmatter is the page's prose — this is
 where all prose lives.
 
@@ -239,11 +239,24 @@ carto's nodes and `sources`.
 
 ## Locale discipline
 
-- **Generate all locales together.** Write `defaultLocale` first, then each
-  translation. Translations preserve every `carto:` link and every complete
-  repository-relative `path:line` or `path:start-end` anchor **verbatim** —
-  translate the prose, never the identifiers or link targets. Every node must
-  have an `.mdx` for every declared locale, or `carto validate` fails.
+- **Share evidence, author prose natively.** Before drafting, establish one
+  locale-neutral contract for the node: its reader question, mental-model
+  boundary, supported claims, `carto:` targets, and code anchors. Then write
+  each locale directly from the code and that contract. Each page should read
+  as if it was conceived in that language for its local technical audience.
+- **Keep facts aligned, not sentences.** Locales cover the same mental model and
+  preserve every `carto:` target and every complete repository-relative
+  `path:line` or `path:start-end` anchor verbatim. Link labels, headings,
+  paragraph structure, terminology, examples, and explanation order may differ
+  when the locale reads more naturally that way. Any heading targeted by a
+  `carto:<id>#<anchor>` link must expose that same anchor in every locale.
+- **Audit each locale in isolation.** Read it without the default-locale page
+  beside it. Rewrite calques, source-language sentence shapes, unnatural
+  transitions, and terminology that local practitioners would not use. A
+  locale is complete only when it is idiomatic on its own and all factual
+  claims remain supported by its adjacent code anchors.
+- **Generate all locales together.** Every node must have an `.mdx` for every
+  declared locale, or `carto validate` fails.
 
 ## Recovering from a failed validate
 
