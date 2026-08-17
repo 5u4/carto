@@ -1,0 +1,40 @@
+{
+  "parent": "overview",
+  "sources": [
+    {
+      "file": "packages/core/src/schema.ts",
+      "hash": "623636308c382984",
+      "commit": "22f266580da904f0007504459b4a144e83092a41"
+    },
+    {
+      "file": "packages/core/src/manifest.ts",
+      "hash": "560e223da9dd2ecc",
+      "commit": "22f266580da904f0007504459b4a144e83092a41"
+    },
+    {
+      "file": "packages/core/src/graph.ts",
+      "hash": "89f05873d153d3a8",
+      "commit": "22f266580da904f0007504459b4a144e83092a41"
+    },
+    {
+      "file": "packages/core/src/tree.ts",
+      "hash": "0bbf3a076aff25a1",
+      "commit": "22f266580da904f0007504459b4a144e83092a41"
+    },
+    {
+      "file": "packages/core/src/hash.ts",
+      "hash": "2afef0f45e81f800",
+      "commit": "22f266580da904f0007504459b4a144e83092a41"
+    },
+    {
+      "file": "packages/core/src/status.ts",
+      "hash": "3761708d35ba6723",
+      "commit": "22f266580da904f0007504459b4a144e83092a41"
+    },
+    {
+      "file": "packages/core/src/coverage.ts",
+      "hash": "8a6ac7e271313cd8",
+      "commit": "22f266580da904f0007504459b4a144e83092a41"
+    }
+  ]
+}

@@ -1,90 +1,43 @@
 ---
-title: Carto
-description: How carto keeps a codebase map from silently rotting.
+title: Carto architecture overview
+description: Where documentation judgement lives and how authored files become a maintainable site.
 ---
 
-Carto generates **sustainably-evolving** documentation: a top-down mental-model
-map of a codebase — not an API reference — whose every page carries a
-machine-checkable fingerprint back to the source it describes. When code
-changes, tooling can tell exactly which pages went stale and regenerate only
-those, instead of letting the map drift out of sync with the territory.
+## Judgement belongs to the authoring agent
 
-## The problem it solves
+Carto separates documentation judgement from deterministic mechanics. The Carto skill asks an agent to build a sustainable mental map rather than an API reference or line-by-line transcription. The agent reads the code, chooses what the page should explain, and writes the MDX and node metadata; the CLI hashes files and validates structure and links, while the template renders the result. `skills/carto/SKILL.md:8-18`
 
-Hand-written architecture docs rot. Someone edits `payment.ts`, the page that
-explained payments is now subtly wrong, and nothing flags it. Six months later
-the doc is worse than none, because it is confidently misleading.
+That split keeps meaning in authored files, where it can be reviewed alongside the source. Carto's tools do not invent a page boundary or explanation: the skill explicitly treats those choices as documenting judgement and delegates only structural, freshness, and rendering work to deterministic components. `skills/carto/SKILL.md:34-38`
 
-Carto's answer is the **staleness crosshair**: each page declares the source
-files whose behavior it describes, and stores a content hash of each. Change a
-tracked file and its page is *provably* stale — surfaced by `carto status`,
-banner-flagged in the built site, and left for a coding agent to refresh. The map
-evolves with the code because drift is detectable, not because anyone remembers
-to look.
+## One authored model, three package boundaries
 
-## How the pieces fit
+The CLI is the orchestration boundary. Its package depends directly on both `@carto/core` and `@carto/template`, so dependency direction runs from the CLI toward the reusable model operations and the site renderer, not from authored pages toward package internals. `packages/cli/package.json:23-27`
 
-Carto is a TypeScript pnpm monorepo of three packages, plus the authoring
-skill that tells an agent how to drive them.
+At the core boundary, the public surface gathers schema, hashing, manifest, tree, resolution, graph, status, and coverage capabilities. These are the deterministic operations that let the CLI reason about a documentation set without taking over the author's explanatory choices. `packages/core/src/index.ts:1-9`
+
+At the template boundary, the public surface exposes site configuration and rendering. It owns the conversion from the documentation set into the site presentation, while the MDX and node metadata remain the authored source of truth. `packages/template/src/index.ts:1-3`
+
+The complete orientation is:
 
 ```mermaid
 flowchart TD
-  A["you (agent):<br/>read code, write .mdx + node.json"] --> M
-  M["@carto/core<br/>schema · hashing · tree · resolver"] --> C
-  C["@carto/cli<br/>the carto binary"] --> T
-  T["@carto/template<br/>Astro + Starlight site"]
+    A["Agent guided by the Carto skill"] -->|"writes explanations and metadata"| F["MDX pages + node metadata"]
+    F --> C["Carto CLI orchestration"]
+    C --> K["Core: structure and freshness"]
+    C --> T["Template: site configuration and rendering"]
+    T --> S["Maintainable documentation site"]
 ```
 
-- **[@carto/core](carto:manifest)** is the pure logic layer: the on-disk format
-  and its [Zod schema](carto:manifest), source [hashing and freshness](carto:freshness),
-  the node parent-tree, [`carto:` link resolution and federation](carto:links),
-  and [source coverage](carto:coverage). It is filesystem-aware but
-  rendering-agnostic — every symbol is re-exported flat from
-  `packages/core/src/index.ts:1`.
-- **[@carto/cli](carto:cli)** is the `carto` binary: a thin command layer that
-  reads the manifest, delegates the real work to core, prints a human report,
-  and exits with a status code. `packages/cli/src/main.ts:10` wires the seven
-  subcommands.
-- **[@carto/template](carto:rendering)** turns a resolved doc-set into a static
-  Starlight-on-Astro site, rewriting `carto:` links to real URLs and injecting
-  staleness banners.
-- The **[testing strategy](carto:testing)** and its [skill evals](carto:evals)
-  defend all of the above.
+This is a responsibility map, not a claim that authoring is automated: the skill places page writing with the agent, the CLI declares both package dependencies, core exposes the model operations, and template exposes rendering. `skills/carto/SKILL.md:15-18` `packages/cli/package.json:23-27` `packages/core/src/index.ts:1-9` `packages/template/src/index.ts:1-3`
 
-## What you write on disk
+## The lifecycle at orientation depth
 
-Two kinds of file. The CLI never invents structure — it only hashes and checks.
+A documentation run begins with a human-given scope. The agent narrows that scope using status and coverage information, applies the safety checkpoint for structural changes, then writes only the in-scope `node.json` files and locale pages. `skills/carto/SKILL.md:49-72`
 
-- **`carto.json`** — one thin config per doc root: locales, `defaultLocale`, an
-  optional `home` node, an optional `codeRoot`, and an optional `federated`
-  array. It carries **no node list** — nodes live in their own directories.
-- **`docs/<id>/node.json`** — one per page. The directory name *is* the node
-  id and the immutable link target. Holds an optional `parent` and a `sources`
-  list — the files whose behavior the page describes. See
-  [the manifest model](carto:manifest) for the exact shape.
-- **`docs/<id>/<locale>.mdx`** — the prose, one per node per locale, each with
-  YAML frontmatter carrying a `title`.
+After authoring, targeted sync records freshness for exactly the written nodes; validation checks schema, tree, links, and synchronization; status confirms that each touched node is fresh. This ordering is what makes maintenance scoped: deterministic checks preserve the connection to changing source files without rewriting unaffected explanations. `skills/carto/SKILL.md:73-91`
 
-## The generation loop
+The CLI presents that lifecycle as a single command surface—`init`, `status`, `sync`, `coverage`, `validate`, `preview`, and `build`. At this level, the important point is that one orchestrator carries authored files through model checks and onward to preview or build; command-specific behavior belongs in the workflow documentation. `packages/cli/src/main.ts:10-20`
 
-Documenting or refreshing always runs the same loop, scoped to what you set out
-to write:
+## Continue into the boundaries
 
-1. **`carto status`** / **`carto coverage`** — turn the scope into targets:
-   which nodes are stale, which source files no node covers.
-2. Write the `node.json` files and the `.mdx` pages for the in-scope nodes.
-3. **`carto sync <id> …`** — bless exactly those nodes: recompute their source
-   hashes and stamp the current commit. Naming ids is what keeps every other
-   page's freshness untouched.
-4. **`carto validate`** — check schema, tree, links, and that in-scope pages are
-   synced. Fix what it names, then sync + validate again.
-5. **`carto status`** — confirm every id you meant to write is now `fresh`.
-
-The [CLI page](carto:cli) walks each command; [freshness](carto:freshness)
-explains why naming ids on `sync` is the core of scoped updates.
-
-:::note
-This site documents carto **with carto** — it is dogfooded. The pages you are
-reading are the doc-set in this repo's `docs/`, and their staleness is tracked
-against the very source files described here.
-:::
+Read the [core model](carto:core-model) for the documentation graph and freshness concepts, the [CLI workflow](carto:cli-workflow) for command sequencing and operational checkpoints, and [site rendering](carto:site-rendering) for how the template turns the documentation set into the delivered site.

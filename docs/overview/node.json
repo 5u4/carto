@@ -1,19 +1,29 @@
 {
   "sources": [
     {
-      "file": "packages/core/src/index.ts",
-      "hash": "4a735758e7ec5407",
-      "commit": "af8c48484d63c1c180a80ccccc7c6403cc6e7476"
+      "file": "skills/carto/SKILL.md",
+      "hash": "1d9cd51c4c914e84",
+      "commit": "b743387a8ee8e24e72cce64aab73e934d610352b"
     },
     {
-      "file": "packages/cli/src/index.ts",
-      "hash": "65e40b1c4aed0f62",
-      "commit": "af8c48484d63c1c180a80ccccc7c6403cc6e7476"
+      "file": "packages/core/src/index.ts",
+      "hash": "4a735758e7ec5407",
+      "commit": "b743387a8ee8e24e72cce64aab73e934d610352b"
+    },
+    {
+      "file": "packages/cli/package.json",
+      "hash": "963c2aedff09a234",
+      "commit": "b743387a8ee8e24e72cce64aab73e934d610352b"
     },
     {
       "file": "packages/cli/src/main.ts",
       "hash": "88db4a45fe65b26b",
-      "commit": "af8c48484d63c1c180a80ccccc7c6403cc6e7476"
+      "commit": "b743387a8ee8e24e72cce64aab73e934d610352b"
+    },
+    {
+      "file": "packages/template/src/index.ts",
+      "hash": "f59da83ab37d07d5",
+      "commit": "b743387a8ee8e24e72cce64aab73e934d610352b"
     }
   ]
 }

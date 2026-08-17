@@ -1,0 +1,65 @@
+{
+  "parent": "overview",
+  "sources": [
+    {
+      "file": "packages/cli/package.json",
+      "hash": "963c2aedff09a234",
+      "commit": "22f266580da904f0007504459b4a144e83092a41"
+    },
+    {
+      "file": "packages/cli/src/index.ts",
+      "hash": "65e40b1c4aed0f62",
+      "commit": "22f266580da904f0007504459b4a144e83092a41"
+    },
+    {
+      "file": "packages/cli/src/main.ts",
+      "hash": "88db4a45fe65b26b",
+      "commit": "22f266580da904f0007504459b4a144e83092a41"
+    },
+    {
+      "file": "packages/cli/src/git.ts",
+      "hash": "0e0d709390d2f137",
+      "commit": "22f266580da904f0007504459b4a144e83092a41"
+    },
+    {
+      "file": "packages/cli/src/links.ts",
+      "hash": "6a0b2a76f5f6b2e4",
+      "commit": "22f266580da904f0007504459b4a144e83092a41"
+    },
+    {
+      "file": "packages/cli/src/commands/init.ts",
+      "hash": "b6453812032697ab",
+      "commit": "22f266580da904f0007504459b4a144e83092a41"
+    },
+    {
+      "file": "packages/cli/src/commands/status.ts",
+      "hash": "05478a9e2973cf8c",
+      "commit": "22f266580da904f0007504459b4a144e83092a41"
+    },
+    {
+      "file": "packages/cli/src/commands/coverage.ts",
+      "hash": "afa117eeafdc310f",
+      "commit": "22f266580da904f0007504459b4a144e83092a41"
+    },
+    {
+      "file": "packages/cli/src/commands/sync.ts",
+      "hash": "55db9e9597df4278",
+      "commit": "22f266580da904f0007504459b4a144e83092a41"
+    },
+    {
+      "file": "packages/cli/src/commands/validate.ts",
+      "hash": "ab7e137f4f943259",
+      "commit": "22f266580da904f0007504459b4a144e83092a41"
+    },
+    {
+      "file": "packages/cli/src/commands/build.ts",
+      "hash": "0b1055c2205b881f",
+      "commit": "22f266580da904f0007504459b4a144e83092a41"
+    },
+    {
+      "file": "packages/cli/src/commands/preview.ts",
+      "hash": "9e87134b745061e2",
+      "commit": "22f266580da904f0007504459b4a144e83092a41"
+    }
+  ]
+}

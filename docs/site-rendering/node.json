@@ -1,0 +1,45 @@
+{
+  "parent": "overview",
+  "sources": [
+    {
+      "file": "packages/template/src/render.ts",
+      "hash": "620744477eeb4399",
+      "commit": "22f266580da904f0007504459b4a144e83092a41"
+    },
+    {
+      "file": "packages/template/src/materialize.ts",
+      "hash": "988ca93e75d5e6b6",
+      "commit": "22f266580da904f0007504459b4a144e83092a41"
+    },
+    {
+      "file": "packages/template/src/site-config.ts",
+      "hash": "1fbe7d4dccc9d030",
+      "commit": "22f266580da904f0007504459b4a144e83092a41"
+    },
+    {
+      "file": "packages/template/src/remark-source-footnotes.ts",
+      "hash": "13b3365d1db46090",
+      "commit": "22f266580da904f0007504459b4a144e83092a41"
+    },
+    {
+      "file": "packages/template/src/remark-join-cjk.ts",
+      "hash": "11a1593a397791a2",
+      "commit": "22f266580da904f0007504459b4a144e83092a41"
+    },
+    {
+      "file": "packages/template/src/staleness-banner.ts",
+      "hash": "6bccccd65f12bf11",
+      "commit": "22f266580da904f0007504459b4a144e83092a41"
+    },
+    {
+      "file": "packages/template/src/content.config.ts",
+      "hash": "bb8d4570d3eaf53e",
+      "commit": "22f266580da904f0007504459b4a144e83092a41"
+    },
+    {
+      "file": "packages/template/astro.config.mjs",
+      "hash": "48efe0bcb18deff3",
+      "commit": "22f266580da904f0007504459b4a144e83092a41"
+    }
+  ]
+}
