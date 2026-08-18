@@ -1,4 +1,4 @@
-import { childrenOf, nodesById, urlPath, type Graph, type DocSet, type Manifest, type Node } from '@carto/core'
+import { childrenOf, localeFile, nodesById, urlPath, type Graph, type DocSet, type Manifest, type Node } from '@carto/core'
 import { existsSync } from 'node:fs'
 import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
@@ -104,7 +104,7 @@ export async function collectGraphTitles(graph: Graph): Promise<Map<string, stri
 async function collectInto(titles: Map<string, string>, root: string, manifest: Manifest, keyPrefix: string): Promise<void> {
   for (const node of manifest.nodes) {
     for (const locale of manifest.locales) {
-      const raw = await readFile(join(root, 'docs', node.id, `${locale}.mdx`), 'utf8')
+      const raw = await readFile(localeFile(root, node.id, locale), 'utf8')
       const title = extractTitle(raw)
       if (title) titles.set(`${keyPrefix}${node.id}:${locale}`, title)
     }

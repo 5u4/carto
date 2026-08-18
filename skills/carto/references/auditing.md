@@ -7,7 +7,7 @@ one focused correctness review, not an authoring or presentation pass.
 
 Audit the complete in-scope doc set in one pass. The reviewer receives:
 
-- every exact in-scope `docs/<id>/node.json` path;
+- every exact in-scope `.carto/docs/<id>/node.json` path;
 - every in-scope default-locale MDX path;
 - every source path listed by those nodes and every file directly cited by the
   pages or needed to verify a cross-file relationship;

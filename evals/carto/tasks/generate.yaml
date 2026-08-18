@@ -21,8 +21,9 @@ inputs:
       ./rate-limiter/src/api-request-limiter.ts, then generate the smallest useful
       Carto node set. One node is allowed when it sufficiently documents the
       codebase; do not force either one node or multiple nodes.
-    - For every node write docs/<id>/node.json and docs/<id>/<locale>.mdx for
-      every declared locale. Every .mdx MUST begin with a YAML frontmatter block
+    - For every node write .carto/docs/<id>/node.json and
+      .carto/docs/<id>/<locale>.mdx for every declared locale. Every .mdx MUST
+      begin with a YAML frontmatter block
       containing a `title:` field.
     - Link nodes with carto: links when they are related.
     - After authoring, complete the Carto skill's correctness audit before the

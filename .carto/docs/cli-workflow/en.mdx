@@ -38,7 +38,7 @@ The dispatch branches are the command registry. The solid lifecycle edges are au
 
 `carto init` operates in the current working directory. It accepts comma-separated locales, a default locale, and an optional relative code root; it refuses to overwrite an existing `carto.json` and schema-checks the configuration before writing anything. `packages/cli/src/commands/init.ts:6-33`
 
-On success it creates `docs/`, writes `carto.json`, and creates `carto.config.mjs` only when that file is absent. Its final message hands control back to the authoring skill, so initialization establishes the workspace but does not create or revise documentation prose. `packages/cli/src/commands/init.ts:34-41`
+On success it resolves and creates the canonical `.carto/docs/` directory, writes `carto.json`, and creates `carto.config.mjs` only when that file is absent. Its final message hands control back to the authoring skill, so initialization establishes the workspace but does not create or revise documentation prose. `packages/core/src/paths.ts:1-5` `packages/cli/src/commands/init.ts:34-41`
 
 ## Inspect assignment and freshness
 

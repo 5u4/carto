@@ -6,6 +6,17 @@ from pathlib import Path
 
 def main() -> int:
     workspace = Path(os.environ.get("WAZA_WORKSPACE_DIR", "."))
+    nodes_dir = workspace / ".carto" / "docs"
+    node_files = sorted(nodes_dir.glob("*/node.json"))
+    if not node_files:
+        print("no Carto nodes found under .carto/docs/", file=sys.stderr)
+        return 1
+    for node_file in node_files:
+        for locale in ("en", "zh"):
+            if not node_file.with_name(f"{locale}.mdx").is_file():
+                print(f"missing {locale} page beside {node_file.relative_to(workspace)}", file=sys.stderr)
+                return 1
+
     dist = workspace / "dist-site"
     if not dist.is_dir():
         print("dist-site/ not found: agent did not run `carto build`", file=sys.stderr)
@@ -28,7 +39,7 @@ def main() -> int:
             print(p, file=sys.stderr)
         return 1
 
-    print("carto build produced HTML with real source identifiers and resolved links")
+    print(".carto/docs nodes produced root dist-site HTML with real source identifiers and resolved links")
     return 0
 
 

@@ -52,8 +52,8 @@ describe('coverageReport', () => {
   it("excludes carto's own outputs and vcs/dependency dirs by default", async () => {
     await withTempDir(async (dir) => {
       await writeFile(join(dir, 'carto.json'), '{}')
-      await mkdir(join(dir, 'docs', 'n'), { recursive: true })
-      await writeFile(join(dir, 'docs', 'n', 'en.mdx'), 'doc')
+      await mkdir(join(dir, '.carto', 'docs', 'n'), { recursive: true })
+      await writeFile(join(dir, '.carto', 'docs', 'n', 'en.mdx'), 'doc')
       await mkdir(join(dir, 'dist-site'), { recursive: true })
       await writeFile(join(dir, 'dist-site', 'index.html'), 'html')
       await mkdir(join(dir, 'node_modules', 'dep'), { recursive: true })
@@ -90,11 +90,11 @@ describe('coverageReport', () => {
 
   it('scans the code root and excludes a doc root nested inside it', async () => {
     await withTempDir(async (dir) => {
-      await mkdir(join(dir, '.carto', 'docs', 'n'), { recursive: true })
-      await writeFile(join(dir, '.carto', 'carto.json'), '{}')
-      await writeFile(join(dir, '.carto', 'docs', 'n', 'en.mdx'), 'doc')
+      await mkdir(join(dir, 'documentation', '.carto', 'docs', 'n'), { recursive: true })
+      await writeFile(join(dir, 'documentation', 'carto.json'), '{}')
+      await writeFile(join(dir, 'documentation', '.carto', 'docs', 'n', 'en.mdx'), 'doc')
       await writeFile(join(dir, 'real.ts'), 'src')
-      const report = await coverageReport(manifest([]), dir, join(dir, '.carto'))
+      const report = await coverageReport(manifest([]), dir, join(dir, 'documentation'))
       expect(report.uncovered).toEqual(['real.ts'])
     })
   })

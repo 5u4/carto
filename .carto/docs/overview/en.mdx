@@ -13,7 +13,7 @@ That split keeps meaning in authored files, where it can be reviewed alongside t
 
 The CLI is the orchestration boundary. Its package depends directly on both `@carto/core` and `@carto/template`, so dependency direction runs from the CLI toward the reusable model operations and the site renderer, not from authored pages toward package internals. `packages/cli/package.json:23-27`
 
-At the core boundary, the public surface gathers schema, hashing, manifest, tree, resolution, graph, status, and coverage capabilities. These are the deterministic operations that let the CLI reason about a documentation set without taking over the author's explanatory choices. `packages/core/src/index.ts:1-9`
+At the core boundary, the public surface gathers schema, hashing, canonical storage paths, manifest, tree, resolution, graph, status, and coverage capabilities. The path module fixes authored bundles at `.carto/docs/<id>` while the remaining deterministic operations let the CLI reason about a documentation set without taking over the author's explanatory choices. `packages/core/src/index.ts:1-10` `packages/core/src/paths.ts:1-16`
 
 At the template boundary, the public surface exposes site configuration and rendering. It owns the conversion from the documentation set into the site presentation, while the MDX and node metadata remain the authored source of truth. `packages/template/src/index.ts:1-3`
 
@@ -28,7 +28,7 @@ flowchart TD
     T --> S["Maintainable documentation site"]
 ```
 
-This is a responsibility map, not a claim that authoring is automated: the skill places page writing with the agent, the CLI declares both package dependencies, core exposes the model operations, and template exposes rendering. `skills/carto/SKILL.md:15-18` `packages/cli/package.json:23-27` `packages/core/src/index.ts:1-9` `packages/template/src/index.ts:1-3`
+This is a responsibility map, not a claim that authoring is automated: the skill places page writing with the agent, the CLI declares both package dependencies, core exposes storage and model operations, and template exposes rendering. `skills/carto/SKILL.md:15-18` `packages/cli/package.json:23-27` `packages/core/src/index.ts:1-10` `packages/core/src/paths.ts:1-16` `packages/template/src/index.ts:1-3`
 
 ## The lifecycle at orientation depth
 

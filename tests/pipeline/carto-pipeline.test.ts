@@ -132,6 +132,7 @@ describe('carto pipeline: deterministic sync/validate/build over hand-written do
       try {
         cpSync(join(fixtures, 'sample-app', 'src'), join(codeRoot, 'src'), { recursive: true })
         cpSync(join(fixtures, 'doc-set'), docRoot, { recursive: true })
+        const nodesRoot = join(docRoot, '.carto', 'docs')
 
         const sync1 = carto(['sync'], docRoot)
         expect(sync1.status, `sync failed:\n${sync1.stderr}`).toBe(0)
@@ -139,8 +140,8 @@ describe('carto pipeline: deterministic sync/validate/build over hand-written do
         const validate1 = carto(['validate'], docRoot)
         expect(validate1.status, `validate not green after sync:\n${validate1.stdout}\n${validate1.stderr}`).toBe(0)
 
-        const nodeCount = readdirSync(join(docRoot, 'docs'), { withFileTypes: true }).filter(
-          (e) => e.isDirectory() && existsSync(join(docRoot, 'docs', e.name, 'node.json'))
+        const nodeCount = readdirSync(nodesRoot, { withFileTypes: true }).filter(
+          (e) => e.isDirectory() && existsSync(join(nodesRoot, e.name, 'node.json'))
         ).length
         expect(nodeCount).toBeGreaterThanOrEqual(3)
 
@@ -175,7 +176,7 @@ describe('carto pipeline: deterministic sync/validate/build over hand-written do
         const staleBeforeRefresh = carto(['status'], docRoot)
         expect(staleBeforeRefresh.status, 'carto status should be non-zero after mutating sample-app/src/user.ts').not.toBe(0)
 
-        cpSync(join(fixtures, 'refresh', 'user'), join(docRoot, 'docs', 'user'), { recursive: true })
+        cpSync(join(fixtures, 'refresh', '.carto', 'docs', 'user'), join(nodesRoot, 'user'), { recursive: true })
         const syncUser = carto(['sync', 'user'], docRoot)
         expect(syncUser.status, `sync user failed:\n${syncUser.stderr}`).toBe(0)
 
@@ -198,7 +199,7 @@ describe('carto pipeline: deterministic sync/validate/build over hand-written do
         writeFileSync(join(docRoot, 'carto.json'), `${JSON.stringify(manifest, null, 2)}\n`, 'utf8')
 
         for (const locale of ['en', 'zh']) {
-          const page = join(docRoot, 'docs', 'overview', `${locale}.mdx`)
+          const page = join(nodesRoot, 'overview', `${locale}.mdx`)
           const body = readFileSync(page, 'utf8')
           writeFileSync(page, `${body}\nSee the [glossary](carto:glossary/terms).\n`, 'utf8')
         }

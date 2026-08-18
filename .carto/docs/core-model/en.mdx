@@ -9,15 +9,15 @@ The [overview](carto:overview) places this model in the wider system. Inside the
 
 ## Assembly establishes the shared input
 
-`carto.json` defines the locale and federation-level configuration, while each `docs/<id>/node.json` defines a node's optional parent and source list. Defaults are applied during schema parsing, including empty `sources` and `federated` arrays; cross-field checks reject invalid locale relationships, the reserved federation alias `self`, and duplicate aliases. `packages/core/src/schema.ts:43-77`
+`carto.json` defines the locale and federation-level configuration, while the path module fixes each authored bundle at `.carto/docs/<id>` and each `node.json` defines that node's optional parent and source list. Defaults are applied during schema parsing, including empty `sources` and `federated` arrays; cross-field checks reject invalid locale relationships, the reserved federation alias `self`, and duplicate aliases. `packages/core/src/paths.ts:1-16` `packages/core/src/schema.ts:43-77`
 
-Manifest loading parses `carto.json`, discovers valid node-id directories under `docs/`, sorts those ids, and loads their `node.json` files in that order. The directory name becomes the node id only after the node metadata has passed validation; malformed configuration or node metadata becomes a `ManifestError`, while a directory without `node.json` contributes no node. `packages/core/src/manifest.ts:21-35` `packages/core/src/manifest.ts:68-80` `packages/core/src/manifest.ts:82-131`
+Manifest loading parses `carto.json`, discovers valid node-id directories through the canonical `.carto/docs/` path, sorts those ids, and loads their `node.json` files in that order. The directory name becomes the node id only after the node metadata has passed validation; malformed configuration or node metadata becomes a `ManifestError`, while a directory without `node.json` contributes no node. `packages/core/src/paths.ts:1-16` `packages/core/src/manifest.ts:21-35` `packages/core/src/manifest.ts:68-80` `packages/core/src/manifest.ts:82-131`
 
 Everything below is therefore a derived structure or operation over the same manifest, not another competing source of truth. The tree follows node parents, the federation graph follows doc-set entries, source operations compare file bytes with stored snapshots, and coverage compares declared paths with a separately walked file set. `packages/core/src/tree.ts:3-29` `packages/core/src/graph.ts:44-88` `packages/core/src/manifest.ts:208-236` `packages/core/src/status.ts:27-53` `packages/core/src/coverage.ts:60-68`
 
 ```mermaid
 flowchart TD
-    disk["carto.json + docs/id/node.json"] --> manifest["Validated Manifest"]
+    disk["carto.json + .carto/docs/id/node.json"] --> manifest["Validated Manifest"]
     manifest --> tree["Node parent tree"]
     manifest --> federation["Federated doc-set graph"]
     manifest --> sources["Code-root-relative source snapshots"]

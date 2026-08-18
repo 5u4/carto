@@ -32,7 +32,7 @@ Publication first copies Astro's output to a staging directory beside `dist-site
 
 Materialization loads the graph once and treats the root doc-set's locales as the site's locale set. It walks every doc-set, node, and site locale; when a federated doc-set lacks that locale, it reads the doc-set's default-locale page but still writes the requested site-locale route and warns about the fallback. `packages/template/src/materialize.ts:20-47`
 
-A destination path is assembled from three graph facts: a non-default locale prefix, a federated doc-set prefix when present, and the node's complete root-to-node ancestry. The resulting MDX path is therefore both a Starlight content address and a faithful projection of Carto parentage rather than a copy of the authored `docs/<id>` layout. `packages/template/src/materialize.ts:84-89`
+A destination path is assembled from three graph facts: a non-default locale prefix, a federated doc-set prefix when present, and the node's complete root-to-node ancestry. The resulting MDX path is therefore both a Starlight content address and a faithful projection of Carto parentage rather than a copy of the canonical `.carto/docs/<id>` layout. `packages/core/src/paths.ts:1-16` `packages/template/src/materialize.ts:84-89`
 
 The root locale maps to Starlight's special `root` locale key, while every other locale keeps its own key, label, and language value. Root redirects choose the configured home node when it is valid and otherwise the first root node, producing a redirect for each site locale. `packages/template/src/site-config.ts:7-13` `packages/template/src/site-config.ts:51-68`
 
@@ -52,7 +52,7 @@ Starlight reads this projected content through its docs loader and schema. The A
 
 ## Freshness is visible but ephemeral
 
-Before each temporary MDX file is written, materialization computes freshness per doc-set and node, rewrites its logical links, and then injects any freshness warning. This ordering makes the banner part of the rendered projection, not a mutation of `docs/<id>/<locale>.mdx`. `packages/template/src/materialize.ts:39-55`
+Before each temporary MDX file is written, materialization reads the canonical locale file through the shared path module, computes freshness per doc-set and node, rewrites its logical links, and then injects any freshness warning. This ordering makes the banner part of the rendered projection, not a mutation of `.carto/docs/<id>/<locale>.mdx`. `packages/core/src/paths.ts:15-16` `packages/template/src/materialize.ts:39-55`
 
 A banner is added only for a stale or missing node that has frontmatter and does not already define `banner:`. Its message lists only changed or absent source files, escapes their paths for HTML and YAML, and preserves the page's line-ending style. Authored banners therefore win, and fresh or unsynced pages pass through unchanged. `packages/template/src/staleness-banner.ts:3-27`
 

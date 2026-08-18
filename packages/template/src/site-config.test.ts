@@ -222,8 +222,8 @@ describe('collectTitles', () => {
   })
 
   async function writeDoc(root: string, id: string, locale: string, frontmatter: string): Promise<void> {
-    await mkdir(join(root, 'docs', id), { recursive: true })
-    await writeFile(join(root, 'docs', id, `${locale}.mdx`), frontmatter, 'utf8')
+    await mkdir(join(root, '.carto', 'docs', id), { recursive: true })
+    await writeFile(join(root, '.carto', 'docs', id, `${locale}.mdx`), frontmatter, 'utf8')
   }
 
   it('maps id:locale to the frontmatter title for each present locale', async () => {

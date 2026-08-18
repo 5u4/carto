@@ -1,6 +1,8 @@
 # Documenting Carto nodes
 
-Use this reference for every creation, refresh, or structural documentation run. A Carto node is one bundle: `docs/<id>/node.json` plus `docs/<id>/<locale>.mdx` for every locale declared in `carto.json`.
+Use this reference for every creation, refresh, or structural documentation run.
+A Carto node is one bundle: `.carto/docs/<id>/node.json` plus
+`.carto/docs/<id>/<locale>.mdx` for every locale declared in `carto.json`.
 
 ## 1. Fix the developer question
 

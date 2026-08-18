@@ -30,8 +30,8 @@ Three prerequisites, in order. Stop and resolve each before generating.
    `carto <command> --help` for a command's flags. Never assume a command or
    flag exists — check.
 3. **The current directory must be a carto doc root** — it holds a `carto.json`
-   config and a `docs/` directory. If `carto.json` is absent, run `carto init`
-   once to scaffold both (`init` refuses if `carto.json` already exists).
+   config and a `.carto/docs/` directory. If `carto.json` is absent, run
+   `carto init` once to scaffold both (`init` refuses if `carto.json` already exists).
 
 This skill drives carto — the CLI, the config, the `node.json` files, the link
 and anchor rules, and how a page maps onto carto's node tree.
@@ -74,8 +74,8 @@ Given a scope:
    before editing when the plan would delete a node, page, or source assignment;
    rename a node id; reparent a node; make a large reassignment of an existing
    node's sources; or when the scope remains ambiguous. In those cases, list
-   the exact affected node ids and `docs/<id>/<locale>.mdx` paths, describe the
-   structural change, and wait for approval before touching files.
+   the exact affected node ids and `.carto/docs/<id>/<locale>.mdx` paths,
+   describe the structural change, and wait for approval before touching files.
 
 3. Start with the smallest useful node set and build one locale-neutral
    developer-question and evidence plan per proposed node before writing any
@@ -85,8 +85,8 @@ Given a scope:
    content, then write the in-scope `node.json` records only. Touch no other
    node records.
 
-5. Author docs/<id>/<locale>.mdx for every in-scope node and every declared
-   locale from the same evidence plan.
+5. Author `.carto/docs/<id>/<locale>.mdx` for every in-scope node and every
+   declared locale from the same evidence plan.
 
 6. After authoring, read [auditing.md](references/auditing.md) in full for the
    first time; do not load it during inspection, planning, or authoring. When
@@ -183,9 +183,9 @@ Two kinds of file. The CLI never invents structure — it only hashes and checks
 carto.json carries **no `nodes` array and no `updated_at`** — nodes live in
 their own directories, and per-source hashes are the freshness truth.
 
-### docs/&lt;id&gt;/node.json — one per page
+### .carto/docs/&lt;id&gt;/node.json — one per page
 
-The node's **id is its directory name** — `docs/payments/node.json` is the node
+The node's **id is its directory name** — `.carto/docs/payments/node.json` is
 `payments`. The id is the immutable link target (`carto:payments`); renaming it
 means `git mv`-ing the directory (and every `carto:` link to it, or
 `carto validate` will flag the now-dangling links). The file itself holds only:
@@ -219,7 +219,7 @@ Writing `file` without `hash` is the normal **unsynced** state: legal on disk,
 reported by `carto status`, and rejected by `carto validate` until you run
 `carto sync`.
 
-### docs/&lt;id&gt;/&lt;locale&gt;.mdx — the prose
+### .carto/docs/&lt;id&gt;/&lt;locale&gt;.mdx — the prose
 
 One per node per locale. Each **MUST begin with a YAML frontmatter block**
 carrying a `title:` field authored in that locale, and MAY add a localized
@@ -272,8 +272,8 @@ content. This section defines how those decisions map onto carto's nodes and
   change surface and gains worthwhile independent staleness or navigation.
   Never mirror files, exports, or directories into pages.
 - **One durable primary developer question = one node** — a directory
-  `docs/<id>/` with a `node.json` (an optional `parent`, a `sources` list) and
-  one `.mdx` per locale. An orientation parent exists only to navigate durable
+  `.carto/docs/<id>/` with a `node.json` (an optional `parent`, a `sources` list)
+  and one `.mdx` per locale. An orientation parent exists only to navigate durable
   child questions; if it states executable topology or any other code-derived
   claim, relationship, or view, it is an evidenced page with non-empty sources.
 - **A node's `sources` is its evidence set — the staleness crosshair.** Derive
@@ -320,7 +320,7 @@ on the pages you touched, but **not** on pre-existing staleness. Common cases:
 - **duplicate id** — two directories cannot share a name; this cannot happen on
   disk, but a malformed `node.json` id is rejected.
 - **unresolved `carto:` link** — fix the id in the link, or add the missing node.
-- **missing locale mdx** — write the absent `docs/<id>/<locale>.mdx`.
+- **missing locale mdx** — write the absent `.carto/docs/<id>/<locale>.mdx`.
 - **federation `/` link error** — the alias is not declared in this manifest's
   `federated` array, or the id does not exist in the referenced doc-set.
 - **missing source file** — a `sources` entry points at a file that no longer

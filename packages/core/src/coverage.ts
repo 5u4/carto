@@ -9,7 +9,7 @@ export interface CoverageReport {
   uncovered: string[]
 }
 
-const DEFAULT_IGNORES = ['.git', 'node_modules/', '/carto.json', '/docs/', '/dist-site/', '.gitignore', '.cartoignore']
+const DEFAULT_IGNORES = ['.git', 'node_modules/', '/carto.json', '/.carto/', '/dist-site/', '.gitignore', '.cartoignore']
 
 const IGNORE_FILES = ['.gitignore', '.cartoignore']
 

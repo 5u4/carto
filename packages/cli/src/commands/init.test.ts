@@ -1,9 +1,9 @@
 import { describe, expect, it, vi } from 'vitest'
 import { runCommand } from 'citty'
-import { mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { parseConfig } from '@carto/core'
+import { docsDir, parseConfig } from '@carto/core'
 import { initCommand } from './init'
 
 class ProcessExitSignal extends Error {
@@ -40,7 +40,7 @@ async function withTempCwd<T>(fn: (dir: string) => Promise<T>): Promise<T> {
 }
 
 describe('carto init', () => {
-  it('creates a schema-valid carto.json and a docs/ dir in an empty directory', async () => {
+  it('creates a schema-valid carto.json and a .carto/docs/ dir in an empty directory', async () => {
     await withTempCwd(async (dir) => {
       const exitCode = await runAndCaptureExit()
       expect(exitCode).toBeNull()
@@ -48,8 +48,20 @@ describe('carto init', () => {
       expect(() => parseConfig(raw)).not.toThrow()
       expect(raw).not.toHaveProperty('nodes')
       expect(raw).not.toHaveProperty('updated_at')
-      const docsStat = await stat(join(dir, 'docs'))
+      const docsStat = await stat(docsDir(dir))
       expect(docsStat.isDirectory()).toBe(true)
+    })
+  })
+
+  it('reuses an existing .carto/docs/ directory', async () => {
+    await withTempCwd(async (dir) => {
+      const docs = docsDir(dir)
+      await mkdir(docs, { recursive: true })
+      const marker = join(docs, 'keep.txt')
+      await writeFile(marker, 'keep', 'utf8')
+      const exitCode = await runAndCaptureExit()
+      expect(exitCode).toBeNull()
+      expect(await readFile(marker, 'utf8')).toBe('keep')
     })
   })
 
@@ -62,6 +74,7 @@ describe('carto init', () => {
       try {
         const exitCode = await runAndCaptureExit()
         expect(exitCode).toBeNull()
+        expect(logs).toContain('initialized carto.json, .carto/docs/, carto.config.mjs (locales: en)')
         expect(logs.at(-1)).toBe('Use the carto skill to document <scope>.')
       } finally {
         logSpy.mockRestore()

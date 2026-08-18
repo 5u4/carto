@@ -1,12 +1,12 @@
 import { defineCommand } from 'citty'
 import { access, readFile } from 'node:fs/promises'
-import { join } from 'node:path'
 import {
   readManifest,
   checkTree,
   statusReport,
   resolveCartoLink,
   codeRootDir,
+  localeFile,
   loadGraph,
   ManifestError,
   type Manifest,
@@ -61,15 +61,15 @@ export const validateCommand = defineCommand({
 
     for (const node of manifest.nodes) {
       for (const locale of manifest.locales) {
-        const mdx = join(root, 'docs', node.id, `${locale}.mdx`)
+        const mdx = localeFile(root, node.id, locale)
         if (!(await exists(mdx))) {
-          errors.push(`missing doc: docs/${node.id}/${locale}.mdx`)
+          errors.push(`missing doc: .carto/docs/${node.id}/${locale}.mdx`)
           continue
         }
         const text = await readFile(mdx, 'utf8')
         for (const target of extractCartoTargets(text)) {
           const result = resolveCartoLink(target, { manifest, locale, federation })
-          if (!result.ok) errors.push(`docs/${node.id}/${locale}.mdx: ${describeError(target, result.error)}`)
+          if (!result.ok) errors.push(`.carto/docs/${node.id}/${locale}.mdx: ${describeError(target, result.error)}`)
         }
       }
     }

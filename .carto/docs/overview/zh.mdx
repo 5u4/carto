@@ -9,7 +9,7 @@ Carto 要维护的不是一份 API 清单，而是能随代码演进的心智地
 
 ## 三个包只接管可机械化的部分
 
-**core 汇总文档集的底层模块。** 它的公共入口统一导出 schema、hash、manifest、tree、resolver、graph、status 与 coverage；文章如何解释代码仍由作者决定。`packages/core/src/index.ts:1-9` `skills/carto/SKILL.md:8-18`
+**core 汇总文档集的底层模块。** 它的公共入口统一导出 schema、hash、固定 `.carto/docs/<id>` 布局的路径模块，以及 manifest、tree、resolver、graph、status 与 coverage；文章如何解释代码仍由作者决定。`packages/core/src/index.ts:1-10` `packages/core/src/paths.ts:1-16` `skills/carto/SKILL.md:8-18`
 
 **CLI 是工作流入口。** 包依赖把 `@carto/core` 和 `@carto/template` 接到同一个命令行进程，并由 `citty` 组织命令。`packages/cli/package.json:23-27` 它公开 `init`、`status`、`sync`、`coverage`、`validate`、`preview` 与 `build`，把检查、固化和发布串成作者可反复执行的操作面。`packages/cli/src/main.ts:10-20`
 
@@ -28,7 +28,7 @@ flowchart LR
     T --> W["可浏览的网站"]
 ```
 
-这是一张职责与依赖图，不表示每条边都是直接函数调用：skill 规定作者与工具的分工，CLI 包声明对 core 和 template 的依赖，而两个包的公共入口分别暴露模型能力与渲染能力。`skills/carto/SKILL.md:15-18` `packages/cli/package.json:23-27` `packages/core/src/index.ts:1-9` `packages/template/src/index.ts:1-3`
+这是一张职责与依赖图，不表示每条边都是直接函数调用：skill 规定作者与工具的分工，CLI 包声明对 core 和 template 的依赖，而两个包的公共入口分别暴露存储路径、模型能力与渲染能力。`skills/carto/SKILL.md:15-18` `packages/cli/package.json:23-27` `packages/core/src/index.ts:1-10` `packages/core/src/paths.ts:1-16` `packages/template/src/index.ts:1-3`
 
 ## 维护闭环从源码变化开始
 

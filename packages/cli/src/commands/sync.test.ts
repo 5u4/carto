@@ -4,7 +4,7 @@ import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type { Manifest } from '@carto/core'
-import { writeManifest } from '@carto/core'
+import { nodeFile, writeManifest } from '@carto/core'
 import { syncCommand } from './sync'
 
 class ProcessExitSignal extends Error {
@@ -51,7 +51,7 @@ function manifestWithSource(): Manifest {
 }
 
 async function readNodeFile(dir: string, id: string): Promise<{ sources: Array<{ file: string; hash?: string; commit?: string }> }> {
-  return JSON.parse(await readFile(join(dir, 'docs', id, 'node.json'), 'utf8'))
+  return JSON.parse(await readFile(nodeFile(dir, id), 'utf8'))
 }
 
 describe('carto sync', () => {
@@ -89,11 +89,11 @@ describe('carto sync', () => {
   it('exits non-zero and writes nothing when a source file is missing', async () => {
     await withTempCwd(async (dir) => {
       await writeManifest(dir, manifestWithSource())
-      const before = await readFile(join(dir, 'docs', 'payments', 'node.json'), 'utf8')
+      const before = await readFile(nodeFile(dir, 'payments'), 'utf8')
 
       const exitCode = await runAndCaptureExit()
       expect(exitCode).toBe(1)
-      const after = await readFile(join(dir, 'docs', 'payments', 'node.json'), 'utf8')
+      const after = await readFile(nodeFile(dir, 'payments'), 'utf8')
       expect(after).toBe(before)
     })
   })

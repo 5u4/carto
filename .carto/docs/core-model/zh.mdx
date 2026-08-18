@@ -9,13 +9,13 @@ Carto 先把磁盘上的 `carto.json` 与各节点的 `node.json` 收拢成一�
 
 配置 schema 要求版本为 `1`、至少一个 locale，且 `defaultLocale` 必须属于 locale 列表；`codeRoot`、主页节点和联邦入口也在这里校验。联邦 alias 不能重复，`self` 被保留。 `packages/core/src/schema.ts:43-77` `nodeFileSchema` 产出的元数据只保留可选 `parent` 与默认为空数组的 `sources`；`id` 来自目录名，序列化 `node.json` 时也不会写入。 `packages/core/src/schema.ts:43-46` `packages/core/src/manifest.ts:27-43`
 
-装配过程分三步：读取并解析 `carto.json`，用 schema 把无效内容转成 `ManifestError`； `packages/core/src/manifest.ts:21-35` `packages/core/src/manifest.ts:68-80` 随后扫描 `docs/` 的一级目录，拒绝非法目录名并按 id 排序；最后逐个读取存在的 `node.json`，解析后与配置合并。 `packages/core/src/manifest.ts:82-131` 父节点是否存在、父链是否成环由 `checkTree` 在装配后另行检查，而不是 schema 装配的一部分。 `packages/core/src/tree.ts:32-68`
+装配过程分三步：读取并解析 `carto.json`，用 schema 把无效内容转成 `ManifestError`； `packages/core/src/manifest.ts:21-35` `packages/core/src/manifest.ts:68-80` 路径模块把节点存储固定在 `.carto/docs/`，随后 manifest 扫描其中的一级目录，拒绝非法目录名并按 id 排序；最后逐个读取存在的 `node.json`，解析后与配置合并。 `packages/core/src/paths.ts:1-16` `packages/core/src/manifest.ts:82-131` 父节点是否存在、父链是否成环由 `checkTree` 在装配后另行检查，而不是 schema 装配的一部分。 `packages/core/src/tree.ts:31-66`
 
 下面只画以根 manifest 为入口建立的几种结构。节点树与联邦图不是同一条层级关系：前者来自单个 manifest，后者会递归加载每个联邦文档集自己的 manifest。新鲜度与覆盖率也不是同一个指标。 `packages/core/src/graph.ts:44-88`
 
 ```mermaid
 flowchart LR
-    D["磁盘：carto.json + docs/*/node.json"] --> M["已验证的 Manifest"]
+    D["磁盘：carto.json + .carto/docs/*/node.json"] --> M["已验证的 Manifest"]
     M --> T["节点树：parent、祖先链、URL"]
     M -->|"federated entries"| L["递归加载各文档集 Manifest"]
     L --> G["文档集图：alias、DocSet、前缀"]
@@ -48,7 +48,7 @@ flowchart LR
 
 新鲜度共有 `fresh`、`unsynced`、`stale`、`missing` 四态，优先级依次升高。节点报告保留每个 source 的结果，再以最差状态作为节点状态。 `packages/core/src/status.ts:5-21` `packages/core/src/status.ts:27-33` 分类时从代码根读取当前文件：文件不存在为 `missing`，没有存储 hash 为 `unsynced`，摘要相同为 `fresh`，否则为 `stale`。 `packages/core/src/status.ts:27-46` `packages/core/src/status.ts:27-53` 全量状态报告只是依 manifest 节点顺序逐一执行这项分类。 `packages/core/src/status.ts:49-53` `packages/core/src/status.ts:27-52`
 
-覆盖率不读取存储 hash，也不会把 `fresh` 当成“已覆盖”。它先合并忽略规则：读取 `.gitignore` 和 `.cartoignore`，并内置排除 `.git`、`node_modules/`、`/carto.json`、`/docs/`、`/dist-site/` 以及两个忽略文件本身。 `packages/core/src/coverage.ts:10-14` 遍历代码根时统一为 POSIX 路径，并可额外排除嵌套在代码根内的文档目录。 `packages/core/src/coverage.ts:20-57` 最终把所有节点声明的 `source.file` 合成“已跟踪集合”，与遍历得到的代码文件集合做差；差集是 `uncovered`，`covered` 则是总数减去差集大小。 `packages/core/src/coverage.ts:60-68`
+覆盖率不读取存储 hash，也不会把 `fresh` 当成“已覆盖”。它先合并忽略规则：读取 `.gitignore` 和 `.cartoignore`，并内置排除 `.git`、`node_modules/`、`/carto.json`、`/.carto/`、`/dist-site/` 以及两个忽略文件本身。 `packages/core/src/coverage.ts:10-14` 遍历代码根时统一为 POSIX 路径，并可额外排除嵌套在代码根内的文档目录。 `packages/core/src/coverage.ts:20-57` 最终把所有节点声明的 `source.file` 合成“已跟踪集合”，与遍历得到的代码文件集合做差；差集是 `uncovered`，`covered` 则是总数减去差集大小。 `packages/core/src/coverage.ts:60-68`
 
 换句话说，新鲜度检查“声明过的快照是否仍对应当前内容”，覆盖率检查“当前代码文件是否被任何节点声明”。一个 source 可以已覆盖但 stale；一个节点也可以全部 fresh，而代码根仍有大量未覆盖文件。
 

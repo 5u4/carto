@@ -1,10 +1,10 @@
 import { defineCommand } from 'citty'
 import { access, mkdir, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
-import { serializeConfig, parseConfig, ManifestError, type Config } from '@carto/core'
+import { docsDir, serializeConfig, parseConfig, ManifestError, type Config } from '@carto/core'
 
 export const initCommand = defineCommand({
-  meta: { name: 'init', description: 'Scaffold carto.json and docs/ in the current directory' },
+  meta: { name: 'init', description: 'Scaffold carto.json and .carto/docs/ in the current directory' },
   args: {
     locales: { type: 'string', description: 'Comma-separated locales', default: 'en' },
     defaultLocale: { type: 'string', description: 'Default locale', default: 'en' },
@@ -31,12 +31,12 @@ export const initCommand = defineCommand({
       console.error(`error: ${error instanceof ManifestError ? error.message : String(error)}`)
       process.exit(1)
     }
-    await mkdir(join(root, 'docs'), { recursive: true })
+    await mkdir(docsDir(root), { recursive: true })
     await writeFile(manifestPath, serializeConfig(config), 'utf8')
     const configPath = join(root, 'carto.config.mjs')
     const wroteConfig = !(await exists(configPath))
     if (wroteConfig) await writeFile(configPath, configStub(), 'utf8')
-    const created = wroteConfig ? 'carto.json, docs/, carto.config.mjs' : 'carto.json, docs/'
+    const created = wroteConfig ? 'carto.json, .carto/docs/, carto.config.mjs' : 'carto.json, .carto/docs/'
     console.log(`initialized ${created} (locales: ${locales.join(', ')})`)
     console.log('Use the carto skill to document <scope>.')
   }

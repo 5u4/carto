@@ -4,7 +4,7 @@ import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type { Manifest } from '@carto/core'
-import { writeManifest, syncManifest } from '@carto/core'
+import { localeFile, nodeDir, writeManifest, syncManifest } from '@carto/core'
 import { validateCommand } from './validate'
 
 class ProcessExitSignal extends Error {
@@ -56,8 +56,8 @@ async function withTempCwd<T>(fn: (dir: string) => Promise<T>): Promise<T> {
 }
 
 async function writeDoc(dir: string, id: string, locale: string, body: string): Promise<void> {
-  await mkdir(join(dir, 'docs', id), { recursive: true })
-  await writeFile(join(dir, 'docs', id, `${locale}.mdx`), body, 'utf8')
+  await mkdir(nodeDir(dir, id), { recursive: true })
+  await writeFile(localeFile(dir, id, locale), body, 'utf8')
 }
 
 function baseManifest(): Manifest {
@@ -120,6 +120,7 @@ describe('carto validate', () => {
       const { exitCode, errors } = await runAndCaptureExit()
       expect(exitCode).toBe(1)
       expect(errors.some((line) => line.includes('carto:ghost'))).toBe(true)
+      expect(errors.some((line) => line.includes('.carto/docs/payments/en.mdx'))).toBe(true)
     })
   })
 
@@ -140,7 +141,7 @@ describe('carto validate', () => {
 
       const { exitCode, errors } = await runAndCaptureExit()
       expect(exitCode).toBe(1)
-      expect(errors.some((line) => line.includes('docs/payments/en.mdx'))).toBe(true)
+      expect(errors.some((line) => line.includes('.carto/docs/payments/en.mdx'))).toBe(true)
     })
   })
 

@@ -2,6 +2,7 @@ import { readFile, writeFile, readdir, mkdir } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import { configSchema, nodeFileSchema, ID_PATTERN, type Manifest, type Config, type Node, type NodeFile, type Source, type Federated } from './schema.js'
 import { hashFile } from './hash.js'
+import { docsDir, nodeDir, nodeFile } from './paths.js'
 
 export function codeRootDir(manifest: Manifest, docRoot: string): string {
   return resolve(docRoot, manifest.codeRoot ?? '.')
@@ -82,7 +83,7 @@ export async function readConfig(docRoot: string): Promise<Config> {
 async function readNodeIds(docRoot: string): Promise<string[]> {
   let entries
   try {
-    entries = await readdir(join(docRoot, 'docs'), { withFileTypes: true })
+    entries = await readdir(docsDir(docRoot), { withFileTypes: true })
   } catch (error) {
     if (isNotFound(error)) return []
     throw error
@@ -91,7 +92,7 @@ async function readNodeIds(docRoot: string): Promise<string[]> {
   for (const entry of entries) {
     if (!entry.isDirectory()) continue
     if (!ID_PATTERN.test(entry.name)) {
-      throw new ManifestError(`docs/${entry.name} is not a valid node id (must match ${ID_PATTERN.source})`)
+      throw new ManifestError(`.carto/docs/${entry.name} is not a valid node id (must match ${ID_PATTERN.source})`)
     }
     ids.push(entry.name)
   }
@@ -102,7 +103,7 @@ export async function readNode(docRoot: string, id: string): Promise<Node | unde
   if (!ID_PATTERN.test(id)) {
     throw new ManifestError(`invalid node id "${id}" (must match ${ID_PATTERN.source})`)
   }
-  const path = join(docRoot, 'docs', id, 'node.json')
+  const path = nodeFile(docRoot, id)
   let text: string
   try {
     text = await readFile(path, 'utf8')
@@ -139,9 +140,9 @@ export async function writeNode(docRoot: string, node: Node): Promise<void> {
   if (!ID_PATTERN.test(node.id)) {
     throw new ManifestError(`invalid node id "${node.id}" (must match ${ID_PATTERN.source})`)
   }
-  const dir = join(docRoot, 'docs', node.id)
+  const dir = nodeDir(docRoot, node.id)
   await mkdir(dir, { recursive: true })
-  await writeFile(join(dir, 'node.json'), serializeNodeFile(node), 'utf8')
+  await writeFile(nodeFile(docRoot, node.id), serializeNodeFile(node), 'utf8')
 }
 
 export async function writeManifest(docRoot: string, manifest: Manifest): Promise<void> {

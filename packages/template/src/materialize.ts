@@ -4,6 +4,7 @@ import {
   childrenOf,
   codeRootDir,
   loadGraph,
+  localeFile,
   parseCartoLink,
   resolveCartoLink,
   rootChain,
@@ -36,7 +37,7 @@ export async function materialize(root: string, contentDir: string): Promise<voi
         if (contentLocale !== locale) {
           console.warn(`warning: doc-set "${docSet.prefix || 'self'}" node ${node.id} has no ${locale} locale; falling back to ${contentLocale}`)
         }
-        const source = join(docSet.docRoot, 'docs', node.id, `${contentLocale}.mdx`)
+        const source = localeFile(docSet.docRoot, node.id, contentLocale)
         const raw = await readFile(source, 'utf8')
         const rewritten = rewriteLinks(raw, docSet, locale, siteDefaultLocale, titles, federation)
         const withBanner = injectStalenessBanner(rewritten, freshness.get(`${docSet.hash}:${node.id}`))

@@ -122,17 +122,17 @@ describe('readManifest / writeConfig / writeNode', () => {
     })
   })
 
-  it('ignores a docs directory with no node.json', async () => {
+  it('ignores a .carto/docs directory with no node.json', async () => {
     await withTempDir(async (dir) => {
       await writeConfig(dir, validConfig())
-      await mkdir(join(dir, 'docs', 'stray'), { recursive: true })
-      await writeFile(join(dir, 'docs', 'stray', 'en.mdx'), 'x', 'utf8')
+      await mkdir(join(dir, '.carto', 'docs', 'stray'), { recursive: true })
+      await writeFile(join(dir, '.carto', 'docs', 'stray', 'en.mdx'), 'x', 'utf8')
       const manifest = await readManifest(dir)
       expect(manifest.nodes).toEqual([])
     })
   })
 
-  it('returns no nodes when docs/ is absent', async () => {
+  it('returns no nodes when .carto/docs is absent', async () => {
     await withTempDir(async (dir) => {
       await writeConfig(dir, validConfig())
       const manifest = await readManifest(dir)
@@ -140,11 +140,11 @@ describe('readManifest / writeConfig / writeNode', () => {
     })
   })
 
-  it('rejects a docs directory whose name is not a valid node id', async () => {
+  it('rejects a .carto/docs directory whose name is not a valid node id', async () => {
     await withTempDir(async (dir) => {
       await writeConfig(dir, validConfig())
-      await mkdir(join(dir, 'docs', 'Bad Id'), { recursive: true })
-      await writeFile(join(dir, 'docs', 'Bad Id', 'node.json'), '{"sources":[]}', 'utf8')
+      await mkdir(join(dir, '.carto', 'docs', 'Bad Id'), { recursive: true })
+      await writeFile(join(dir, '.carto', 'docs', 'Bad Id', 'node.json'), '{"sources":[]}', 'utf8')
       await expect(readManifest(dir)).rejects.toThrow(ManifestError)
     })
   })
@@ -257,7 +257,7 @@ describe('codeRootDir', () => {
 })
 
 function readFileText(dir: string, id: string): Promise<string> {
-  return readFile(join(dir, 'docs', id, 'node.json'), 'utf8')
+  return readFile(join(dir, '.carto', 'docs', id, 'node.json'), 'utf8')
 }
 
 describe('writeNode', () => {
@@ -277,7 +277,7 @@ describe('id guards on public core API', () => {
     })
   })
 
-  it('writeNode rejects a traversal id instead of writing outside docs/', async () => {
+  it('writeNode rejects a traversal id instead of writing outside .carto/docs/', async () => {
     await withTempDir(async (dir) => {
       await expect(writeNode(dir, { id: '../escape', sources: [] })).rejects.toThrow(ManifestError)
     })

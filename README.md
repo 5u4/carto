@@ -52,7 +52,7 @@ and validate its work. The CLI does not call an LLM itself.
 
 | Command | Description |
 |---|---|
-| `carto init` | Scaffold `carto.json` and `docs/` in the current directory |
+| `carto init` | Scaffold `carto.json` and `.carto/docs/` in the current directory |
 | `carto status` | Report each node's freshness; exit non-zero if any node is not fresh |
 | `carto sync <node-id...>` | Record current source hashes for the named, reviewed documentation nodes |
 | `carto coverage` | List source files no node tracks; use `--fail-on-uncovered` to make gaps fail |
@@ -60,8 +60,8 @@ and validate its work. The CLI does not call an LLM itself.
 | `carto build` | Build the static site into `dist-site/` |
 | `carto preview` | Serve an existing `dist-site/` locally without rebuilding it |
 
-Every command reads `carto.json` from the current directory. Run commands from
-the doc root.
+Every command reads `carto.json` from the current directory and stores authored
+node bundles under `.carto/docs/`. Run commands from the doc root.
 
 ## Build and preview
 
@@ -163,7 +163,7 @@ waza uses its bundled GitHub Copilot CLI; authenticate once with
 - `packages/cli` — the `carto` binary (`packages/cli/src/commands/`)
 - `packages/template` — the bundled Astro + Starlight site
 - `skills/carto/` — the manually invoked Carto skill and its on-demand documentation-authoring references
-- `docs/` + `carto.json` — carto's own self-documentation (dogfooded)
+- `.carto/docs/` + `carto.json` — carto's own self-documentation (dogfooded)
 - `plans/` — implementation plans for this repo
 - `tests/pipeline/` — the deterministic system test and its fixture doc-sets
 - `evals/carto/` — the local-only, real-model waza eval for the Carto skill

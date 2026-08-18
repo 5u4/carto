@@ -30,7 +30,7 @@ flowchart LR
 
 在计划作为文档根的目录运行 `carto init`。它支持 `--locales`、`--defaultLocale` 和 `--codeRoot`；命令先检查 `carto.json`，仅在其不存在时组装并校验配置。 `packages/cli/src/commands/init.ts:6-33`
 
-初始化会创建 `docs/` 与 `carto.json`；只有 `carto.config.mjs` 不存在时才写入默认配置。它搭好容器后便停止，不会替作者创建节点或正文。 `packages/cli/src/commands/init.ts:34-41` 系统各包的职责边界可先看 [Carto 总览](carto:overview)。
+初始化通过统一路径模块创建 `.carto/docs/` 与 `carto.json`；只有 `carto.config.mjs` 不存在时才写入默认配置。它搭好容器后便停止，不会替作者创建节点或正文。 `packages/core/src/paths.ts:1-5` `packages/cli/src/commands/init.ts:34-41` 系统各包的职责边界可先看 [Carto 总览](carto:overview)。
 
 ## 先找无人负责的源码，再看哪些正文过期
 

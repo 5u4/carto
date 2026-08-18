@@ -50,7 +50,7 @@ Starlight 的 locale 映射同样以根 manifest 为准：默认语言占用 `ro
 
 ## 新鲜度提示随构建生成，不回写文档
 
-物化器为每个 doc-set 计算 source 状态，把节点状态交给 banner 注入器，再将结果写入临时内容树；原始 `docs/<id>/<locale>.mdx` 不会被改动。`packages/template/src/materialize.ts:39-55` 只有 `stale` 或 `missing` 会触发提示；若 frontmatter 已有 banner，Carto 尊重作者设置。自动提示列出变更或消失的 source 文件，并对文件名做 HTML 转义。`packages/template/src/staleness-banner.ts:3-27` 因此 banner 表达的是本次构建观察到的状态，不是文档源码中的永久标记。
+物化器通过统一路径模块读取 `.carto/docs/<id>/<locale>.mdx`，为每个 doc-set 计算 source 状态，把节点状态交给 banner 注入器，再将结果写入临时内容树；原始正文不会被改动。`packages/core/src/paths.ts:15-16` `packages/template/src/materialize.ts:39-55` 只有 `stale` 或 `missing` 会触发提示；若 frontmatter 已有 banner，Carto 尊重作者设置。自动提示列出变更或消失的 source 文件，并对文件名做 HTML 转义。`packages/template/src/staleness-banner.ts:3-27` 因此 banner 表达的是本次构建发现的 source 状态，而不是正文来源或作者意图。
 
 ## Preview 只服务已经发布的结果
 
