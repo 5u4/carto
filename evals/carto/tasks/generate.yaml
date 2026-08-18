@@ -1,34 +1,38 @@
 id: carto-generate-001
-name: Generate carto docs from zero and build
+name: Generate and build Carto docs
 description: |
-  The agent documents a tiny user/post/feed TypeScript codebase with carto,
-  from an empty doc root, and must drive the loop until `carto build` renders.
+  Lightweight end-to-end smoke: generate Carto docs for the TypeScript
+  rate-limiter fixture in both locales, validate them, and build the rendered site.
 tags:
   - carto
   - generate
-  - happy-path
+  - smoke
 
 inputs:
   prompt: |
-    Document the TypeScript codebase in ./sample-app using carto. The current
+    Document the TypeScript codebase in ./rate-limiter using carto. The current
     directory is the doc root. The carto CLI is installed and on PATH.
 
     Steps:
-    - Run `carto init --code-root ./sample-app --locales en,zh` if no carto.json
+    - Run `carto init --code-root ./rate-limiter --locales en,zh` if no carto.json
       exists yet.
-    - Read ./sample-app/src/user.ts, ./sample-app/src/post.ts,
-      ./sample-app/src/feed.ts and design a carto node tree.
+    - Read ./rate-limiter/src/rate-limit-contract.ts,
+      ./rate-limiter/src/token-bucket.ts, and
+      ./rate-limiter/src/api-request-limiter.ts, then generate the smallest useful
+      Carto node set. One node is allowed when it sufficiently documents the
+      codebase; do not force either one node or multiple nodes.
     - For every node write docs/<id>/node.json and docs/<id>/<locale>.mdx for
       every declared locale. Every .mdx MUST begin with a YAML frontmatter block
       containing a `title:` field.
-    - Link related nodes with carto: links.
-    - Run carto sync, carto validate, and carto build.
+    - Link nodes with carto: links when they are related.
+    - After authoring, complete the Carto skill's correctness audit before the
+      first carto sync. Then run carto sync, carto validate, and carto build.
 
     Do not stop until `carto validate` exits 0 and `carto build` succeeds.
   files:
-    - path: sample-app/src/user.ts
-    - path: sample-app/src/post.ts
-    - path: sample-app/src/feed.ts
+    - path: rate-limiter/src/rate-limit-contract.ts
+    - path: rate-limiter/src/token-bucket.ts
+    - path: rate-limiter/src/api-request-limiter.ts
 
 expected:
   outcomes:

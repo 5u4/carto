@@ -13,7 +13,7 @@ BIN_DIR="$HOME/.local/bin"
 CLI_LINK="$BIN_DIR/carto"
 CLI_TARGET="$REPO_DIR/packages/cli/dist/index.js"
 SKILLS_DIR="$HOME/.agents/skills"
-SKILL_NAMES=(carto documenting-component)
+SKILL_NAMES=(carto)
 MARKER_FILE="$CARTO_HOME/.installer-owner"
 PATH_RC_FILE="$CARTO_HOME/.path-rc"
 PATH_BACKUP_FILE="$CARTO_HOME/.path-rc.before"
@@ -315,7 +315,7 @@ carto installer
 
 Usage:
   install.sh                 Install or fast-forward update carto from main
-  install.sh --uninstall     Remove installer-owned CLI, skills, PATH setup, and checkout
+  install.sh --uninstall     Remove installer-owned CLI, skill, PATH setup, and checkout
   install.sh --help
 
 Environment:

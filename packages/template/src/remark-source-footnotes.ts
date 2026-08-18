@@ -93,6 +93,7 @@ export default function remarkSourceFootnotes(options: SourceFootnoteOptions): (
 
 export function rehypeSourceFootnoteLabels(options: SourceFootnoteOptions): (tree: HastNode, file: FileLike) => void {
   return (tree, file) => {
+    unwrapGeneratedReferences(tree)
     const page = findPage(options.pages, file)
     const labels = sourceLabels(page?.locale)
     walkHast(tree, (node) => {
@@ -232,7 +233,7 @@ function trimReferenceWhitespace(children: MdNode[]): void {
 function separateAdjacentReferences(children: MdNode[]): void {
   for (let index = 1; index < children.length; index++) {
     if (!isGeneratedReference(children[index - 1]) || !isGeneratedReference(children[index])) continue
-    children.splice(index, 0, { type: 'text', value: ',\u202f' })
+    children.splice(index, 0, { type: 'text', value: ' ' })
     index++
   }
 }
@@ -259,6 +260,31 @@ function walkMd(node: MdNode, visit: (node: MdNode) => void): void {
 function walkHast(node: HastNode, visit: (node: HastNode) => void): void {
   visit(node)
   for (const child of node.children ?? []) walkHast(child, visit)
+}
+
+function unwrapGeneratedReferences(node: HastNode): void {
+  if (!node.children) return
+  for (let index = 0; index < node.children.length; index++) {
+    const child = node.children[index]
+    const anchor = generatedReferenceAnchor(child)
+    if (!anchor) {
+      unwrapGeneratedReferences(child)
+      continue
+    }
+    const label = anchor.children?.find((candidate) => candidate.type === 'text' && typeof candidate.value === 'string')?.value
+    if (label === undefined) continue
+    anchor.properties = { ...anchor.properties, style: 'font-family: var(--__sl-font-mono)' }
+    anchor.children = [{ type: 'text', value: `[${label}]` }]
+    node.children[index] = anchor
+  }
+}
+
+function generatedReferenceAnchor(node: HastNode): HastNode | undefined {
+  if (node.tagName !== 'sup' || node.children?.length !== 1) return undefined
+  const anchor = node.children[0]
+  const href = anchor.properties?.href
+  if (anchor.tagName !== 'a' || !hasProperty(anchor, 'dataFootnoteRef')) return undefined
+  return typeof href === 'string' && href.includes(`fn-${generatedIdentifierPrefix}`) ? anchor : undefined
 }
 
 function hasProperty(node: HastNode, property: string): boolean {

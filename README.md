@@ -1,7 +1,7 @@
 # carto
 
 carto generates *sustainably-evolving* documentation for a codebase: a
-top-down mental-model map (not an API reference) whose pages carry
+developer-oriented code map (not an API reference) whose pages carry
 machine-checkable anchors back to source, so stale pages are detectable and
 regenerable rather than silently rotting. It's a TypeScript pnpm monorepo of
 three packages: `@carto/core` (schema, content hashing, node tree, link
@@ -16,15 +16,16 @@ bundled Astro + Starlight site).
 
 ## Install
 
-Install the CLI and its two coding-agent skills from source:
+Install the CLI and its manually invoked Carto coding-agent skill from source:
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/5u4/carto/main/install.sh | bash
 ```
 
 The installer clones carto to `~/.carto/repo`, builds it, links `carto` into
-`~/.local/bin`, and links the `carto` and `documenting-component` skills into
-`~/.agents/skills`. Re-run the same command to update. If the installer adds
+`~/.local/bin`, and links the `carto` skill into `~/.agents/skills`. The skill
+keeps its documentation-authoring guidance in internal, on-demand references.
+Re-run the same command to update. If the installer adds
 `~/.local/bin` to your shell configuration, open a new shell before verifying:
 
 ```sh
@@ -143,16 +144,14 @@ Two layers, split by what they defend:
   pages mount under their alias-hash and `/self` prefixes. No LLM or secrets;
   it runs in CI.
 
-Skill quality (does an agent *follow* `skills/carto` and
-`skills/documenting-component`) is measured separately with
-[waza](https://github.com/microsoft/waza) under `evals/`. Those evals call a
-real model, so they are a **local-only** tool — never wired into CI. Run them
-by hand after changing a SKILL.md:
+Skill quality (does an agent *follow* `skills/carto`) is measured separately
+with [waza](https://github.com/microsoft/waza) under `evals/carto`. This eval
+calls a real model, so it is a **local-only** tool — never wired into CI. Run it
+by hand after changing the skill:
 
 ```sh
 pnpm build            # the carto bin must exist (see Setup)
 waza run evals/carto/eval.yaml --context-dir evals/carto/fixtures
-waza run evals/documenting-component/eval.yaml --context-dir evals/documenting-component/fixtures
 ```
 
 waza uses its bundled GitHub Copilot CLI; authenticate once with
@@ -163,8 +162,8 @@ waza uses its bundled GitHub Copilot CLI; authenticate once with
 - `packages/core` — schema, hashing, node tree, `carto:` link resolver
 - `packages/cli` — the `carto` binary (`packages/cli/src/commands/`)
 - `packages/template` — the bundled Astro + Starlight site
-- `skills/carto/SKILL.md` — carto's doc-authoring skill (CLI, manifest, links, node-tree mapping)
+- `skills/carto/` — the manually invoked Carto skill and its on-demand documentation-authoring references
 - `docs/` + `carto.json` — carto's own self-documentation (dogfooded)
 - `plans/` — implementation plans for this repo
 - `tests/pipeline/` — the deterministic system test and its fixture doc-sets
-- `evals/` — waza skill evals (local-only, real model)
+- `evals/carto/` — the local-only, real-model waza eval for the Carto skill

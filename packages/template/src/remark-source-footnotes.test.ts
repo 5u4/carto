@@ -11,7 +11,7 @@ function pages(locale = 'en', sources: string[] = []): SourceFootnotePages {
 }
 
 describe('remarkSourceFootnotes', () => {
-  it('replaces grouped line citations with deduplicated native footnotes', () => {
+  it('replaces grouped line citations with deduplicated footnotes separated by spaces', () => {
     const tree = {
       type: 'root',
       children: [
@@ -35,7 +35,7 @@ describe('remarkSourceFootnotes', () => {
     expect(tree.children[0].children).toEqual([
       { type: 'text', value: 'Claim' },
       { type: 'footnoteReference', identifier: 'carto-source-1', label: 'carto-source-1' },
-      { type: 'text', value: ',\u202f' },
+      { type: 'text', value: ' ' },
       { type: 'footnoteReference', identifier: 'carto-source-2', label: 'carto-source-2' },
       { type: 'text', value: '. Repeated' },
       { type: 'footnoteReference', identifier: 'carto-source-1', label: 'carto-source-1' },
@@ -148,6 +148,36 @@ describe('rehypeSourceFootnoteLabels', () => {
 
     expect(tree.children[0].children[0].children).toEqual([{ type: 'text', value: 'Notes and sources' }])
   })
+
+  it('unwraps generated source references as bracketed links and preserves their attributes', () => {
+    const tree = referenceTree(footnoteReference('carto-source-1', '1'))
+
+    rehypeSourceFootnoteLabels({ pages: pages() })(tree, { path: pagePath })
+
+    expect(tree.children[0].children).toEqual([
+      {
+        type: 'element',
+        tagName: 'a',
+        properties: {
+          href: '#user-content-fn-carto-source-1',
+          id: 'user-content-fnref-carto-source-1',
+          dataFootnoteRef: true,
+          ariaDescribedBy: ['footnote-label'],
+          style: 'font-family: var(--__sl-font-mono)'
+        },
+        children: [{ type: 'text', value: '[1]' }]
+      }
+    ])
+  })
+
+  it('leaves authored footnote sup nodes unchanged', () => {
+    const authored = footnoteReference('note', '1')
+    const tree = referenceTree(authored)
+
+    rehypeSourceFootnoteLabels({ pages: pages() })(tree, { path: pagePath })
+
+    expect(tree.children[0].children).toEqual([footnoteReference('note', '1')])
+  })
 })
 
 function footnoteTree(ids: string[]) {
@@ -172,6 +202,34 @@ function footnoteTree(ids: string[]) {
             children: ids.map((id) => ({ type: 'element', tagName: 'li', properties: { id }, children: [] }))
           }
         ]
+      }
+    ]
+  }
+}
+
+function referenceTree(reference: ReturnType<typeof footnoteReference>) {
+  return {
+    type: 'root',
+    children: [{ type: 'element', tagName: 'p', properties: {}, children: [reference] }]
+  }
+}
+
+function footnoteReference(identifier: string, label: string) {
+  return {
+    type: 'element',
+    tagName: 'sup',
+    properties: {},
+    children: [
+      {
+        type: 'element',
+        tagName: 'a',
+        properties: {
+          href: `#user-content-fn-${identifier}`,
+          id: `user-content-fnref-${identifier}`,
+          dataFootnoteRef: true,
+          ariaDescribedBy: ['footnote-label']
+        },
+        children: [{ type: 'text', value: label }]
       }
     ]
   }

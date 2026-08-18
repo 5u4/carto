@@ -17,7 +17,7 @@ def main() -> int:
         return 1
 
     problems = []
-    for symbol in ("authorId", "buildFeed"):
+    for symbol in ("TokenBucket", "sampleApiLimitTrace"):
         if symbol not in html:
             problems.append(f"built HTML missing source identifier `{symbol}` (docs did not describe the code)")
     if 'href="carto:' in html or "href='carto:" in html:

@@ -1,13 +1,15 @@
 ---
 name: carto
-description: Document a codebase with the carto CLI, or refresh existing carto docs after code changes. Use when the user asks to build, update, or maintain documentation with carto.
+description: Build, inspect, and refresh sustainable codebase documentation with the Carto CLI.
+disable-model-invocation: true
 ---
 
 # Carto
 
-You document a codebase with **carto**: a sustainably-evolving map that helps a
-human build a mental model of what the code does and why. It is **not** API
-reference and **not** a line-by-line transcription. The differentiator is
+You document a codebase with **carto**: a sustainably evolving code map that
+answers the developer questions needed to understand ownership, entry points,
+flows, contracts, constraints, and change surfaces. It is **not** API reference
+and **not** a line-by-line transcription. The differentiator is
 sustainability — every page carries machine-checkable anchors back to the code it
 describes, so tooling can tell which pages went stale when code changed and
 regenerate only those.
@@ -32,10 +34,16 @@ Three prerequisites, in order. Stop and resolve each before generating.
    once to scaffold both (`init` refuses if `carto.json` already exists).
 
 This skill drives carto — the CLI, the config, the `node.json` files, the link
-and anchor rules, and how a page maps onto carto's node tree. What makes a page
-*good* (splitting a system into mental-model pages, layering them for the
-audience, holding each to a content floor) is documenting judgement: load the
-`documenting-component` skill for that.
+and anchor rules, and how a page maps onto carto's node tree.
+
+Branch before authoring:
+
+- For status or coverage inspection only, read no authoring references; run the
+  relevant Carto commands and report their results.
+- For creation, refresh, or structural documentation work, read
+  [documenting.md](references/documenting.md) and
+  [presenting-code.md](references/presenting-code.md) in full before designing
+  any node or page. Apply both references to every in-scope node bundle.
 
 ## The generation loop
 
@@ -45,6 +53,10 @@ module", "I just changed payment.ts"). Never invent one: if the user asks to
 generate without saying what, ask. Pure **inspection** ("which docs are
 stale?", "what code is undocumented?") needs no scope — just run `carto status`
 / `carto coverage` and report.
+
+**Pre-sync gate:** on every creation or refresh run, complete the post-authoring
+audit in step 6 before the first `carto sync`. Sync stamps reviewed content;
+never use it to bless a bundle that has not passed that audit.
 
 Given a scope:
 
@@ -65,23 +77,44 @@ Given a scope:
    the exact affected node ids and `docs/<id>/<locale>.mdx` paths, describe the
    structural change, and wait for approval before touching files.
 
-3. Write the node.json files for the in-scope nodes only, and touch no others.
+3. Start with the smallest useful node set and build one locale-neutral
+   developer-question and evidence plan per proposed node before writing any
+   `node.json` record or locale.
 
-4. Build one locale-neutral evidence plan per node, then author
-   docs/<id>/<locale>.mdx directly in every declared locale.
+4. Derive each node's `sources` from the evidence that could invalidate its
+   content, then write the in-scope `node.json` records only. Touch no other
+   node records.
 
-5. carto sync <id> [<id> ...]   Bless exactly the nodes you just wrote — the CLI
-   recomputes their source hashes and stamps the current commit. Naming the ids
-   is what keeps every other page's freshness untouched.
+5. Author docs/<id>/<locale>.mdx for every in-scope node and every declared
+   locale from the same evidence plan.
 
-6. carto validate   Checks schema, tree, and links, and that in-scope pages are
+6. After authoring, read [auditing.md](references/auditing.md) in full for the
+   first time; do not load it during inspection, planning, or authoring. When
+   delegation is available, assign exactly one fresh read-only reviewer
+   subagent to the complete in-scope doc set. Give it every in-scope
+   `node.json`, every default-locale MDX path, the relevant source paths, and
+   the audit rubric. It returns findings only and never edits or syncs. When
+   delegation is unavailable, the parent performs the same audit in one
+   distinct fresh pass. The parent fixes every accepted finding, propagates the
+   same factual corrections to all locales, aligns anchors with `sources`, and
+   may reject a finding only with exact code evidence. Run this audit once;
+   repeat it only when a finding forces a substantial rewrite of a page's
+   subject or primary flow.
+
+7. carto sync <id> [<id> ...]   Bless exactly the correctness-clean nodes — the
+   CLI recomputes their source hashes and stamps the current commit. Naming the
+   ids is what keeps every other page's freshness untouched.
+
+8. carto validate   Checks schema, tree, and links, and that in-scope pages are
    synced. On error, fix the mdx or node.json it names, then run targeted
    `carto sync <id>` and validate again. Leftover stale pages outside your scope
    are expected and reported as warnings — not your job this run.
 
-7. carto status   Confirm every id you set out to write or refresh is now
+9. carto status   Confirm every id you set out to write or refresh is now
    `fresh`. If one is still `stale`, review its source changes, update its
-   prose, then run `carto sync <id>` and re-check.
+   prose, run targeted `carto sync <id>`, and re-check. Return to step 6 only
+   when this requires a substantial rewrite of the page's subject or primary
+   flow.
 ```
 
 Never leave a run until `carto validate` exits 0 **and** `carto status` reports
@@ -170,13 +203,17 @@ means `git mv`-ing the directory (and every `carto:` link to it, or
   node (do not write `parent: null`). A parent id that does not exist yet is a
   **warning, not an error** — you may generate from the middle of the tree. A
   cycle or self-parent is an error.
-- `sources`: the files whose behavior this page describes. Write **`file` only**
-  — a forward-slash path relative to `codeRoot`. Leave `hash` and `commit` out;
-  `carto sync`
-  fills them — `hash` is the content fingerprint, `commit` the git `HEAD` at
-  sync time (the diff base a later refresh compares against; absent outside a
-  git repo). The array may be empty for a pure-orientation page. Ids sort
-  alphabetically for sibling nav order.
+- `sources`: every file whose change could invalidate the node's final
+  code-derived claims, relationships, or views. Derive this set from the final
+  evidence plan; overlap with another node's `sources` is valid. Every listed
+  file must supply at least one exact anchor in every locale. Write **`file`
+  only** — a forward-slash path relative to `codeRoot`. Leave `hash` and
+  `commit` out; `carto sync` fills them — `hash` is the content fingerprint,
+  `commit` the git `HEAD` at sync time (the diff base a later refresh compares
+  against; absent outside a git repo). Use an empty array only when the page
+  has no code-derived claim, relationship, or view; executable topology on an
+  overview page therefore requires sources. Ids sort alphabetically for
+  sibling nav order.
 
 Writing `file` without `hash` is the normal **unsynced** state: legal on disk,
 reported by `carto status`, and rejected by `carto validate` until you run
@@ -215,42 +252,54 @@ normal Markdown link whose target is `carto:<id>`:
 literal, complete repository-relative `path:line` or `path:start-end` anchor,
 for example `packages/api/src/payment.ts:42` or
 `packages/api/src/payment.ts:42-48`. Never shorten a canonical citation to a
-basename. Authored MDX retains these literal anchors as the canonical form for
-agents and LLMs; the built human site recognizes them and renders them as
-localized native source footnotes. That transformation is rendering-only.
-Source anchors are addresses, not source-host links or permalinks, and are
-**separate** from `node.json` `sources`, the machine-tracked staleness set. In
-practice both should point at the same load-bearing code.
+basename, and never place a source anchor in its own standalone paragraph.
+Authored MDX retains these literal anchors as the canonical form for agents and
+LLMs; the built human site recognizes them and renders localized bracketed
+source references. That transformation is rendering-only. Source anchors are
+addresses, not source-host links or permalinks, and are **separate** from
+`node.json` `sources`, the machine-tracked staleness set. A `carto:` link only
+navigates; it never proves a relationship between modules.
 
 ## Structuring the node tree
 
-How to split a system into good mental-model pages is documenting judgement (see
-the `documenting-component` skill). This section is only how those pages map onto
-carto's nodes and `sources`.
+Use the authoring references required above to decide node boundaries and page
+content. This section defines how those decisions map onto carto's nodes and
+`sources`.
 
-- **One mental model = one node** — a directory `docs/<id>/` with a `node.json`
-  (an optional `parent`, a `sources` list) and one `.mdx` per locale.
-- **A node's `sources` is its evidence set — the staleness crosshair.** Register
-  only the files whose behavior the node actually describes. Too broad triggers
-  false "stale" churn; too narrow lets real changes go undetected.
+- **Start with one end-to-end responsibility or flow.** Use the smallest useful
+  node set. Split only when another independently useful developer question has
+  a meaningfully distinct owner, entry point, contract, flow, invariant, or
+  change surface and gains worthwhile independent staleness or navigation.
+  Never mirror files, exports, or directories into pages.
+- **One durable primary developer question = one node** — a directory
+  `docs/<id>/` with a `node.json` (an optional `parent`, a `sources` list) and
+  one `.mdx` per locale. An orientation parent exists only to navigate durable
+  child questions; if it states executable topology or any other code-derived
+  claim, relationship, or view, it is an evidenced page with non-empty sources.
+- **A node's `sources` is its evidence set — the staleness crosshair.** Derive
+  it from every file whose change could invalidate final content. Narrowness
+  avoids unrelated churn; completeness prevents undetected staleness. Sources
+  may overlap when one file is load-bearing for multiple developer questions.
 - **Generate top-down or from the middle.** A node whose `parent` does not exist
-  yet is only a warning, so you may generate a subtree before its parent. A cycle
-  or a self-parent is an error.
+  yet is only a warning, so you may generate a subtree before its parent. A
+  cycle or a self-parent is an error.
 
 ## Locale discipline
 
 - **Share evidence, author prose natively.** Before drafting, establish one
-  locale-neutral contract for the node: its reader question, mental-model
-  boundary, supported claims, `carto:` targets, and code anchors. Then write
-  each locale directly from the code and that contract. Each page should read
-  as if it was conceived in that language for its local technical audience.
-- **Keep facts aligned, not sentences.** Locales cover the same mental model and
-  preserve every `carto:` target and every complete repository-relative
-  `path:line` or `path:start-end` anchor verbatim. Link labels, headings,
-  paragraph structure, terminology, examples, and explanation order may differ
-  when the locale reads more naturally that way. Any heading targeted by a
-  `carto:<id>#<anchor>` link must expose that same anchor in every locale.
-- **Audit each locale in isolation.** Read it without the default-locale page
+  locale-neutral contract for the node: its primary developer question,
+  boundary, supported claims, `carto:` targets, code anchors, and presentation
+  structure. Then write each locale directly from the code and that contract.
+  Each page should read as if it was conceived in that language for its local
+  technical audience.
+- **Keep facts and views aligned, not sentences.** Locales answer the same
+  developer question, preserve every `carto:` target and every complete
+  repository-relative `path:line` or `path:start-end` anchor verbatim, and keep
+  equivalent code-shaped views in the same explanatory role. Link labels,
+  headings, paragraph structure, terminology, examples, and explanation order
+  may differ when the locale reads more naturally that way. Any heading targeted
+  by a `carto:<id>#<anchor>` link must expose that same anchor in every locale.
+- **Read each locale in isolation.** Read it without the default-locale page
   beside it. Rewrite calques, source-language sentence shapes, unnatural
   transitions, and terminology that local practitioners would not use. A
   locale is complete only when it is idiomatic on its own and all factual
@@ -282,10 +331,10 @@ Fix, re-run targeted `carto sync <id>` for each page you changed, then run
 
 ## Starlight syntax worth reaching for
 
-Pages render as MDX through Starlight, so plain Markdown is not your only
-tool. Reach for the following when they genuinely serve the mental model.
-Prose is the default, structure earns its place — this is seasoning, not the
-meal.
+Pages render as MDX through Starlight, so plain Markdown is not your only tool.
+Use these elements after choosing the code-shaped presentation that answers the
+developer question. Let structure carry code shape; use short prose to orient
+the reader, state implications, and attach evidence.
 
 - **Asides (callouts)** — `:::note`, `:::tip`, `:::caution`, `:::danger`,
   optionally titled `:::caution[Gotcha]`. The natural home for a constraint,
