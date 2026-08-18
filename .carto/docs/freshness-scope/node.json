@@ -1,0 +1,50 @@
+{
+  "parent": "overview",
+  "sources": [
+    {
+      "file": "packages/core/src/hash.ts",
+      "hash": "2afef0f45e81f800",
+      "commit": "0bf18d964d6c964ab8abd65c25283bf204037abb"
+    },
+    {
+      "file": "packages/core/src/status.ts",
+      "hash": "3761708d35ba6723",
+      "commit": "0bf18d964d6c964ab8abd65c25283bf204037abb"
+    },
+    {
+      "file": "packages/core/src/coverage.ts",
+      "hash": "b50bb0f0f5c123ac",
+      "commit": "0bf18d964d6c964ab8abd65c25283bf204037abb"
+    },
+    {
+      "file": "packages/cli/src/commands/status.ts",
+      "hash": "05478a9e2973cf8c",
+      "commit": "0bf18d964d6c964ab8abd65c25283bf204037abb"
+    },
+    {
+      "file": "packages/cli/src/commands/coverage.ts",
+      "hash": "afa117eeafdc310f",
+      "commit": "0bf18d964d6c964ab8abd65c25283bf204037abb"
+    },
+    {
+      "file": "packages/cli/src/commands/sync.ts",
+      "hash": "55db9e9597df4278",
+      "commit": "0bf18d964d6c964ab8abd65c25283bf204037abb"
+    },
+    {
+      "file": "packages/core/src/manifest.ts",
+      "hash": "91d1e5f626775ada",
+      "commit": "0bf18d964d6c964ab8abd65c25283bf204037abb"
+    },
+    {
+      "file": "packages/cli/src/git.ts",
+      "hash": "0e0d709390d2f137",
+      "commit": "0bf18d964d6c964ab8abd65c25283bf204037abb"
+    },
+    {
+      "file": "skills/carto/SKILL.md",
+      "hash": "451d2568bf84111a",
+      "commit": "0bf18d964d6c964ab8abd65c25283bf204037abb"
+    }
+  ]
+}

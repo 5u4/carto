@@ -1,5 +1,6 @@
 {
   "version": 1,
   "locales": ["en", "zh"],
-  "defaultLocale": "en"
+  "defaultLocale": "en",
+  "home": "overview"
 }

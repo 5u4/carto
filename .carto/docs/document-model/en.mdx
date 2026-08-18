@@ -1,0 +1,75 @@
+---
+title: Document model
+description: How Carto turns directory identity and JSON contracts into a deterministic manifest and writes it back without changing sync scope.
+---
+
+Carto trusts a documentation set only after two separate facts agree: the directory layout supplies each page's identity, while parsed JSON supplies its configuration and contents. The core joins those facts into one ordered `Manifest`; it does not treat a node's JSON as self-identifying.
+
+## Identity starts on disk
+
+A node lives at `.carto/docs/<id>/node.json`, with locale pages beside it. The path helpers centralize that layout, so callers derive the node directory, metadata file, and locale file from the same document root and id. `packages/core/src/paths.ts:3-16`
+
+The loader reads only directories under `.carto/docs`, rejects any directory name that is not a valid id, sorts the surviving names, and then loads nodes in that order. A missing `node.json` makes that directory contribute no node; a malformed JSON file fails the read. `parseNodeFile` adds the directory name as `id` after validating the file payload. `packages/core/src/manifest.ts:30-35` `packages/core/src/manifest.ts:83-131`
+
+That division is deliberate: the on-disk `NodeFile` contains `parent` and `sources`, while the in-memory `Node` is `NodeFile & { id: string }`; a `Manifest` is the parsed config plus the ordered `nodes` array. `packages/core/src/schema.ts:43-46` `packages/core/src/schema.ts:80-87`
+
+### Disk-to-memory pipeline
+
+```text
+carto.json
+  └─ read UTF-8 → JSON.parse → configSchema
+                                 ┐
+.carto/docs/<id>/                │
+  ├─ directory name → id ────────┼─→ Manifest { config fields, nodes[] }
+  └─ node.json → JSON.parse      │       nodes sorted by directory id
+                 → nodeFileSchema┘
+```
+
+Config and node payloads go through `safeParse`; schema issues are converted into `ManifestError` messages with field paths, and the node error includes the disk-derived id. `packages/core/src/manifest.ts:22-35`
+
+The file-reading layer distinguishes invalid JSON from invalid shape: `readConfig` parses the root `carto.json`, then `readManifest` combines it with the sorted nodes; node JSON is parsed independently so the failing path or node remains identifiable. `packages/core/src/manifest.ts:71-131`
+
+## The schema is the contract boundary
+
+| Concern | Accepted contract and in-memory consequence | Evidence |
+| --- | --- | --- |
+| Identity | Ids start with a lowercase letter or digit and then contain only lowercase letters, digits, or `-`. The same pattern governs directory-derived node ids, parents, `home`, and federation aliases. | `packages/core/src/schema.ts:3-3` `packages/core/src/schema.ts:27-55` `packages/core/src/manifest.ts:83-105` |
+| Source addresses | A source `file` is non-empty, relative, uses forward slashes, is not drive-rooted, and has no `..` segment. | `packages/core/src/schema.ts:5-18` |
+| Sync metadata | `hash` and `commit` are optional, but `commit` is invalid without `hash`. This prevents an in-memory source from claiming a diff base without a content fingerprint. | `packages/core/src/schema.ts:16-25` |
+| Node payload | `parent` is optional and must be an id; omitted `sources` parses as an empty array. The id itself still comes from the directory. | `packages/core/src/schema.ts:43-46` |
+| Config | Version is exactly `1`; locales are non-empty and unique; `defaultLocale` must belong to them. `codeRoot` must be relative, `home` must be an id, federation defaults to an empty array, aliases are unique, and `self` is reserved. | `packages/core/src/schema.ts:48-78` |
+
+Schema inference keeps those runtime checks and TypeScript's disk-to-memory types on one definition rather than maintaining a second hand-written model. `packages/core/src/schema.ts:80-87`
+
+`codeRootDir` resolves `codeRoot` against the document root, defaulting to `.`. Independently, sync interprets every source `file` relative to the `rootDir` supplied by its caller. `packages/core/src/manifest.ts:7-9` `packages/core/src/manifest.ts:171-178` `packages/core/src/manifest.ts:188-199`
+
+Parent topology and federated URL resolution begin after this document contract has loaded. Their separate rules are covered in [Navigation and federation](carto:navigation-federation).
+
+## Serialization is canonical, not incidental
+
+Serialization reconstructs plain objects in a fixed field order before applying two-space JSON formatting and one trailing newline. Config writes `version`, `locales`, and `defaultLocale` first, then defined optional fields; an empty federation list is omitted. Node JSON omits an absent parent, always writes `sources`, orders each source as `file`, then `hash`, then `commit`, and never emits `commit` unless a hash is present. `packages/core/src/manifest.ts:38-68`
+
+Writers create the required directories and use those serializers. Whole-manifest writing rejects duplicate in-memory ids before it writes config or any node, then writes each node through the canonical node path. It does not derive identity from a field inside `node.json`. `packages/core/src/manifest.ts:134-158`
+
+This makes diffs stable: equivalent in-memory values produce the same key order, indentation, omission choices, and final newline. When adding a persisted field, the change is therefore incomplete unless its schema, inferred model, and canonical serializer still agree.
+
+## Bare and targeted sync have different boundaries
+
+Sync is an in-memory transformation with an explicit source root and optional commit; it returns the next manifest plus the ids whose source metadata changed. Hashing resolves every source `file` against the supplied root. Missing files are collected instead of being silently removed. `packages/core/src/manifest.ts:160-185`
+
+| Invocation boundary | Nodes considered | Sources considered inside those nodes | Failure boundary |
+| --- | --- | --- | --- |
+| Bare (`targets` absent) | Every node | Only sources without a hash; already-hashed sources pass through unchanged | Any selected missing source causes one `ManifestError` after collection |
+| Targeted (`targets` supplied) | Only named nodes | Every source is rehashed and receives the supplied commit; nodes outside the set pass through unchanged | Unknown ids fail before hashing; any selected missing source causes one `ManifestError` after collection |
+
+The two branches are explicit: `syncUnsynced` skips a source that already has a hash, while `syncSources` recomputes every source it receives. `syncManifest` validates target ids, chooses one branch, preserves out-of-scope nodes, records changed node ids, and refuses to return a successful result if any source is missing. `packages/core/src/manifest.ts:188-238`
+
+This boundary says what the core transforms, not why a caller chooses one mode or when a hash counts as current. See [Freshness and scope](carto:freshness-scope) for that policy, and [CLI workflow](carto:cli-workflow) for command orchestration and persistence.
+
+## Where changes must stay aligned
+
+- **Move the bundle layout:** change the canonical path helpers and every disk reader/writer that consumes them; directory identity must remain the source of `Node.id`.
+- **Add a persisted field:** update runtime validation, the inferred type, and canonical serialization together, then decide whether omission has a default meaning.
+- **Change sync scope:** preserve the distinction between selecting nodes and selecting sources within a node, as well as the pre-hash unknown-id failure and post-scan missing-file failure.
+
+Those seams keep parsing, identity, serialization, and sync transformation explicit rather than letting disk conventions leak into later navigation or freshness logic.

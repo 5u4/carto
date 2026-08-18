@@ -1,0 +1,86 @@
+---
+title: Navigation and federation
+description: How parent chains, locales, and federated identities resolve stable Carto links into site URLs.
+---
+
+A Carto link names a node, not a generated page path. Resolution turns that stable logical name into a URL by combining the node's parent chain, the active locale, and—when another documentation set owns the node—a federation prefix. This page follows that addressing decision only. The disk representation that supplies nodes belongs to [the document model](carto:document-model); command orchestration and diagnostics belong to [the CLI workflow](carto:cli-workflow); rewriting authored links into built pages belongs to [the rendering pipeline](carto:rendering-pipeline).
+
+## Parent chains become localized paths
+
+`rootChain` starts at the requested id and repeatedly looks up `parent`. Each found node is prepended, producing root-to-leaf order. The walk stops at a root, a missing parent, or an id already seen. `urlPath` then joins those ids, adds an optional documentation-set prefix, suppresses the locale segment for the site default locale, adds `/<locale>` for any other locale, and always ends with `/`. `packages/core/src/tree.ts:13-29`
+
+For this page, whose parent is `overview`, the same logical id can therefore have different physical addresses:
+
+| Context | Resulting shape |
+| --- | --- |
+| Site-default locale, local set | `/overview/navigation-federation/` |
+| Non-default locale `zh`, local set | `/zh/overview/navigation-federation/` |
+| Site-default locale, federated root set | `/self/overview/navigation-federation/` |
+| Non-default locale `zh`, external set with prefix `/core-a1b2c3d4` | `/zh/core-a1b2c3d4/overview/navigation-federation/` |
+
+The locale comparison is against the **site** default when sets are federated, so all sets share one locale-prefix rule rather than each independently hiding its own default locale. The resolver supplies that site-level default to `urlPath`. `packages/core/src/resolver.ts:52-61` `packages/core/src/resolver.ts:76-79`
+
+Parent integrity is checked separately from traversal. A missing parent is a `dangling-parent` warning, allowing a partial tree to be inspected, while a repeated id on the active ancestry path becomes a deduplicated `parent-cycle` error. `packages/core/src/tree.ts:32-67`
+
+:::caution[The URL contains ancestry]
+Changing a node's `parent` can change its resolved ancestry and therefore the URL of that node and its descendants, even though their logical `carto:` ids do not change. Replacing one unresolved parent with another leaves the resolved chain—and thus the URLs—unchanged. A dangling parent also truncates the chain at the last node the traversal can find; the warning is therefore relevant to navigation, not merely metadata.
+:::
+
+## Federation gives each doc set one identity
+
+A file-federated set is identified from its real path relative to the top-level federating root. Carto canonicalizes path separators, hashes the string as a `file:` identity with SHA-256, and uses the first eight hexadecimal characters. Resolving real paths makes aliases that reach the same directory converge on the same graph identity. `packages/core/src/graph.ts:28-35`
+
+Graph loading begins with the root manifest and follows each set's federation entries. File entries resolve relative to the declaring doc root; `git` entries fail immediately because git federation is not implemented. A per-set `aliasToHash` map preserves how links written in that set reach another identity, while the graph-wide `byHash` map loads a physical doc set once even when several aliases point to it. Non-federation failures encountered while loading a file entry are wrapped as `FederationError` with the declaring alias and resolved location; an existing `FederationError` is propagated unchanged. `packages/core/src/graph.ts:37-73`
+
+Prefixes make collocated sets occupy distinct URL spaces. If the root declares federation, its prefix is `/self`; without federation it remains empty. Every non-root set receives `/<lexicographically-smallest-alias>-<identity-hash>`. Thus multiple aliases may resolve to one set without producing multiple canonical URL prefixes. `packages/core/src/graph.ts:75-88`
+
+## Resolution flow
+
+```text
+Markdown target
+    |
+    v
+parse `carto:` + split first `#`
+    |
+    +-- no `/` ---------------- internal id
+    |                              |
+    |                              +-- validate id -> local node lookup
+    |                              +-- rootChain -> locale + local/set prefix
+    |
+    +-- first `/` -------------- alias + federated id
+                                   |
+                                   +-- require federation context
+                                   +-- validate alias and id
+                                   +-- aliasToHash -> byHash -> target node
+                                   +-- rootChain -> locale + target-set prefix
+    |
+    v
+append a non-empty `#anchor`; omit an empty `#` -> { ok: true, url, id }
+```
+
+Parsing recognizes only the `carto:` scheme, separates the first fragment marker, and treats the first slash as the federation boundary. A slash-free target is internal; a target with a slash becomes `{ alias, id }`. `packages/core/src/resolver.ts:10-25`
+
+After parsing, local resolution validates the id, looks it up in the current manifest, and calls `urlPath`. Federated resolution additionally requires a federation context, validates both alias and id, follows `aliasToHash` into `byHash`, looks up the target node in that set, and calls `urlPath` with that set's prefix. Either successful branch appends a non-empty fragment unchanged and returns the resolved node id with the URL; an empty fragment marker is omitted. `packages/core/src/resolver.ts:52-79`
+
+## Failures remain typed
+
+Resolution returns a discriminated result rather than throwing for a bad logical link. Callers can therefore preserve the exact reason instead of collapsing every failure into “not found.” The complete failure vocabulary is declared with the result contract. `packages/core/src/resolver.ts:27-50`
+
+| Error kind | Exact boundary that failed |
+| --- | --- |
+| `not-a-carto-link` | The target does not start with `carto:`. |
+| `malformed` | A local id, federated alias, or federated id violates the id pattern. |
+| `federation-unsupported` | The link uses `alias/id`, but no federation context was supplied. |
+| `unknown-alias` | The current set has no alias mapping, or its mapped identity is absent from the loaded graph. |
+| `unknown-id` | A valid local id is absent from the current manifest. |
+| `unknown-federated-id` | The alias resolves to a loaded set, but that set lacks the requested id. |
+
+The branches that assign these failures are explicit and ordered: federation support is checked before federated syntax, syntax before alias lookup, and alias lookup before target-node lookup. `packages/core/src/resolver.ts:52-77`
+
+## Where to change behavior
+
+- Change ancestry, locale placement, or trailing-slash URL composition in `tree.ts`; keep its validation severity contract aligned with traversal.
+- Change filesystem federation identity, graph deduplication, supported federation entry types, or canonical prefixes in `graph.ts`.
+- Change logical-link grammar, lookup order, or public failure distinctions in `resolver.ts`; consumers depend on the discriminated error kinds.
+
+Manifest I/O is deliberately outside this layer, and the resolver does not decide how Markdown is rewritten or how failures are presented to users. Those boundaries keep address calculation usable by validation and rendering without either subsystem owning the navigation model.

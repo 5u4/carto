@@ -1,0 +1,25 @@
+{
+  "parent": "overview",
+  "sources": [
+    {
+      "file": "skills/carto/SKILL.md",
+      "hash": "451d2568bf84111a",
+      "commit": "0bf18d964d6c964ab8abd65c25283bf204037abb"
+    },
+    {
+      "file": "skills/carto/references/documenting.md",
+      "hash": "546e82197acbb461",
+      "commit": "0bf18d964d6c964ab8abd65c25283bf204037abb"
+    },
+    {
+      "file": "skills/carto/references/presenting-code.md",
+      "hash": "787d73e49a30c301",
+      "commit": "0bf18d964d6c964ab8abd65c25283bf204037abb"
+    },
+    {
+      "file": "skills/carto/references/auditing.md",
+      "hash": "c4a5ffd5e257a40d",
+      "commit": "0bf18d964d6c964ab8abd65c25283bf204037abb"
+    }
+  ]
+}

@@ -1,75 +1,105 @@
 ---
-title: CLI authoring workflow
-description: How Carto commands coordinate initialization, inspection, reviewed synchronization, validation, building, and preview.
+title: CLI workflow
+description: How one Carto invocation is dispatched, initialized, and validated through deterministic gates.
 ---
 
-# How does an author move a doc set from initialization to preview?
+A `carto` invocation has a deliberately thin command layer. The executable selects a command, `init` establishes a valid documentation root, and `validate` gathers structural and content failures before deciding the process result. The CLI delegates document parsing, freshness, tree, federation, and link semantics to core rather than reimplementing them.
 
-The `carto` CLI is an authoring coordinator, not an automatic documentation generator. The package exposes `dist/index.js` as the `carto` executable; that entry calls `runMain(mainCommand)`, and the main command independently registers `init`, `status`, `sync`, `coverage`, `validate`, `preview`, and `build`. `packages/cli/package.json:9-16` `packages/cli/src/index.ts:1-5` `packages/cli/src/main.ts:10-20`
+## Executable dispatch
 
-Those independent commands form a lifecycle controlled by the author: initialize the doc root, inspect assignment and freshness, review changes and update prose, explicitly bless reviewed sources, validate the authored set, then build and preview it. The CLI does not chain these steps for you. `packages/cli/src/main.ts:10-20` `packages/cli/src/commands/status.ts:15-33` `packages/cli/src/commands/sync.ts:10-26`
+The executable entry in `packages/cli/src/index.ts` starts with a Node shebang, imports the command definition, and gives it to Citty's `runMain`; argument parsing, help, and subcommand selection therefore all begin at one entry point. `packages/cli/src/index.ts:1-5`
 
-```mermaid
-flowchart TD
-    bin[carto executable] --> dispatch[runMain and mainCommand]
-    dispatch --> init[init: scaffold authoring root]
-    dispatch --> status[status: strict freshness gate]
-    dispatch --> coverage[coverage: find untracked files]
-    dispatch --> sync[sync: bless reviewed source state]
-    dispatch --> validate[validate: check the authored doc set]
-    dispatch --> build[build: produce the static site]
-    dispatch --> preview[preview: serve the existing build]
-    init --> inspect[author inspects coverage and status]
-    status --> review[review source changes and update prose]
-    coverage --> review
-    review --> sync
-    sync --> validate
-    validate --> build
-    build --> preview
-    sync -. optional HEAD provenance .-> git[Git]
-    validate -. source state and logical links .-> core[core-model neighbor]
-    build -. rendering .-> site[site-rendering neighbor]
-    preview -. serving .-> site
+The registry exposes seven responsibilities and no hidden default workflow. `packages/cli/src/main.ts:1-20`
+
+| Command | CLI responsibility | Deeper behavior lives in |
+| --- | --- | --- |
+| `init` | Create the documentation root after validating its proposed config | This page |
+| `status` | Report source freshness | [Freshness and scope](carto:freshness-scope) |
+| `sync` | Bless reviewed sources in the requested scope | [Freshness and scope](carto:freshness-scope) |
+| `coverage` | Report source files not assigned to nodes | [Freshness and scope](carto:freshness-scope) |
+| `validate` | Aggregate schema, tree, sync, locale, and link findings | This page |
+| `build` | Request a production site build | [Rendering pipeline](carto:rendering-pipeline) |
+| `preview` | Request the local rendered-site workflow | [Rendering pipeline](carto:rendering-pipeline) |
+
+This split is a maintenance boundary: changes to dispatch belong in `main.ts`; changes to manifest representation belong in the [document model](carto:document-model), navigation and cross-doc-set resolution belong in [navigation and federation](carto:navigation-federation), and site production belongs in the rendering pipeline.
+
+## Initialization is validate-before-write
+
+`carto init` uses the current working directory as the doc root and first checks for `carto.json`. If it exists, the command refuses to overwrite it and exits before creating or changing the scaffold. `packages/cli/src/commands/init.ts:13-19`
+
+For a new root, initialization follows this order:
+
+1. Split the comma-separated locale argument, trim each item, and discard empty items.
+2. Build a version-1 config with the selected default locale, an empty federation list, and `codeRoot` only when supplied.
+3. Run core's `parseConfig` on the proposed config. A `ManifestError` becomes a user-facing error and exit 1, so invalid input cannot reach the filesystem writes. `packages/cli/src/commands/init.ts:28-32`
+4. Create `.carto/docs/`, serialize `carto.json`, and create `carto.config.mjs` only if that optional customization file does not already exist.
+
+The validate-before-write sequence and conditional config write are explicit in `packages/cli/src/commands/init.ts:20-41`. The generated module is intentionally a minimal typed Starlight customization stub, not another source of manifest data. `packages/cli/src/commands/init.ts:54-61`
+
+:::note[Ownership boundary]
+Initialization chooses defaults and controls scaffold safety. The accepted config shape, canonical paths, parsing, and serialization are core contracts described by the [document model](carto:document-model).
+:::
+
+## Validation call tree
+
+Validation has two phases: prerequisites that must succeed before meaningful checks can run, followed by deterministic collection of all independent findings.
+
+```text title="carto validate"
+readManifest(current directory)
+├─ failure → print one error, exit 1
+└─ loadGraph(current directory)
+   ├─ failure → print one error, exit 1
+   └─ collect findings
+      ├─ checkTree(nodes) → error or warning by issue severity
+      ├─ verify configured home id exists → error
+      ├─ statusReport(manifest, resolved code root)
+      │  ├─ unsynced → error
+      │  ├─ stale → warning
+      │  └─ missing source → error
+      └─ for every node × configured locale
+         ├─ missing locale file → error
+         └─ read MDX
+            └─ extract carto targets
+               └─ resolveCartoLink(target, manifest + locale + federation)
+                  └─ resolution failure → error
+
+print warnings
+├─ any errors → print every error, exit 1
+└─ no errors → print "validate: ok"
 ```
 
-The dispatch branches are the command registry. The solid lifecycle edges are author actions rather than implicit CLI calls: stale output tells the author to review and update prose before targeted sync, while build and preview remain separately registered adapters. `packages/cli/src/main.ts:10-20` `packages/cli/src/commands/status.ts:25-33` `packages/cli/src/commands/build.ts:4-13` `packages/cli/src/commands/preview.ts:4-18`
+Manifest and graph loading are early gates because downstream checks need those objects; their failures are normalized and returned immediately. Once both are available, tree issues, the `home` target, and freshness states are appended to separate error and warning arrays instead of failing at the first finding. `packages/cli/src/commands/validate.ts:19-60`
 
-## Initialize the authoring root
+Locale completeness is a Cartesian check: every manifest node must have a file for every configured locale. Existing files are read independently, and every extracted logical link is resolved using that file's locale plus the loaded federation context. This makes a missing translation or a broken link in only one locale a validation error rather than a fallback. `packages/cli/src/commands/validate.ts:62-75`
 
-`carto init` operates in the current working directory. It accepts comma-separated locales, a default locale, and an optional relative code root; it refuses to overwrite an existing `carto.json` and schema-checks the configuration before writing anything. `packages/cli/src/commands/init.ts:6-33`
+Finally, warnings are emitted first. Any accumulated error is then emitted and causes exit 1; with no errors the command prints `validate: ok`. An empty node set gets an informational message. `packages/cli/src/commands/validate.ts:77-84`
 
-On success it resolves and creates the canonical `.carto/docs/` directory, writes `carto.json`, and creates `carto.config.mjs` only when that file is absent. Its final message hands control back to the authoring skill, so initialization establishes the workspace but does not create or revise documentation prose. `packages/core/src/paths.ts:1-5` `packages/cli/src/commands/init.ts:34-41`
+### What blocks the invocation
 
-## Inspect assignment and freshness
+| Finding | Result | Why the distinction matters |
+| --- | --- | --- |
+| Tree issue marked `error` (including a cycle) | Error | Navigation cannot be trusted |
+| Dangling parent marked `warning` | Warning | A subtree may be authored before its parent |
+| Unknown configured `home` | Error | Root navigation would target no node |
+| Unsynced node | Error | Its source evidence has not been blessed |
+| Stale node | Warning | Review is required, but unrelated scoped work can still validate |
+| Missing source | Error | A declared evidence file cannot be checked |
+| Missing locale MDX | Error | The node is incomplete for the configured locale set |
+| Unresolvable `carto:` target | Error | Local or federated navigation would be broken |
 
-Use `carto coverage` to ask which documentable files are not named by any node source. It reports totals and uncovered paths; uncovered files produce a nonzero exit only when `--failOnUncovered` is set. Coverage is therefore an assignment inventory, not a freshness decision. `packages/cli/src/commands/coverage.ts:4-27`
+`validate` does not decide tree severity, freshness state, or logical-link meaning itself. It consumes those typed results and decides only how a CLI run reports and exits. Follow the underlying state rules in [freshness and scope](carto:freshness-scope) and the resolution failure modes in [navigation and federation](carto:navigation-federation).
 
-Use `carto status` as the strict freshness gate. It classifies every node, prints each non-fresh source, and exits with status 1 whenever any node is not `fresh`; an empty doc set is reported explicitly. `packages/cli/src/commands/status.ts:15-33`
+## Link extraction and delegation
 
-These checks answer different questions: coverage asks whether code files are represented by node sources, while status asks whether represented sources still match their recorded state. Neither command updates prose or source records. `packages/cli/src/commands/coverage.ts:18-27` `packages/cli/src/commands/status.ts:15-33`
+The CLI's extractor scans Markdown link destinations that use the `carto:` scheme, collecting each non-whitespace target up to the closing parenthesis in encounter order. It does not interpret ids, fragments, or federation aliases. `packages/cli/src/links.ts:1-8`
 
-## Review first, then sync deliberately
+That narrow extraction step is followed by `resolveCartoLink` for each target. Validation supplies the current manifest and locale, and, when a federated graph exists, its hash and alias indexes plus the site's default locale. The resolver returns typed failures that the CLI turns into stable messages for unknown ids, unsupported or unknown federation aliases, missing federated ids, and malformed targets. `packages/cli/src/commands/validate.ts:30-36` `packages/cli/src/commands/validate.ts:69-73` `packages/cli/src/commands/validate.ts:110-124`
 
-For a stale node, status gives the intended trust transition directly: review source changes, update the prose, and only then run `carto sync <id>`. This ordering makes synchronization an explicit acknowledgement that the named documentation has been reviewed against current code. `packages/cli/src/commands/status.ts:16-27`
+This boundary keeps extraction mechanical and resolution authoritative: change which Markdown destinations are discoverable in `links.ts`, but change the semantics of a discovered `carto:` address in [navigation and federation](carto:navigation-federation). Rendering later rewrites successfully resolved logical targets; that transformation belongs to the [rendering pipeline](carto:rendering-pipeline).
 
-`carto sync` collects positional ids as targeted nodes. With ids, it forwards those targets for rehashing; without ids, its declared default is only unsynced sources. It writes only nodes returned as changed, so choosing targets is the author's control point rather than a side effect of status or validate. `packages/cli/src/commands/sync.ts:5-26`
+## Change surfaces
 
-Git contributes optional provenance, not freshness. Sync tries `git rev-parse HEAD` and passes the result as a commit annotation; failure is converted to `undefined`. Status obtains its classification from `statusReport` and uses a stored commit only to append a `was …` note to a non-fresh source, so absence of Git does not prevent synchronization or become the freshness gate. `packages/cli/src/git.ts:3-8` `packages/cli/src/commands/sync.ts:13-20` `packages/cli/src/commands/status.ts:15-22`
-
-## Validate the authored set
-
-`carto validate` loads the root manifest and federation context, checks tree and home-node consistency, and obtains the same source-state report used for freshness inspection. Manifest or graph loading failures stop validation immediately. `packages/cli/src/commands/validate.ts:19-50`
-
-Its severity policy is intentionally different from status. Unsynced and missing sources are errors, but a stale node is a warning with the same review-then-sync guidance. Validation can therefore print `validate: ok` while stale warnings remain; only `carto status` is the strict all-sources-fresh gate. `packages/cli/src/commands/validate.ts:50-60` `packages/cli/src/commands/validate.ts:77-83` `packages/cli/src/commands/status.ts:30-33`
-
-Validation also requires one MDX file for every node and configured locale. In each existing page it extracts destinations written as Markdown links beginning with `carto:` and asks the neighboring core model to resolve them; missing pages or unresolved targets join the error set. `packages/cli/src/commands/validate.ts:62-73` `packages/cli/src/links.ts:1-9`
-
-The details of node state and logical resolution belong to the [core model](carto:core-model), while this page covers when the CLI invokes and presents those mechanisms. Return to the [overview](carto:overview) for the system boundary.
-
-## Build, then preview
-
-`carto build` passes the current doc root to the template layer's static-site build and converts a thrown failure into CLI error output and exit status 1. `packages/cli/src/commands/build.ts:4-13`
-
-`carto preview` is a separate command for serving an existing static site. It parses host and port options, passes them with the current doc root to the template layer, and likewise exits 1 on failure; it does not invoke build first. `packages/cli/src/commands/preview.ts:4-18` `packages/cli/src/main.ts:17-19`
-
-Site materialization and serving internals are deliberately outside this workflow; follow [site rendering](carto:site-rendering) for that neighboring mechanism. Operationally, the author runs validate, build, and preview as explicit steps, preserving a visible boundary between documentation correctness and its rendered presentation. `packages/cli/src/main.ts:17-19` `packages/cli/src/commands/build.ts:6-12` `packages/cli/src/commands/preview.ts:10-17`
+- Add, remove, or rename a top-level command in `main.ts`, keeping the command module responsible for its own orchestration.
+- Change initialization ordering in `init.ts` only while preserving refusal-before-write and config-validation-before-scaffold invariants.
+- Add a validation gate in `validate.ts` when it is a CLI-wide acceptance rule; put the underlying model or graph algorithm in core and consume its result here.
+- Change `links.ts` only when the authored Markdown shape recognized by validation changes. Keep address parsing and local/federated lookup delegated to the resolver.

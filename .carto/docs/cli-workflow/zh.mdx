@@ -1,67 +1,105 @@
 ---
-title: Carto CLI 文档闭环
-description: 组合初始化、盘点、人工评审、定向同步、验证、构建与预览命令，完成发布前检查。
+title: CLI 工作流
+description: 一次 Carto 调用如何经过命令分派、初始化与确定性的校验关卡。
 ---
 
-## 从空目录到发布前验收
+`carto` 的命令层刻意保持轻薄：可执行入口只负责选中命令，`init` 建立合法的文档根目录，`validate` 汇总结构与内容问题后再决定进程结果。文档解析、新鲜度、树、联邦图和链接语义均交给 core，CLI 不重复实现这些算法。
 
-`carto` 是一组可独立执行的子命令，不是替作者自动跑完流程的流水线。包清单把 `dist/index.js` 注册为 `carto`；进程入口将 `mainCommand` 交给 Citty 的 `runMain`，再由主命令分派 `init`、`status`、`sync`、`coverage`、`validate`、`preview` 和 `build`。 `packages/cli/package.json:9-16` `packages/cli/src/index.ts:1-5` `packages/cli/src/main.ts:10-20`
+## 可执行入口与命令分派
 
-因此，闭环的控制权在作者手里：先盘点源码归属和文档新鲜度，阅读真实改动后修改正文，只同步已经审过的节点，最后依次做机械验证与站点验收。命令注册关系、`status` 的退出策略和 `sync` 的写回范围共同构成这条操作路径。 `packages/cli/src/commands/status.ts:15-33` `packages/cli/src/commands/sync.ts:10-26`
+`packages/cli/src/index.ts` 中的可执行入口从 Node shebang 开始，导入顶层命令定义，再交给 Citty 的 `runMain`；参数解析、帮助信息和子命令选择因此共用同一个入口。`packages/cli/src/index.ts:1-5`
 
-```mermaid
-flowchart LR
-    init["init：建立文档根"] --> inventory{"盘点"}
-    inventory --> coverage["coverage：列出未覆盖源码"]
-    inventory --> status["status：新鲜度硬门禁"]
-    coverage --> assign["人工补充节点 sources"]
-    assign --> review["人工审阅源码并更新正文"]
-    status -->|stale 或 unsynced| review
-    status -->|missing| repair["恢复源码或修正 sources"]
-    repair --> status
-    review --> sync["sync 节点：确认已审阅"]
-    sync --> status
-    status -->|全部 fresh| validate["validate：结构、同步状态与链接"]
-    validate --> build["build：生成静态站点"]
-    build --> preview["preview：发布前本地验收"]
+命令表明确列出七项职责，不存在隐藏的默认流程。`packages/cli/src/main.ts:1-20`
+
+| 命令 | CLI 层的职责 | 深层行为所在页面 |
+| --- | --- | --- |
+| `init` | 校验拟写入的配置后创建文档根目录 | 本页 |
+| `status` | 报告来源文件的新鲜度 | [新鲜度与作用域](carto:freshness-scope) |
+| `sync` | 在指定作用域内确认已经审阅的来源 | [新鲜度与作用域](carto:freshness-scope) |
+| `coverage` | 报告尚未归属任何节点的来源文件 | [新鲜度与作用域](carto:freshness-scope) |
+| `validate` | 汇总 schema、树、同步状态、多语言文件和链接问题 | 本页 |
+| `build` | 发起生产站点构建 | [渲染流水线](carto:rendering-pipeline) |
+| `preview` | 发起本地渲染站点的预览流程 | [渲染流水线](carto:rendering-pipeline) |
+
+这张表同时也是维护边界：命令如何分派应改 `main.ts`；manifest 的磁盘与内存表示归[文档模型](carto:document-model)；导航和跨文档集解析归[导航与联邦](carto:navigation-federation)；站点产物则归渲染流水线。
+
+## 初始化：先校验，后落盘
+
+`carto init` 把当前工作目录当作文档根目录，并首先检查 `carto.json`。文件一旦存在，命令会拒绝覆盖并退出，尚不会创建或修改脚手架内容。`packages/cli/src/commands/init.ts:13-19`
+
+新建文档根目录时，执行顺序固定如下：
+
+1. 按逗号拆分 locale 参数，逐项去除首尾空白，并过滤空值。
+2. 组装 version 1 配置：写入选定的默认 locale、空的联邦列表，并且只在用户提供时加入 `codeRoot`。
+3. 先用 core 的 `parseConfig` 校验拟写入的配置。`ManifestError` 会转为面向用户的错误并以状态 1 退出，因此无效参数无法进入文件写入阶段。`packages/cli/src/commands/init.ts:28-32`
+4. 创建 `.carto/docs/`、序列化 `carto.json`；仅当可选的 `carto.config.mjs` 尚不存在时才创建它。
+
+“先校验再写入”的次序，以及配置模块的条件写入，均可从命令主体直接确认。`packages/cli/src/commands/init.ts:20-41` 生成的模块只是一个带 Starlight 类型提示的最小自定义入口，并非第二份 manifest 数据源。`packages/cli/src/commands/init.ts:54-61`
+
+:::note[职责边界]
+初始化命令负责选择默认值和保证脚手架写入安全；可接受的配置形状、规范路径、解析与序列化契约属于[文档模型](carto:document-model)。
+:::
+
+## 校验调用树
+
+校验分成两段：先通过后续检查赖以运行的前置关卡，再以固定顺序收集彼此独立的全部问题。
+
+```text title="carto validate"
+readManifest(当前目录)
+├─ 失败 → 输出一条 error，状态 1 退出
+└─ loadGraph(当前目录)
+   ├─ 失败 → 输出一条 error，状态 1 退出
+   └─ 汇总问题
+      ├─ checkTree(nodes) → 按 issue severity 归入 error 或 warning
+      ├─ 检查配置的 home id 是否存在 → error
+      ├─ statusReport(manifest, 解析后的 code root)
+      │  ├─ unsynced → error
+      │  ├─ stale → warning
+      │  └─ 来源缺失 → error
+      └─ 遍历每个 node × 每个已配置 locale
+         ├─ locale 文件缺失 → error
+         └─ 读取 MDX
+            └─ 提取 carto target
+               └─ resolveCartoLink(target, manifest + locale + federation)
+                  └─ 解析失败 → error
+
+输出 warnings
+├─ 存在任一 error → 逐条输出全部 error，状态 1 退出
+└─ 没有 error → 输出 "validate: ok"
 ```
 
-## 初始化只做一次
+manifest 和联邦图是后续检查的输入，因此二者采用前置快速失败：错误会被规范化后立即返回。两项加载成功后，树问题、`home` 目标和新鲜度状态则分别追加到 error 与 warning 数组，不会在第一项问题处中止。`packages/cli/src/commands/validate.ts:19-60`
 
-在计划作为文档根的目录运行 `carto init`。它支持 `--locales`、`--defaultLocale` 和 `--codeRoot`；命令先检查 `carto.json`，仅在其不存在时组装并校验配置。 `packages/cli/src/commands/init.ts:6-33`
+多语言完整性按笛卡尔积检查：manifest 中每个节点都必须为每个已配置 locale 提供文件。已有文件会逐一独立读取，其中提取到的每个逻辑链接都使用该文件的 locale 和已加载的联邦上下文解析。因此，即使只缺一种译文，或链接只在一种语言中失效，也会成为校验错误，而不会由其他语言兜底。`packages/cli/src/commands/validate.ts:62-75`
 
-初始化通过统一路径模块创建 `.carto/docs/` 与 `carto.json`；只有 `carto.config.mjs` 不存在时才写入默认配置。它搭好容器后便停止，不会替作者创建节点或正文。 `packages/core/src/paths.ts:1-5` `packages/cli/src/commands/init.ts:34-41` 系统各包的职责边界可先看 [Carto 总览](carto:overview)。
+汇总结束后，命令先输出 warnings；若 errors 非空，再逐条输出全部错误并以状态 1 退出。没有错误时输出 `validate: ok`。节点集合为空时还会给出提示信息。`packages/cli/src/commands/validate.ts:77-84`
 
-## 先找无人负责的源码，再看哪些正文过期
+### 哪些问题会阻断调用
 
-`carto coverage` 打印覆盖文件数、文件总数和未覆盖路径，但不会修改节点或 `sources`；启用 `--failOnUncovered` 后，只要未覆盖列表非空就以非零状态退出，适合放进自动检查。 `packages/cli/src/commands/coverage.ts:4-27` `packages/cli/src/commands/coverage.ts:18-27`
+| 问题 | 结果 | 这一区分的意义 |
+| --- | --- | --- |
+| severity 为 `error` 的树问题（包括环） | Error | 导航结构不可信 |
+| 悬空 parent（severity 为 `warning`） | Warning | 可以先编写子树，稍后再补父节点 |
+| 配置的 `home` id 不存在 | Error | 根导航没有有效目标 |
+| 节点未同步 | Error | 来源证据尚未得到确认 |
+| 节点已过期 | Warning | 仍须审阅，但不妨碍无关作用域完成校验 |
+| 来源文件缺失 | Error | 已声明的证据无法检查 |
+| locale MDX 缺失 | Error | 节点没有覆盖完整的配置语言集合 |
+| `carto:` 目标无法解析 | Error | 本地或联邦导航将会断裂 |
 
-`carto status` 打印每个节点的当前状态，并展开所有非 fresh 源文件；遇到 stale 时还明确要求先审阅源文件变更、更新正文，再执行对应节点的 `carto sync`。 `packages/cli/src/commands/status.ts:16-27` `packages/cli/src/commands/status.ts:25-33`
+树问题的严重级别、新鲜度状态和逻辑链接含义都不是 `validate` 自己判定的；它消费这些带类型的结果，只决定 CLI 如何报告以及如何退出。底层状态规则见[新鲜度与作用域](carto:freshness-scope)，解析失败类型见[导航与联邦](carto:navigation-federation)。
 
-把 `status` 当作严格的新鲜度门禁：报告中任一节点不是 `fresh`，进程就返回 1；没有节点时只打印提示，不会误报失败。 `packages/cli/src/commands/status.ts:15-33` `packages/cli/src/commands/status.ts:30-33` 节点如何从源文件状态得到整体状态属于相邻的 [节点与源码模型](carto:core-model)，这里关心的是 CLI 对结果采取的门禁策略。
+## 链接提取与语义委派
 
-## 评审正文后，定向同步
+CLI 的提取器扫描采用 `carto:` scheme 的 Markdown 链接目标，按出现次序收集到右括号之前且不含空白的完整目标。它不解释 id、片段或联邦别名。`packages/cli/src/links.ts:1-8`
 
-工具能指出发生变化的源文件，但“代码变化是否改变了文档含义”仍要由作者判断。先阅读 diff，修订相关 locale 的正文与引用，再运行 `carto sync <节点 ID…>`。给出 ID 时，命令只把这些目标传给同步逻辑；不带 ID 时则传入未指定的目标。两种路径都只写回真正发生变化的 `node.json`。 `packages/cli/src/commands/sync.ts:5-26` 未指定目标时如何补齐初始快照，见 [节点与源码模型](carto:core-model)。
+提取之后，每个目标都会交给 `resolveCartoLink`。校验命令传入当前 manifest 与 locale；若已加载联邦图，还会传入按 hash 和别名建立的索引，以及站点默认 locale。resolver 返回带类型的失败结果，CLI 再将其转成稳定消息，覆盖未知 id、联邦未配置或别名未知、联邦节点不存在，以及目标格式错误。`packages/cli/src/commands/validate.ts:30-36` `packages/cli/src/commands/validate.ts:69-73` `packages/cli/src/commands/validate.ts:110-124`
 
-同步是对本轮人工评审的确认，不是正文生成器。CLI 同时尝试读取代码根目录的 `HEAD`：Git 命令失败时返回 `undefined`，同步仍可继续。 `packages/cli/src/git.ts:3-8` `packages/cli/src/commands/sync.ts:13-20` 这份 commit 只是可选的来源信息；`status` 仅在非 fresh 源文件旁把它显示为 `was …`，门禁判断仍看节点的 `state`。 `packages/cli/src/commands/status.ts:15-22`
+这条边界让“提取”保持机械、让“解析”保持权威：需要改变校验能够发现的 Markdown 目标形状时修改 `links.ts`；需要改变已发现 `carto:` 地址的语义时，应前往[导航与联邦](carto:navigation-federation)。解析成功的逻辑目标随后如何改写为站点 URL，则属于[渲染流水线](carto:rendering-pipeline)。
 
-同步后再跑一次 `carto status`。只有全体节点都变成 `fresh`，才进入发布前验证；这样不会把 `validate` 对 stale 的宽松处理误当成新鲜度保证。 `packages/cli/src/commands/status.ts:30-33` `packages/cli/src/commands/validate.ts:50-60`
+## 修改入口
 
-## 区分新鲜度门禁与完整性验证
-
-`carto validate` 先读取 manifest 和联邦图，再检查树结构、主页节点及源码状态。读取或建图失败会立即报错；树问题则按自身严重级别进入 error 或 warning。 `packages/cli/src/commands/validate.ts:19-50`
-
-对源码状态，它有意采用不同于 `status` 的策略：`unsynced` 和 `missing` 记为 error，`stale` 只记为 warning，并提示审阅正文后同步。换言之，仅有 stale 时 `validate` 仍可能成功，所以它不能取代前一步严格的 `status`。 `packages/cli/src/commands/validate.ts:50-60`
-
-验证还逐节点、逐 locale 检查 MDX 是否存在，并解析正文中的 `carto:` Markdown 链接；链接提取器直接对原始 MDX 运行正则：只要右方括号后紧跟左圆括号，且目标以 `carto:` 开头、不含空白或右圆括号，就会命中，代码块、行内代码和图片也不会被排除，随后再交给 core 解析。 `packages/cli/src/commands/validate.ts:62-73` `packages/cli/src/links.ts:1-9` warning 会输出但不改变退出码；只要 errors 非空就返回 1，否则最终打印 `validate: ok`。 `packages/cli/src/commands/validate.ts:77-83`
-
-这些检查覆盖结构、同步状态和可解析链接，不评判技术表述是否准确。人工正文评审必须发生在同步之前，而不是等 `validate` 替代评审。 `packages/cli/src/commands/validate.ts:19-83`
-
-## 构建后再预览
-
-通过 `status` 与 `validate` 后运行 `carto build`。命令把当前工作目录交给模板包的 `buildSite`，构建异常会打印错误并以 1 退出。 `packages/cli/src/commands/build.ts:4-13` `packages/cli/src/commands/build.ts:6-12`
-
-随后运行 `carto preview` 验收已有静态站点；它不会隐式构建，而是把当前目录以及 host、port 传给 `previewSite`，默认监听 `127.0.0.1:4321`，服务失败同样返回 1。 `packages/cli/src/commands/preview.ts:4-18` `packages/cli/src/commands/preview.ts:10-17` 主命令也把 `validate`、`preview`、`build` 注册为三个独立动作，因此发布前应保持“验证 → 构建 → 预览”的显式顺序。 `packages/cli/src/main.ts:17-19`
-
-静态站点如何物化、如何提供服务是模板包的职责，不在 CLI 工作流内展开；需要追踪渲染边界时参见 [站点渲染](carto:site-rendering)。
+- 新增、删除或改名顶层命令时修改 `main.ts`，并让各命令模块继续自行编排本命令的工作。
+- 调整 `init.ts` 时，须维持“检测到已有 manifest 就先拒绝”和“配置通过校验才创建脚手架”两项次序不变量。
+- 当规则属于整个 CLI 的验收关卡时，在 `validate.ts` 中接入；底层模型或图算法仍应放在 core，由此处消费结果。
+- 只有在校验所识别的 Markdown 写法改变时才修改 `links.ts`；地址语法和本地/联邦查找继续委派给 resolver。

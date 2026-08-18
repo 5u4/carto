@@ -1,39 +1,48 @@
 ---
-title: Carto 的职责分界与维护闭环
-description: 作者 agent 如何负责文档判断，core、CLI 与 template 又如何把判断固化为可持续维护的网站。
+title: "Carto 架构总览"
+description: "理解各包的职责边界，以及文档从编写到渲染站点的完整路径。"
 ---
 
-Carto 要维护的不是一份 API 清单，而是能随代码演进的心智地图。决定读者需要理解什么、页面边界画在哪里、哪些代码足以支撑结论，都需要阅读上下文并作出解释性取舍，因此由作者 agent 负责；文件哈希、结构检查和站点生成则适合交给确定性工具。`skills/carto/SKILL.md:8-18` `skills/carto/SKILL.md:34-38`
+# Carto 架构总览
 
-多语言文档也遵循这条分工：先为每个节点制定一份各语言共用、与语言无关的证据计划，再根据代码分别用对应语言直接撰写。各语言版本保持事实、源码锚点和 `carto:` 目标一致，但不必逐句逐段对应；这仍需要编写者作出判断，工具链不会先生成一种语言再翻译成其他语言。`skills/carto/SKILL.md:240-259`
+Carto 把**文档判断**、**仓库语义**、**命令编排**和**站点渲染**分开处理。作者或编码代理决定哪些内容值得成为页面，并写出带证据、按语言独立成文的源文件；各个包再把这些文档转成经过检查的模型，并在需要时发布为站点。理解这条边界很重要：Carto 自动化的是确定性的机械工作，而不是替作者理解代码库。`skills/carto/SKILL.md:9-20`
 
-## 三个包只接管可机械化的部分
+## 职责分别在哪里
 
-**core 汇总文档集的底层模块。** 它的公共入口统一导出 schema、hash、固定 `.carto/docs/<id>` 布局的路径模块，以及 manifest、tree、resolver、graph、status 与 coverage；文章如何解释代码仍由作者决定。`packages/core/src/index.ts:1-10` `packages/core/src/paths.ts:1-16` `skills/carto/SKILL.md:8-18`
+仓库根目录是 monorepo 的控制面，并非额外的运行时层。它统一 Node 与 pnpm 基线，通过 workspace 递归执行 `build` 和 `typecheck`，同时承载共享的 Vitest 与流水线命令。`package.json:5-24`
 
-**CLI 是工作流入口。** 包依赖把 `@carto/core` 和 `@carto/template` 接到同一个命令行进程，并由 `citty` 组织命令。`packages/cli/package.json:23-27` 它公开 `init`、`status`、`sync`、`coverage`、`validate`、`preview` 与 `build`，把检查、固化和发布串成作者可反复执行的操作面。`packages/cli/src/main.ts:10-20`
+运行时依赖始终朝同一个方向流动：
 
-**template 是呈现边界。** 它的公共入口导出版本号、站点配置与渲染能力；MDX 和节点元数据仍由作者产出，模板负责把这组输入变成网站。`packages/template/src/index.ts:1-3` `skills/carto/SKILL.md:15-18`
-
-下面的图只表达职责流向：判断始终回到作者，工具返回可复现的状态，再把已确认的文档送入渲染端。
+- **`@carto/core` 负责仓库语义。** 它作为可导入包存在，不依赖 CLI 或渲染器；运行时仅依赖 `zod` 和 `ignore`。它通过公共导出向上层提供磁盘模型、校验原语、树与链接解析、新鲜度及覆盖率等能力。`packages/core/package.json:9-27` `packages/core/src/index.ts:1-10`
+- **`@carto/cli` 是面向用户的控制面。** 它发布 `carto` 可执行文件，并声明对 core 与 template 的依赖；两个底层包都不反向依赖 CLI。`packages/cli/package.json:9-26`
+- **`@carto/template` 是展示边界。** 它导出可供调用的模块，以 core 提供的 Carto 模型为输入，并引入 Astro、Starlight 与 Mermaid 来完成站点物化和呈现。`packages/template/package.json:9-30`
 
 ```mermaid
 flowchart LR
-    S["源码变更与用户 scope"] --> A["作者 agent：取舍内容、组织心智模型、直接撰写各语言版本"]
-    A --> D["MDX + node.json"]
-    D -->|"作者运行 Carto 命令"| C["CLI：工作流入口"]
-    C -->|"package dependency"| K["@carto/core：确定性模型"]
-    C -->|"package dependency"| T["@carto/template：呈现边界"]
-    C -. "检查结果供作者判断" .-> A
-    T --> W["可浏览的网站"]
+    C["@carto/cli"] -->|依赖| K["@carto/core"]
+    C -->|依赖| T["@carto/template"]
+    T -->|依赖| K
 ```
 
-这是一张职责与依赖图，不表示每条边都是直接函数调用：skill 规定作者与工具的分工，CLI 包声明对 core 和 template 的依赖，而两个包的公共入口分别暴露存储路径、模型能力与渲染能力。`skills/carto/SKILL.md:15-18` `packages/cli/package.json:23-27` `packages/core/src/index.ts:1-10` `packages/core/src/paths.ts:1-16` `packages/template/src/index.ts:1-3`
+这张图只表达依赖关系：CLI 可以导入两个底层包，template 可以导入 core，而两个底层包都不导入 CLI。具体行为的修改入口由下列专题页面分别说明。`packages/cli/package.json:23-26` `packages/template/package.json:25-30`
 
-## 维护闭环从源码变化开始
+## 一次编写请求如何到达站点
 
-一次维护先根据用户给定的范围确定具体目标：`status` 提供过期节点候选，`coverage` 提供尚未被任何节点覆盖的源码候选，作者再用用户指定的范围筛选这两类候选。随后更新相应的 `node.json`，为每个节点制定一份与语言无关、供各语言版本共用的证据计划，并直接写齐配置中声明的语言版本。`skills/carto/SKILL.md:49-72`
+1. **确定范围并编写。** 编写契约把人的需求转成边界明确、证据充分且覆盖全部语言的节点集合；这一判断密集型循环见[编写工作流](carto:authoring-workflow)。`skills/carto/SKILL.md:41-102`
+2. **解释文档集。** core 导出 schema、manifest、tree、graph 与 resolver 等能力，让节点包在内存中获得明确语义；具体契约见[文档模型](carto:document-model)和[导航与联邦](carto:navigation-federation)。`packages/core/src/index.ts:1-10`
+3. **度量，并且只确认审阅过的范围。** 哈希、覆盖率、状态与定向同步的规则见[新鲜度与范围](carto:freshness-scope)。
+4. **经过命令门禁。** 要从可执行入口追踪初始化、校验、同步、构建与预览，请读 [CLI 工作流](carto:cli-workflow)。
+5. **先构建发布，再预览。** 执行构建时，template 把可信图和本地化 MDX 转成 Starlight 工作区，运行 Astro，并发布 `dist-site`。预览不会重新物化文档集，而是要求 `dist-site` 已经构建完成，并直接提供该产物。`packages/template/src/render.ts:19-39` `packages/template/src/render.ts:42-76` 完整生命周期与安全发布边界见[渲染流水线](carto:rendering-pipeline)。
 
-内容确认后，定向 `sync <id>` 重算这些节点的源码哈希并记录当前 commit；`validate` 检查 schema、树、链接和同步状态；最后再用 `status` 确认本次触及的节点全部回到 `fresh`。以后被跟踪源码发生变化，相关节点会重新离开 `fresh` 状态，无需无差别重写整站。`skills/carto/SKILL.md:73-91`
+这段顺序不是实现细节的重复清单，而是排查问题时可用的所有权地图：先看文档证据，再看 core 如何解释，然后看 CLI 的门禁，最后看 template 的输出。
 
-这种闭环让“写什么、怎么讲”保留在人能审阅的文档中，让“哪里变了、结构是否成立、能否发布”成为重复执行也得到同一结果的机械步骤。想继续追踪各边界，可分别阅读 [core 的模型与状态](carto:core-model)、[CLI 的维护流程](carto:cli-workflow) 和 [站点渲染链路](carto:site-rendering)。
+## 接下来读哪一页
+
+- 要安全地新建或刷新文档，从[编写工作流](carto:authoring-workflow)开始。
+- 要从可执行入口一路追踪命令如何下交行为，阅读 [CLI 工作流](carto:cli-workflow)。
+- 要理解 `carto.json`、节点身份、序列化与同步范围，阅读[文档模型](carto:document-model)。
+- 要理解哈希、陈旧状态、覆盖率以及 sync 到底确认了什么，阅读[新鲜度与范围](carto:freshness-scope)。
+- 要追踪父子树、逻辑链接、本地化路径和外部文档集，阅读[导航与联邦](carto:navigation-federation)。
+- 要跟随 MDX 的物化、Astro 构建与原子发布，并了解如何预览已构建的站点，阅读[渲染流水线](carto:rendering-pipeline)。
+- 要了解受支持的源码安装与更新事务，阅读[安装](carto:installation)。
+- 要区分 CI 确定性证明的行为与模型评测衡量的行为，阅读[验证](carto:verification)。

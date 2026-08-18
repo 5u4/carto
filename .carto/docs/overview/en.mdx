@@ -1,43 +1,48 @@
 ---
-title: Carto architecture overview
-description: Where documentation judgement lives and how authored files become a maintainable site.
+title: "Carto architecture"
+description: "A responsibility map of the monorepo and the path from authored documentation to a rendered site."
 ---
 
-## Judgement belongs to the authoring agent
+# Carto architecture
 
-Carto separates documentation judgement from deterministic mechanics. The Carto skill asks an agent to build a sustainable mental map rather than an API reference or line-by-line transcription. The agent reads the code, chooses what the page should explain, and writes the MDX and node metadata; the CLI hashes files and validates structure and links, while the template renders the result. `skills/carto/SKILL.md:8-18`
+Carto separates **documentation judgment**, **repository semantics**, **command orchestration**, and **site rendering**. The author or coding agent decides what deserves a page and writes the localized, evidence-backed source. The packages then turn that authored bundle into a checked model and, when requested, a published site. This boundary is the useful starting point: Carto automates the deterministic mechanics, but it does not replace the author’s understanding of the codebase. `skills/carto/SKILL.md:9-20`
 
-That split keeps meaning in authored files, where it can be reviewed alongside the source. Carto's tools do not invent a page boundary or explanation: the skill explicitly treats those choices as documenting judgement and delegates only structural, freshness, and rendering work to deterministic components. `skills/carto/SKILL.md:34-38`
+## Where responsibility lives
 
-## One authored model, three package boundaries
+The repository root is the monorepo control plane rather than another runtime layer. It fixes the Node and pnpm baseline, fans `build` and `typecheck` across workspaces, and owns the shared Vitest and pipeline commands. `package.json:5-24`
 
-The CLI is the orchestration boundary. Its package depends directly on both `@carto/core` and `@carto/template`, so dependency direction runs from the CLI toward the reusable model operations and the site renderer, not from authored pages toward package internals. `packages/cli/package.json:23-27`
+The runtime dependency graph points in one direction:
 
-At the core boundary, the public surface gathers schema, hashing, canonical storage paths, manifest, tree, resolution, graph, status, and coverage capabilities. The path module fixes authored bundles at `.carto/docs/<id>` while the remaining deterministic operations let the CLI reason about a documentation set without taking over the author's explanatory choices. `packages/core/src/index.ts:1-10` `packages/core/src/paths.ts:1-16`
-
-At the template boundary, the public surface exposes site configuration and rendering. It owns the conversion from the documentation set into the site presentation, while the MDX and node metadata remain the authored source of truth. `packages/template/src/index.ts:1-3`
-
-The complete orientation is:
+- **`@carto/core` is the repository-semantics layer.** It is an importable package with no dependency on the CLI or renderer; its only runtime dependencies are `zod` and `ignore`. Its public surface makes the disk model, validation primitives, tree and link resolution, freshness, and coverage behavior available to higher layers. `packages/core/package.json:9-27` `packages/core/src/index.ts:1-10`
+- **`@carto/cli` is the user-facing control plane.** It publishes the `carto` binary and declares dependencies on both core and template, while neither lower package depends back on the CLI. `packages/cli/package.json:9-26`
+- **`@carto/template` is the presentation boundary.** It exports an importable module, depends on core for Carto’s model, and brings in Astro, Starlight, and Mermaid for site materialization and presentation. `packages/template/package.json:9-30`
 
 ```mermaid
-flowchart TD
-    A["Agent guided by the Carto skill"] -->|"writes explanations and metadata"| F["MDX pages + node metadata"]
-    F --> C["Carto CLI orchestration"]
-    C --> K["Core: structure and freshness"]
-    C --> T["Template: site configuration and rendering"]
-    T --> S["Maintainable documentation site"]
+flowchart LR
+    C["@carto/cli"] -->|depends on| K["@carto/core"]
+    C -->|depends on| T["@carto/template"]
+    T -->|depends on| K
 ```
 
-This is a responsibility map, not a claim that authoring is automated: the skill places page writing with the agent, the CLI declares both package dependencies, core exposes storage and model operations, and template exposes rendering. `skills/carto/SKILL.md:15-18` `packages/cli/package.json:23-27` `packages/core/src/index.ts:1-10` `packages/core/src/paths.ts:1-16` `packages/template/src/index.ts:1-3`
+The diagram is a dependency map: CLI can import both lower packages, template can import core, and neither lower package imports CLI. The focused pages below own behavioral change surfaces. `packages/cli/package.json:23-26` `packages/template/package.json:25-30`
 
-## The lifecycle at orientation depth
+## From an authoring request to a site
 
-A documentation run begins with a human-given scope. The agent narrows that scope using status and coverage information, applies the safety checkpoint for structural changes, then writes only the in-scope `node.json` files and locale pages. `skills/carto/SKILL.md:49-72`
+1. **Scope and author.** The authoring contract turns a human request into a bounded, evidence-backed, localized node set. [Authoring workflow](carto:authoring-workflow) explains that judgment-heavy loop. `skills/carto/SKILL.md:41-102`
+2. **Interpret the document set.** Core exposes the schema, manifest, tree, graph, and resolver facilities that give node bundles their in-memory meaning. Follow their contracts through [Document model](carto:document-model) and [Navigation and federation](carto:navigation-federation). `packages/core/src/index.ts:1-10`
+3. **Measure and bless deliberately.** Continue with [Freshness and scope](carto:freshness-scope) for hashes, coverage, status, and targeted sync.
+4. **Apply command gates.** Use [CLI workflow](carto:cli-workflow) to trace initialization, validation, sync, build, and preview from the executable entry.
+5. **Build and publish, then preview.** For a build, the template package converts the trusted graph and localized MDX into a Starlight workspace, runs Astro, and publishes `dist-site`. Preview does not materialize the document set: it requires and serves an already-built `dist-site`. `packages/template/src/render.ts:19-39` `packages/template/src/render.ts:42-76` The complete lifecycle and safe publication boundary are covered in [Rendering pipeline](carto:rendering-pipeline).
 
-After authoring, targeted sync records freshness for exactly the written nodes; validation checks schema, tree, links, and synchronization; status confirms that each touched node is fresh. This ordering is what makes maintenance scoped: deterministic checks preserve the connection to changing source files without rewriting unaffected explanations. `skills/carto/SKILL.md:73-91`
+This sequence is not a second copy of the implementation. It is the ownership map to use when tracing a failure: authored evidence first, core interpretation second, CLI gate third, template output last.
 
-The CLI presents that lifecycle as a single command surface—`init`, `status`, `sync`, `coverage`, `validate`, `preview`, and `build`. At this level, the important point is that one orchestrator carries authored files through model checks and onward to preview or build; command-specific behavior belongs in the workflow documentation. `packages/cli/src/main.ts:10-20`
+## Choose the next page
 
-## Continue into the boundaries
-
-Read the [core model](carto:core-model) for the documentation graph and freshness concepts, the [CLI workflow](carto:cli-workflow) for command sequencing and operational checkpoints, and [site rendering](carto:site-rendering) for how the template turns the documentation set into the delivered site.
+- To create or refresh documentation safely, start with [Authoring workflow](carto:authoring-workflow).
+- To follow a command from executable entry to its delegated behavior, use [CLI workflow](carto:cli-workflow).
+- To understand `carto.json`, node identity, serialization, and sync scope, use [Document model](carto:document-model).
+- To reason about hashes, stale states, coverage, and what sync certifies, use [Freshness and scope](carto:freshness-scope).
+- To trace parent trees, logical links, localized paths, and external doc sets, use [Navigation and federation](carto:navigation-federation).
+- To follow MDX through materialization, Astro build, atomic publication, and preview of the built site, use [Rendering pipeline](carto:rendering-pipeline).
+- To understand the supported source installation and update transaction, use [Installation](carto:installation).
+- To see what CI proves versus what the model evaluation measures, use [Verification](carto:verification).

@@ -1,0 +1,96 @@
+---
+title: Freshness, coverage, and scoped sync
+description: How Carto detects changed documentation evidence, finds uncovered files, and blesses only reviewed pages.
+---
+
+Carto answers two separate questions. **Freshness** asks whether each page still matches the exact bytes of its declared sources. **Coverage** asks which non-ignored files are not declared by any page. `sync` does not review prose: it records that an author has completed that review for a deliberate scope.
+
+skills/carto/SKILL.md:57-59
+
+## Freshness is a content comparison
+
+Every source fingerprint is SHA-256 over the file's bytes, truncated to the first 16 hexadecimal characters. Paths, timestamps, and Git state are not inputs to that fingerprint.
+
+packages/core/src/hash.ts:1-10
+
+For an existing file, Carto computes the current fingerprint and compares it with the stored one. A missing file is detected separately. At page level, the most severe source state wins in the order `missing` > `stale` > `unsynced` > `fresh`; a node with no sources therefore remains `fresh`.
+
+packages/core/src/status.ts:5-52
+
+| State | Source-level rule | Effect on the page | Required response |
+| --- | --- | --- | --- |
+| `fresh` | The file exists and its current hash equals the stored hash. | It contributes no freshness problem. | None. |
+| `unsynced` | The file exists, but no stored hash is present. | It outranks `fresh`. | Review the newly assigned evidence, then sync the page. |
+| `stale` | The file exists, but its current hash differs from the stored hash. | It outranks `unsynced`. | Inspect the source change, update the prose, then sync the named page. |
+| `missing` | Reading the source fails with `ENOENT`. | It is the page's highest-priority state. | Repair the source assignment or restore the file before blessing anything. |
+
+This aggregation matters for multi-source pages: one missing source makes the node `missing`, even if another is stale or unsynced. The source rows retain their individual states, so the report can still identify every problem.
+
+## Coverage is an ignore-aware set difference
+
+Coverage walks the configured code root recursively, normalizes paths to POSIX form, and considers regular files that survive its ignore rules. It starts with built-in exclusions for Git metadata, dependencies, Carto's own manifest and docs, generated site output, and the ignore files themselves; then it adds rules from `.gitignore` and `.cartoignore`. If the documentation root is nested under the code root, that subtree is excluded too. From those documentable files it subtracts the normalized union of every node's declared sources, sorts the remainder, and reports that remainder as `uncovered`.
+
+packages/core/src/coverage.ts:11-67
+
+Coverage therefore measures assignment, not prose quality or freshness. A declared source counts as covered even when its page is stale; conversely, a file omitted by ignore policy is outside the denominator rather than “covered.” Changing `sources` changes the coverage set and the freshness crosshair, so do it only when page ownership genuinely changes.
+
+## The CLI turns states into policy
+
+`carto status` prints every node, expands only non-fresh source rows, includes a stored commit as `(was …)` when available, and gives stale nodes the targeted-sync remediation. It exits non-zero if any node is not `fresh`, which makes freshness a usable command gate rather than a display-only label.
+
+packages/cli/src/commands/status.ts:1-33
+
+`carto coverage` prints covered and total file counts plus the sorted uncovered list. No documentable files is represented as `100.0%`. Uncovered files are informational by default; `--fail-on-uncovered` changes only that condition into a non-zero exit.
+
+packages/cli/src/commands/coverage.ts:1-27
+
+These commands answer complementary questions:
+
+| Command | Passing policy | What a failure asks you to do |
+| --- | --- | --- |
+| `carto status` | Every node is `fresh`. | Refresh, sync, or repair each named non-fresh node. |
+| `carto coverage` | Manifest loading and analysis succeed; uncovered files do not fail by default. | Fix the command error, or assign uncovered files when project policy requires it. |
+| `carto coverage --fail-on-uncovered` | The uncovered set is empty. | Add evidence ownership or deliberately ignore files that are not documentable. |
+
+## A scoped refresh blesses reviewed work
+
+Use this sequence when a status report identifies stale pages:
+
+```text
+carto status
+    ↓ choose only affected node ids
+review source diff (or reread the source)
+    ↓ update every locale from the reviewed evidence
+carto sync <id> [<id> ...]
+    ↓
+carto validate
+    ↓
+carto status  →  touched ids are fresh
+```
+
+1. Run `carto status` and take the concrete non-fresh node ids as candidates; intersect them with the authoring scope.
+2. For a stale source, use its displayed `(was <commit>)` value as a diff base when possible. If it has no usable anchor, reread the current source in full.
+3. Update the page's claims, anchors, and all locales. Keep its source assignment unchanged unless responsibility actually moved.
+4. Run `carto sync` with exactly the reviewed ids. The command resolves the code root, obtains a best-effort commit, passes named targets to the core sync operation, and writes only nodes the operation reports as changed. With no ids, its declared default is only unsynced sources—not stale pages—so bare sync is not a shortcut for a stale-page review.
+
+packages/cli/src/commands/sync.ts:5-30
+
+packages/core/src/manifest.ts:7-9,171-238
+
+5. Validate the doc set, then run status again and require every touched id to be `fresh`. Problems outside the chosen scope retain their existing signal.
+
+skills/carto/SKILL.md:63-68,104-138
+
+The Git anchor is deliberately best-effort: Carto runs `git rev-parse HEAD`, suppresses Git's stderr, and returns `undefined` if Git fails or produces no value.
+
+packages/cli/src/git.ts:1-9
+
+That commit is a review aid, not the freshness oracle. Status carries it through for display, while classification is still decided by existence and content hashes. A rebase, an untracked source, or a non-Git code root can make the commit unavailable or unusable as a file-diff base without weakening the byte comparison.
+
+## Where to make a change
+
+- Change file/hash/config invariants or the underlying sync selection in the [document model](carto:document-model).
+- Change how authors select, review, localize, and verify a documentation scope in the [authoring workflow](carto:authoring-workflow).
+- Change command registration, validation gates, or invocation-level behavior in the [CLI workflow](carto:cli-workflow).
+
+Keep the boundary clear: status observes evidence, coverage observes assignment, and targeted sync records an already-reviewed decision.

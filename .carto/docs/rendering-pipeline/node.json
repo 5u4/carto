@@ -2,49 +2,49 @@
   "parent": "overview",
   "sources": [
     {
+      "file": "packages/cli/src/commands/build.ts",
+      "hash": "0b1055c2205b881f",
+      "commit": "0bf18d964d6c964ab8abd65c25283bf204037abb"
+    },
+    {
+      "file": "packages/cli/src/commands/preview.ts",
+      "hash": "9e87134b745061e2",
+      "commit": "0bf18d964d6c964ab8abd65c25283bf204037abb"
+    },
+    {
       "file": "packages/template/src/render.ts",
       "hash": "620744477eeb4399",
-      "commit": "4b46cdff9a02f8a4bf2f04938a0648683b57968c"
+      "commit": "0bf18d964d6c964ab8abd65c25283bf204037abb"
     },
     {
       "file": "packages/template/src/materialize.ts",
       "hash": "f3a8b611962d8292",
-      "commit": "4b46cdff9a02f8a4bf2f04938a0648683b57968c"
+      "commit": "0bf18d964d6c964ab8abd65c25283bf204037abb"
     },
     {
       "file": "packages/template/src/site-config.ts",
       "hash": "f267cbdf7d0d2315",
-      "commit": "4b46cdff9a02f8a4bf2f04938a0648683b57968c"
+      "commit": "0bf18d964d6c964ab8abd65c25283bf204037abb"
     },
     {
       "file": "packages/template/src/remark-source-footnotes.ts",
       "hash": "e3b23b6fbc9183e5",
-      "commit": "4b46cdff9a02f8a4bf2f04938a0648683b57968c"
+      "commit": "0bf18d964d6c964ab8abd65c25283bf204037abb"
     },
     {
       "file": "packages/template/src/remark-join-cjk.ts",
       "hash": "11a1593a397791a2",
-      "commit": "4b46cdff9a02f8a4bf2f04938a0648683b57968c"
+      "commit": "0bf18d964d6c964ab8abd65c25283bf204037abb"
     },
     {
       "file": "packages/template/src/staleness-banner.ts",
       "hash": "6bccccd65f12bf11",
-      "commit": "4b46cdff9a02f8a4bf2f04938a0648683b57968c"
-    },
-    {
-      "file": "packages/template/src/content.config.ts",
-      "hash": "bb8d4570d3eaf53e",
-      "commit": "4b46cdff9a02f8a4bf2f04938a0648683b57968c"
+      "commit": "0bf18d964d6c964ab8abd65c25283bf204037abb"
     },
     {
       "file": "packages/template/astro.config.mjs",
       "hash": "48efe0bcb18deff3",
-      "commit": "4b46cdff9a02f8a4bf2f04938a0648683b57968c"
-    },
-    {
-      "file": "packages/core/src/paths.ts",
-      "hash": "31440b1e5beed40a",
-      "commit": "4b46cdff9a02f8a4bf2f04938a0648683b57968c"
+      "commit": "0bf18d964d6c964ab8abd65c25283bf204037abb"
     }
   ]
 }

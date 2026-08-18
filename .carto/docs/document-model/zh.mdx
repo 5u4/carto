@@ -1,0 +1,75 @@
+---
+title: 文档模型
+description: Carto 如何把目录身份与 JSON 契约收敛成确定性的 manifest，并在写回时守住同步范围。
+---
+
+Carto 要先核对两类事实，才能信任一套文档：目录布局决定页面身份，JSON 则提供配置和页面内容。核心层把二者合并为有序的 `Manifest`，并不会让节点在自己的 JSON 中声明身份。
+
+## 身份从磁盘目录开始
+
+每个节点位于 `.carto/docs/<id>/node.json`，各语言页面与它同目录。路径辅助函数统一维护这套布局，因此节点目录、元数据文件和 locale 文件都由同一个文档根目录与 id 推导。`packages/core/src/paths.ts:3-16`
+
+加载器只查看 `.carto/docs` 下的目录：目录名不符合 id 规则时立即报错，合法名称排序后再逐个加载。目录中若没有 `node.json`，该目录不会产生节点；JSON 格式错误则会中止读取。`parseNodeFile` 校验文件内容后，才把目录名补成 `id`。`packages/core/src/manifest.ts:30-35` `packages/core/src/manifest.ts:83-131`
+
+因此，磁盘上的 `NodeFile` 只保存 `parent` 与 `sources`；内存中的 `Node` 才是 `NodeFile & { id: string }`，而 `Manifest` 是已解析配置与有序 `nodes` 数组的组合。`packages/core/src/schema.ts:43-46` `packages/core/src/schema.ts:80-87`
+
+### 从磁盘进入内存
+
+```text
+carto.json
+  └─ 读取 UTF-8 → JSON.parse → configSchema
+                                      ┐
+.carto/docs/<id>/                     │
+  ├─ 目录名 → id ─────────────────────┼─→ Manifest { 配置字段, nodes[] }
+  └─ node.json → JSON.parse           │       节点按目录 id 排序
+                 → nodeFileSchema ────┘
+```
+
+配置和节点内容都经由 `safeParse`；校验问题会转换成带字段路径的 `ManifestError`，节点错误还会带上从目录取得的 id。`packages/core/src/manifest.ts:22-35`
+
+文件读取层把“不是合法 JSON”和“JSON 形状不合法”分开处理：`readConfig` 解析根目录的 `carto.json`，`readManifest` 再将其与排好序的节点合并；每个节点独立解析，所以错误仍能定位到具体路径或节点。`packages/core/src/manifest.ts:71-131`
+
+## Schema 是模型的契约边界
+
+| 关注点 | 可接受的契约与内存语义 | 依据 |
+| --- | --- | --- |
+| 身份 | id 首字符必须是小写字母或数字，后续只能使用小写字母、数字或 `-`。目录提供的节点 id、父节点、`home` 与 federation alias 共用这条规则。 | `packages/core/src/schema.ts:3-3` `packages/core/src/schema.ts:27-55` `packages/core/src/manifest.ts:83-105` |
+| 源文件地址 | `file` 非空、必须是相对路径、只能使用正斜杠、不能是盘符路径，也不能含 `..` 段。 | `packages/core/src/schema.ts:5-18` |
+| 同步元数据 | `hash` 和 `commit` 都可省略，但没有 `hash` 时不能出现 `commit`，避免源文件只声称 diff 基点却没有内容指纹。 | `packages/core/src/schema.ts:16-25` |
+| 节点内容 | `parent` 可省略，提供时必须是合法 id；省略 `sources` 会解析为空数组。节点 id 仍由目录提供。 | `packages/core/src/schema.ts:43-46` |
+| 配置 | `version` 必须为 `1`；locale 列表非空且不能重复，`defaultLocale` 必须在列表中。`codeRoot` 必须是相对路径，`home` 必须是合法 id，federation 默认为空数组；alias 不得重复，`self` 为保留值。 | `packages/core/src/schema.ts:48-78` |
+
+类型直接从 schema 推导，运行时校验与 TypeScript 的磁盘—内存模型共用同一份定义，不需要再维护一套手写类型。`packages/core/src/schema.ts:80-87`
+
+`codeRootDir` 把 `codeRoot` 相对文档根目录解析，缺省值为 `.`。与此独立，同步逻辑会把每个 source 的 `file` 相对调用方传入的 `rootDir` 解释。`packages/core/src/manifest.ts:7-9` `packages/core/src/manifest.ts:171-178` `packages/core/src/manifest.ts:188-199`
+
+父子拓扑与 federated URL 解析发生在文档契约加载完成之后；相关规则见[导航与联邦](carto:navigation-federation)。
+
+## 序列化必须稳定，而非碰巧一致
+
+序列化器先按固定顺序重建普通对象，再输出两空格缩进的 JSON，并保留一个末尾换行。配置先写 `version`、`locales`、`defaultLocale`，随后才写已定义的可选字段；空 federation 列表不落盘。节点 JSON 省略未定义的 parent，但始终写 `sources`；每个 source 依次写 `file`、`hash`、`commit`，而且没有 hash 时绝不会输出 commit。`packages/core/src/manifest.ts:38-68`
+
+写入函数会创建所需目录，并统一调用上述序列化器。写完整 manifest 时，会先检查内存中是否有重复 id；检查通过后才写配置和各节点，而且节点总是写入规范路径。身份依然不从 `node.json` 内的字段推导。`packages/core/src/manifest.ts:134-158`
+
+这样可以得到稳定 diff：等价的内存值会产生相同的字段顺序、缩进、省略规则和末尾换行。新增持久化字段时，schema、推导类型与规范序列化器必须同时保持一致，否则改动并不完整。
+
+## 裸同步与定向同步的边界不同
+
+同步函数只做内存变换：输入明确的源代码根目录与可选 commit，输出新的 manifest 和源元数据发生变化的节点 id。每个 source 的 `file` 都相对传入的根目录参与哈希；缺失文件会集中记录，而不会被静默删除。`packages/core/src/manifest.ts:160-185`
+
+| 调用边界 | 纳入处理的节点 | 节点内纳入处理的 source | 失败边界 |
+| --- | --- | --- | --- |
+| 裸调用（没有 `targets`） | 所有节点 | 只处理还没有 hash 的 source；已有 hash 的条目原样保留 | 任一被选 source 缺失时，收集结束后统一抛出 `ManifestError` |
+| 定向调用（提供 `targets`） | 只有点名节点 | 重新哈希其中每个 source，并写入传入的 commit；集合外节点原样保留 | 未知 id 在哈希前失败；任一被选 source 缺失时，收集结束后统一抛出 `ManifestError` |
+
+两个分支在实现中完全分开：`syncUnsynced` 会跳过已有 hash 的 source，`syncSources` 则重算收到的每一项。`syncManifest` 先校验目标 id，再选择分支；它会保留范围外节点、记录发生变化的节点，并在任何源文件缺失时拒绝返回成功结果。`packages/core/src/manifest.ts:188-238`
+
+这里定义的是核心层“变换什么”，而不是调用方“为何选择某种模式”，也不负责判断 hash 何时算新鲜。策略见[新鲜度与范围](carto:freshness-scope)，命令编排与持久化见 [CLI 工作流](carto:cli-workflow)。
+
+## 修改时必须一起守住的接缝
+
+- **调整 bundle 布局：** 同时修改规范路径辅助函数及其磁盘读写方，并继续以目录作为 `Node.id` 的唯一来源。
+- **增加持久化字段：** 同步更新运行时校验、推导类型和规范序列化，还要明确省略该字段是否代表默认值。
+- **修改同步范围：** 保留“选择节点”与“选择节点内 source”的区别，也保留哈希前拒绝未知 id、扫描后汇总缺失文件这两道失败边界。
+
+这些接缝让解析、身份、序列化和同步变换各自清晰，不会把磁盘约定渗入后续的导航或新鲜度逻辑。

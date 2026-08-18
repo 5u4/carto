@@ -2,69 +2,29 @@
   "parent": "overview",
   "sources": [
     {
-      "file": "packages/cli/package.json",
-      "hash": "963c2aedff09a234",
-      "commit": "4b46cdff9a02f8a4bf2f04938a0648683b57968c"
-    },
-    {
       "file": "packages/cli/src/index.ts",
       "hash": "65e40b1c4aed0f62",
-      "commit": "4b46cdff9a02f8a4bf2f04938a0648683b57968c"
+      "commit": "0bf18d964d6c964ab8abd65c25283bf204037abb"
     },
     {
       "file": "packages/cli/src/main.ts",
       "hash": "88db4a45fe65b26b",
-      "commit": "4b46cdff9a02f8a4bf2f04938a0648683b57968c"
-    },
-    {
-      "file": "packages/cli/src/git.ts",
-      "hash": "0e0d709390d2f137",
-      "commit": "4b46cdff9a02f8a4bf2f04938a0648683b57968c"
-    },
-    {
-      "file": "packages/cli/src/links.ts",
-      "hash": "6a0b2a76f5f6b2e4",
-      "commit": "4b46cdff9a02f8a4bf2f04938a0648683b57968c"
+      "commit": "0bf18d964d6c964ab8abd65c25283bf204037abb"
     },
     {
       "file": "packages/cli/src/commands/init.ts",
       "hash": "5c093891941169f8",
-      "commit": "4b46cdff9a02f8a4bf2f04938a0648683b57968c"
-    },
-    {
-      "file": "packages/cli/src/commands/status.ts",
-      "hash": "05478a9e2973cf8c",
-      "commit": "4b46cdff9a02f8a4bf2f04938a0648683b57968c"
-    },
-    {
-      "file": "packages/cli/src/commands/coverage.ts",
-      "hash": "afa117eeafdc310f",
-      "commit": "4b46cdff9a02f8a4bf2f04938a0648683b57968c"
-    },
-    {
-      "file": "packages/cli/src/commands/sync.ts",
-      "hash": "55db9e9597df4278",
-      "commit": "4b46cdff9a02f8a4bf2f04938a0648683b57968c"
+      "commit": "0bf18d964d6c964ab8abd65c25283bf204037abb"
     },
     {
       "file": "packages/cli/src/commands/validate.ts",
       "hash": "7e5ac2c38d9313e6",
-      "commit": "4b46cdff9a02f8a4bf2f04938a0648683b57968c"
+      "commit": "0bf18d964d6c964ab8abd65c25283bf204037abb"
     },
     {
-      "file": "packages/cli/src/commands/build.ts",
-      "hash": "0b1055c2205b881f",
-      "commit": "4b46cdff9a02f8a4bf2f04938a0648683b57968c"
-    },
-    {
-      "file": "packages/cli/src/commands/preview.ts",
-      "hash": "9e87134b745061e2",
-      "commit": "4b46cdff9a02f8a4bf2f04938a0648683b57968c"
-    },
-    {
-      "file": "packages/core/src/paths.ts",
-      "hash": "31440b1e5beed40a",
-      "commit": "4b46cdff9a02f8a4bf2f04938a0648683b57968c"
+      "file": "packages/cli/src/links.ts",
+      "hash": "6a0b2a76f5f6b2e4",
+      "commit": "0bf18d964d6c964ab8abd65c25283bf204037abb"
     }
   ]
 }

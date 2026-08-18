@@ -1,0 +1,77 @@
+---
+title: Install and update Carto
+description: How the source installer builds, publishes, updates, and safely removes the Carto CLI and coding-agent skill.
+---
+
+Carto is installed from a source checkout rather than from a global package registry. The installer owns one checkout and publishes two stable symlinks from it: one for the command and one for the coding-agent skill. That boundary matters when diagnosing an update: fetching and building happen in the checkout, while shell-visible integration happens through the links and PATH configuration. For the larger package map, see [Repository overview](carto:overview); for what the installed skill asks an agent to do, see [Authoring workflow](carto:authoring-workflow); for the command behavior behind the executable, see [CLI workflow](carto:cli-workflow).
+
+## Prerequisites and ownership
+
+The supported install path requires Bash, Git, curl, Node 22.12 or newer, and either Corepack or pnpm 10. The published one-line command uses curl only to deliver the script; the script itself checks Git and Node, enforces the Node floor, prefers `corepack pnpm`, and otherwise rejects pnpm versions below 10. README.md:11-16 install.sh:40-60 install.sh:278-283
+
+The install root defaults to `~/.carto` but `CARTO_DIR` can move it; a relative override is resolved from the current directory. `CARTO_REPO_URL` can replace the upstream URL. In contrast, the command and skill integration points stay under the user's home directory. The ownership marker identifies the installer's root; the three PATH-state files record an automatic shell-file edit and are absent when no edit is made. install.sh:4-23 install.sh:74-96 install.sh:195-223
+
+Before taking ownership, the installer rejects a symlink or non-directory at the install root. A non-empty, unmarked directory is accepted only when its sole entry is the expected `repo` checkout and that checkout passes validation; otherwise the operator must choose another `CARTO_DIR`. It then records the `carto-installer-v1` marker. install.sh:74-96
+
+## The install/update transaction
+
+```text
+requirements and link-conflict preflight
+                 │
+                 ▼
+claim install root ──► clone main / fast-forward existing main
+                 │
+                 ▼
+locked dependency install ──► build all workspaces ──► verify CLI artifact
+                 │
+                 ▼
+create missing CLI and skill symlinks ──► configure PATH ──► success message
+```
+
+This order is the transaction's practical boundary: link conflicts are checked before the checkout is claimed or advanced; the checkout is then cloned or updated and fully built before a fresh command or skill link is exposed. PATH integration comes last. install.sh:278-294
+
+### Clone or fast-forward, never overwrite local work
+
+On a first run, the installer shallow-clones the single `main` branch. On an update, the existing checkout must have the exact configured origin, be on `main`, and have no tracked changes or non-ignored untracked files. After fetching `origin/main`, the current `HEAD` must be its ancestor; the installer then uses a fast-forward-only merge. A checkout with local commits, divergence, a detached head, or changes reported by that working-tree check is refused rather than reset; ignored files are not reported by the check. install.sh:63-72 install.sh:98-110
+
+Dependencies are installed with the repository lockfile frozen, then every workspace is built. Publication cannot proceed unless `packages/cli/dist/index.js` exists; that artifact is made executable before links are considered. install.sh:113-118
+
+Re-running the published install command therefore means “validate, fast-forward, rebuild,” not “replace the directory.” The README deliberately describes the same command as both installation and update. README.md:17-33
+
+### Publish through stable links
+
+The installer first verifies that each destination is absent or is already the exact symlink it owns. A different symlink or a regular file is never replaced. After the build, it creates only missing links, so an update keeps the existing owned links and updates what they resolve to through the checkout; there is no temporary link swap. install.sh:120-157
+
+The resulting default layout is:
+
+| Role | Filesystem location |
+|---|---|
+| Installer-owned checkout | `~/.carto/repo` |
+| Built CLI target | `~/.carto/repo/packages/cli/dist/index.js` |
+| User command | `~/.local/bin/carto` → built CLI target |
+| Skill target | `~/.carto/repo/skills/carto` |
+| Agent-visible skill | `~/.agents/skills/carto` → skill target |
+| Ownership marker | `~/.carto/.installer-owner` |
+| PATH state, only after an automatic shell-file edit | `~/.carto/.path-rc`, `.path-rc.before`, `.path-rc.after` |
+
+The ownership marker is present after the installer claims the root. The three PATH-state files are created only when it automatically appends the PATH line; early returns for an already configured PATH, an unsupported shell, or an existing exact export create none of them. install.sh:74-96 install.sh:195-223
+
+These destinations are defined independently so changing `CARTO_DIR` moves the checkout and link targets but not `~/.local/bin` or `~/.agents/skills`. install.sh:11-22 The README presents the same default checkout, CLI link, skill link, and post-install `carto --help` check. README.md:25-33
+
+## PATH integration
+
+If `~/.local/bin` is already on `PATH`, no shell file is touched. Otherwise zsh selects `~/.zprofile`; bash selects an existing `~/.bash_profile` or `~/.bash_login`, falling back to `~/.profile`. The installer avoids adding a duplicate exact export, snapshots the file before and after its edit, remembers which file it changed, and appends `export PATH="$HOME/.local/bin:$PATH"`. Unsupported shells get the line as a manual instruction instead of an automatic edit. install.sh:160-225
+
+Because a newly edited login file does not affect the running process, verification belongs in a new shell. The expected probe is `carto --help`. README.md:28-33
+
+## Failure boundaries and cleanup
+
+`set -euo pipefail` stops the run at the first unhandled error, but the installer has no rollback trap. On a fresh install, clone and build happen before links and PATH edits, so a failed build does not publish a new command or skill; the ownership marker and checkout may remain for a clean rerun. On an update, the fast-forward happens before the build, and existing symlinks continue pointing into that checkout. Consequently, the update is guarded against conflicting ownership and local work, but it is not an atomic checkout-and-build rollback: a build failure can leave the checkout advanced and must be fixed or rerun before relying on the command. install.sh:1-2 install.sh:98-118 install.sh:278-294
+
+Explicit uninstall is the cleanup transaction. It removes a link only when the link still points to the exact installer-owned target. For PATH, it restores the original snapshot when the shell file is byte-for-byte unchanged since installation; if the user edited the file afterward, it removes the last exact matching PATH line while retaining other edits. install.sh:227-275
+
+Finally, uninstall removes the install root only when the ownership marker is a regular file with the expected value; otherwise it preserves the directory and reports why. The `--uninstall`/`uninstall` mode covers the owned CLI link, skill link, PATH setup, and checkout. install.sh:297-331
+
+## Contributor checkouts are separate
+
+A contributor can install dependencies, build the workspaces, and run `node packages/cli/dist/index.js --help` directly from any source checkout. That workflow intentionally does not create a pnpm global link; the user-facing `carto` command remains managed by `install.sh`. README.md:83-94
