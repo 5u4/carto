@@ -21,7 +21,7 @@ template renders the result. This skill tells you how to drive the loop.
 
 ## Before you start
 
-Three prerequisites, in order. Stop and resolve each before generating.
+Three prerequisites, in order. Stop and resolve each before inspection or authoring.
 
 1. **The `carto` CLI must be on PATH.** Run `carto --help`. If it is not found,
    tell the user and stop — do not try to install it yourself. Installation and
@@ -29,9 +29,9 @@ Three prerequisites, in order. Stop and resolve each before generating.
 2. **Know the available commands.** `carto --help` lists them; run
    `carto <command> --help` for a command's flags. Never assume a command or
    flag exists — check.
-3. **The current directory must be a carto doc root** — it holds a `carto.json`
-   config and a `.carto/docs/` directory. If `carto.json` is absent, run
-   `carto init` once to scaffold both (`init` refuses if `carto.json` already exists).
+3. **The current directory must contain `carto.json`.** Check before choosing
+   an inspection or authoring branch. If absent, stop and tell the user to run
+   `carto init`; do not offer to run it. Missing `.carto/docs/` is allowed; an invalid manifest remains a configuration error.
 
 This skill drives carto — the CLI, the config, the `node.json` files, the link
 and anchor rules, and how a page maps onto carto's node tree.

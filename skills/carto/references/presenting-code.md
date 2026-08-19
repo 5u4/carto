@@ -96,7 +96,7 @@ Use real `input → output` or `command → output` when runtime behavior answer
 
 Use Mermaid only when spatial relationships make an interaction, control flow, or data flow clearer than a text tree or pseudocode.
 
-For Mermaid flowcharts, default to `flowchart TD`. Use `flowchart LR` only for a short, inherently linear pipeline whose left-to-right order is the point. Direction is part of the explanation, not decoration.
+Use `flowchart TD` for every Mermaid flowchart. Direction is part of the explanation, not decoration.
 
 A Mermaid view has failed when readers must trace dense crossings, scan oversized labels, decode a crowded legend, or zoom to follow the main path. Replace it with one or more of:
 

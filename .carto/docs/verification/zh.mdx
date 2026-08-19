@@ -36,7 +36,7 @@ CI 在 Node 22 环境中冻结依赖安装，然后依次执行构建、类型�
 
 Waza 套件是一条轻量端到端 smoke：通过 `copilot-sdk` 调用 `claude-sonnet-4.6`，使用仓库内的 Carto 技能目录，单次试验超时 900 秒且不开并行。`evals/carto/eval.yaml:1-19`
 
-任务把一个干净的文档根交给模型，要求它在需要时初始化 Carto，读完三个夹具文件，自行判断“最小但有用”的节点集合，为每个节点写带 frontmatter 的 `en` 与 `zh` 页面，适当使用逻辑链接，在首次同步前完成审计，最后让 `sync`、`validate` 和 `build` 全部成功。任务刻意不规定节点数量，因为被测对象还包括文档结构判断，而不只是能否生成文件。`evals/carto/tasks/generate.yaml:1-53`
+任务交给模型的是一个预先初始化的文档根：仓库提供的 `carto.json` 声明 `en` 与 `zh`，并把 `codeRoot` 指向限流器夹具。模型须读完三个源码文件，自行判断“最小但有用”的节点集合，为每个节点写带 frontmatter 的双语页面，适当使用逻辑链接，在首次同步前完成审计，最后让 `sync`、`validate` 和 `build` 全部成功。任务刻意不规定节点数量，因为被测对象是文档结构判断，而不是初始化能力或单纯生成文件。`evals/carto/fixtures/carto.json:1-6` `evals/carto/tasks/generate.yaml:1-53`
 
 因此它是本地运行、依赖真实模型输出的评估，而不是 CI 门禁：CI 没有 eval 命令，这份配置却明确选定了模型与执行器。单次通过只说明某一次智能体运行走完了流程，不能当作确定性的回归证明。
 
@@ -48,6 +48,6 @@ Waza 套件是一条轻量端到端 smoke：通过 `copilot-sdk` 调用 `claude-
 - `TokenBucket` 初始为满桶；时间倒退时抛错；令牌随时间连续补充但不超过容量；不足一个令牌时拒绝并计算等待时间，否则消耗一个令牌后放行。`evals/carto/fixtures/rate-limiter/src/token-bucket.ts:3-47`
 - API 层固定使用容量为二、以每秒一个令牌的速率连续补充的桶，把完整决策适配成布尔值，并以重复及递增时间戳生成五步示例轨迹。`evals/carto/fixtures/rate-limiter/src/api-request-limiter.ts:4-18`
 
-任务契约要求模型读懂并记录这些源码。文件评分器先要求 `carto.json` 存在，程序评分器再检查可观察的构建产物。`evals/carto/tasks/generate.yaml:42-53` 具体条件包括：至少存在一个节点、每个节点旁都有英文和中文页面、`dist-site` 存在且含 HTML、渲染结果出现 `TokenBucket` 与 `sampleApiLimitTrace`，同时 HTML 中没有未解析的 `carto:` 链接。`evals/carto/graders/check_build.py:7-43`
+任务契约要求模型读懂并记录这些源码。预先提供的 `carto.json` 让技能可以进入编写分支，而不会把初始化责任交给代理；文件评分器要求该 manifest 始终存在，程序评分器再检查可观察的构建产物。`evals/carto/fixtures/carto.json:1-6` `evals/carto/tasks/generate.yaml:32-53` 具体条件包括：至少存在一个节点、每个节点旁都有英文和中文页面、`dist-site` 存在且含 HTML、渲染结果出现 `TokenBucket` 与 `sampleApiLimitTrace`，同时 HTML 中没有未解析的 `carto:` 链接。`evals/carto/graders/check_build.py:7-43`
 
 调整评估时应沿这条边界下手：想改变写作问题，就改夹具；想改变智能体必须执行的步骤，就改任务；只有外部可观察的成功条件变化时才改评分器。只在提示词里加强文案要求，不会自动变成确定性断言；若要加强评分器，也应选择稳定的产物不变量，而不是绑定某一种节点拆分方式。

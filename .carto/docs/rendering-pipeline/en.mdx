@@ -6,7 +6,7 @@ description: How Carto turns authored multilingual node bundles into a localized
 An authored Carto page is not handed directly to Astro. The renderer first constructs a disposable workspace, projects every local and federated node into Starlight's content tree, applies rendering-only transforms, builds elsewhere, and only then replaces the published `dist-site`. The CLI command is deliberately thin: `carto build` passes the current directory to the template package and converts any thrown error into a failing process. `packages/cli/src/commands/build.ts:1-14`
 
 ```mermaid
-flowchart LR
+flowchart TD
   A[".carto node bundles<br/>all authored locales"] --> B["temporary build workspace"]
   B --> C["materialized MDX<br/>localized paths and rewritten links"]
   C --> D["remark / rehype transforms<br/>CJK joins and source footnotes"]
@@ -51,7 +51,7 @@ Freshness is also a presentation concern at build time, not an authored-page mut
 
 Carto maps the manifest's default locale to Starlight's `root` locale and builds a recursive sidebar from parent relationships. Local and federated doc sets share the graph sidebar; labels use each node's extracted locale title, and federated sets form separately labeled groups. Home redirects are emitted once per site locale. `packages/template/src/site-config.ts:7-87`
 
-Titles are read from each locale file's YAML frontmatter before materialization, giving sidebar labels and empty-link labels the same authored source. `packages/template/src/site-config.ts:90-127` A repository may supply `carto.config.mjs` or `carto.config.js` with additional Starlight options, but Carto validates the default export and retains ownership of `locales` and `sidebar` when merging, preventing user configuration from breaking graph-derived navigation. `packages/template/src/site-config.ts:142-181`
+Titles are read from each locale file's YAML frontmatter before materialization, giving sidebar labels and empty-link labels the same authored source. `packages/template/src/site-config.ts:90-127` The Starlight site title defaults to the documentation root's exact basename and falls back to `Carto` only when that basename is empty; an explicit `starlight.title` remains the final override. `packages/template/src/site-config.ts:174-180` `packages/template/astro.config.mjs:10-32` A repository may supply `carto.config.mjs` or `carto.config.js` with additional Starlight options, but Carto validates the default export and retains ownership of `locales` and `sidebar` when merging, preventing user configuration from breaking graph-derived navigation. `packages/template/src/site-config.ts:142-181`
 
 ## Publish atomically
 

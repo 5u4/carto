@@ -7,7 +7,7 @@ A Carto authoring run starts with a developer's scope, not with a directory craw
 
 ## Checkpoint the scope before writing
 
-First verify the working prerequisites: the CLI is available, its actual command surface has been read from help, and the current directory is a Carto root. Creation and refresh work then require a stated scope; status-only and coverage-only inspection do not. `skills/carto/SKILL.md:22-55`
+First probe the installed CLI through help, then require `carto.json` before choosing either inspection or authoring. If it is absent, the agent stops and tells the requester to run `carto init`; initialization remains requester-owned. Presence passes this prerequisite even when `.carto/docs/` does not exist yet, while an invalid manifest remains a configuration error when a Carto command reads it. Creation and refresh work then require a stated scope; status-only and coverage-only inspection do not. `skills/carto/SKILL.md:22-55`
 
 For an authoring request, run `carto status` and `carto coverage`, then intersect their facts with the requested scope. Status identifies stale refresh candidates; coverage identifies unassigned source candidates. An empty intersection ends the run instead of provoking an unnecessary rewrite. Ordinary creation or refresh proceeds directly, but deletion, id rename, reparenting, large source reassignment, or unresolved scope crosses the safety checkpoint and requires explicit approval before files change. `skills/carto/SKILL.md:61-82`
 

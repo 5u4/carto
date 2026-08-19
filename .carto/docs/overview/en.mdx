@@ -18,7 +18,7 @@ The runtime dependency graph points in one direction:
 - **`@carto/template` is the presentation boundary.** It exports an importable module, depends on core for Carto’s model, and brings in Astro, Starlight, and Mermaid for site materialization and presentation. `packages/template/package.json:9-30`
 
 ```mermaid
-flowchart LR
+flowchart TD
     C["@carto/cli"] -->|depends on| K["@carto/core"]
     C -->|depends on| T["@carto/template"]
     T -->|depends on| K

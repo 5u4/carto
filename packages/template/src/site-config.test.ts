@@ -149,23 +149,32 @@ describe('buildRedirects', () => {
 
 describe('mergeStarlight', () => {
   const owned = { locales: { root: { label: 'en', lang: 'en' } }, sidebar: [{ label: 'overview', link: '/' }] }
+  const root = '/workspace/Platform Docs'
 
-  it('defaults the title when the user omits it', () => {
-    expect(mergeStarlight({}, owned).title).toBe('Carto')
+  it('defaults the title to the documentation root basename', () => {
+    expect(mergeStarlight({}, owned, root).title).toBe('Platform Docs')
+  })
+
+  it('preserves the exact documentation root basename', () => {
+    expect(mergeStarlight({}, owned, '/workspace/API.docs-v2').title).toBe('API.docs-v2')
+  })
+
+  it('falls back when the documentation root basename is empty', () => {
+    expect(mergeStarlight({}, owned, '/').title).toBe('Carto')
   })
 
   it('lets the user override the title', () => {
-    expect(mergeStarlight({ title: 'My Docs' }, owned).title).toBe('My Docs')
+    expect(mergeStarlight({ title: 'My Docs' }, owned, root).title).toBe('My Docs')
   })
 
   it('passes user options through untouched', () => {
-    const merged = mergeStarlight({ customCss: ['./a.css'], plugins: ['p'] }, owned)
+    const merged = mergeStarlight({ customCss: ['./a.css'], plugins: ['p'] }, owned, root)
     expect(merged.customCss).toEqual(['./a.css'])
     expect(merged.plugins).toEqual(['p'])
   })
 
   it('forces owned locales and sidebar to win over user values', () => {
-    const merged = mergeStarlight({ locales: { root: { label: 'x', lang: 'x' } }, sidebar: [] }, owned)
+    const merged = mergeStarlight({ locales: { root: { label: 'x', lang: 'x' } }, sidebar: [] }, owned, root)
     expect(merged.locales).toBe(owned.locales)
     expect(merged.sidebar).toBe(owned.sidebar)
   })

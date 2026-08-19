@@ -6,7 +6,7 @@ description: Carto 如何把多语言节点内容转成 Starlight 站点，原�
 Carto 不会把作者写下的页面原样交给 Astro。渲染器会先建立一次性工作区，把本地与联邦文档节点投影成 Starlight 内容树，执行只影响展示的转换，在隔离目录中完成构建，最后才替换 `dist-site`。CLI 在这里刻意保持轻量：`carto build` 只把当前目录交给模板包，并把抛出的错误转成失败退出。`packages/cli/src/commands/build.ts:1-14`
 
 ```mermaid
-flowchart LR
+flowchart TD
   A[".carto 节点内容<br/>所有作者提供的语言"] --> B["临时构建工作区"]
   B --> C["物化后的 MDX<br/>本地化路径与链接改写"]
   C --> D["remark / rehype 转换<br/>CJK 换行与源码脚注"]
@@ -51,7 +51,7 @@ remark 插件把合格的行内代码引用转换成去重脚注，并在文末�
 
 Carto 把清单中的默认语言映射为 Starlight 的 `root` 语言，并依据父子关系递归生成侧边栏。本地与联邦文档集共用一棵图侧边栏：节点标签取自各语言 frontmatter 中的标题，联邦文档集则形成各自带标题的分组；每种站点语言还会生成主页重定向。`packages/template/src/site-config.ts:7-87`
 
-页面物化前，标题会从各语言文件的 YAML frontmatter 读取，因此侧边栏标签与空链接标签共享同一个作者来源。`packages/template/src/site-config.ts:90-127` 仓库可以通过 `carto.config.mjs` 或 `carto.config.js` 追加 Starlight 选项，但 Carto 会验证其默认导出，并在合并时继续掌控 `locales` 与 `sidebar`，避免用户配置破坏由文档图导出的导航。`packages/template/src/site-config.ts:142-181`
+页面物化前，标题会从各语言文件的 YAML frontmatter 读取，因此侧边栏标签与空链接标签共享同一个作者来源。`packages/template/src/site-config.ts:90-127` Starlight 站点标题默认使用文档根目录 basename 的原始值，仅在 basename 为空时回退到 `Carto`；显式配置的 `starlight.title` 仍拥有最高优先级。`packages/template/src/site-config.ts:174-180` `packages/template/astro.config.mjs:10-32` 仓库可以通过 `carto.config.mjs` 或 `carto.config.js` 追加 Starlight 选项，但 Carto 会验证其默认导出，并在合并时继续掌控 `locales` 与 `sidebar`，避免用户配置破坏由文档图导出的导航。`packages/template/src/site-config.ts:142-181`
 
 ## 原子发布
 

@@ -29,7 +29,7 @@ export default defineConfig({
       mergeStarlight(user.starlight ?? {}, {
         locales: buildLocales(graph.root.manifest),
         sidebar: buildGraphSidebar(graph, titles)
-      })
+      }, docRoot)
     )
   ]
 })

@@ -11,11 +11,10 @@ tags:
 inputs:
   prompt: |
     Document the TypeScript codebase in ./rate-limiter using carto. The current
-    directory is the doc root. The carto CLI is installed and on PATH.
+    directory is the pre-initialized doc root. The carto CLI is installed and
+    on PATH.
 
     Steps:
-    - Run `carto init --code-root ./rate-limiter --locales en,zh` if no carto.json
-      exists yet.
     - Read ./rate-limiter/src/rate-limit-contract.ts,
       ./rate-limiter/src/token-bucket.ts, and
       ./rate-limiter/src/api-request-limiter.ts, then generate the smallest useful
@@ -31,6 +30,7 @@ inputs:
 
     Do not stop until `carto validate` exits 0 and `carto build` succeeds.
   files:
+    - path: carto.json
     - path: rate-limiter/src/rate-limit-contract.ts
     - path: rate-limiter/src/token-bucket.ts
     - path: rate-limiter/src/api-request-limiter.ts

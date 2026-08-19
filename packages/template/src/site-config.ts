@@ -1,7 +1,7 @@
 import { childrenOf, localeFile, nodesById, urlPath, type Graph, type DocSet, type Manifest, type Node } from '@carto/core'
 import { existsSync } from 'node:fs'
 import { readFile } from 'node:fs/promises'
-import { join } from 'node:path'
+import { basename, join } from 'node:path'
 import { pathToFileURL } from 'node:url'
 
 export function buildLocales(manifest: Manifest): Record<string, { label: string; lang: string }> {
@@ -171,9 +171,9 @@ function validateUserConfig(value: unknown, name: string): UserConfig {
   return value as UserConfig
 }
 
-export function mergeStarlight(user: StarlightOptions, owned: OwnedStarlight): StarlightOptions {
+export function mergeStarlight(user: StarlightOptions, owned: OwnedStarlight, root: string): StarlightOptions {
   return {
-    title: 'Carto',
+    title: basename(root) || 'Carto',
     ...user,
     locales: owned.locales,
     sidebar: owned.sidebar

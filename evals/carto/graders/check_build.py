@@ -13,8 +13,12 @@ def main() -> int:
         return 1
     for node_file in node_files:
         for locale in ("en", "zh"):
-            if not node_file.with_name(f"{locale}.mdx").is_file():
+            page_file = node_file.with_name(f"{locale}.mdx")
+            if not page_file.is_file():
                 print(f"missing {locale} page beside {node_file.relative_to(workspace)}", file=sys.stderr)
+                return 1
+            if "flowchart LR" in page_file.read_text(encoding="utf-8"):
+                print(f"generated page uses flowchart LR: {page_file.relative_to(workspace)}", file=sys.stderr)
                 return 1
 
     dist = workspace / "dist-site"

@@ -18,7 +18,7 @@ Carto 把**文档判断**、**仓库语义**、**命令编排**和**站点渲染
 - **`@carto/template` 是展示边界。** 它导出可供调用的模块，以 core 提供的 Carto 模型为输入，并引入 Astro、Starlight 与 Mermaid 来完成站点物化和呈现。`packages/template/package.json:9-30`
 
 ```mermaid
-flowchart LR
+flowchart TD
     C["@carto/cli"] -->|依赖| K["@carto/core"]
     C -->|依赖| T["@carto/template"]
     T -->|依赖| K
