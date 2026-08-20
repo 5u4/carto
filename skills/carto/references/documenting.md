@@ -69,15 +69,14 @@ evidence.
 ## 3. Design the node bundle
 
 Build one locale-neutral evidence plan for each node before drafting any locale.
-It must name:
+Include the view spine coverage map defined in
+[presenting-code.md](presenting-code.md). The plan must also name:
 
 - the primary developer question and supporting subquestions;
-- the executable evidence needed to answer them, including relationships,
-  examples, and views;
-- the exact anchors for that evidence;
-- relevant neighboring nodes and navigation-only `carto:` targets;
-- the presentation views selected under [presenting-code.md](presenting-code.md).
+- the executable evidence and exact anchors needed to answer them;
+- relevant neighboring nodes and navigation-only `carto:` targets.
 
+Complete and test the coverage map before locale authoring.
 Derive `node.json` `sources` from the evidence plan. Include every file whose
 change could invalidate a claim, relationship, example, or view. Every source
 must supply at least one exact anchor in every locale. Source overlap between
@@ -91,8 +90,9 @@ split gate after the evidence plan is complete: if the parts jointly answer one
 developer task or runtime path, keep them together even when files or modules
 differ.
 
-**Complete when:** the plan answers one primary question and accounts for every
-source, relationship, link, example, and view in the bundle.
+**Complete when:** the plan answers one primary question, every supporting
+subquestion has a tested coverage-map row, and every source, relationship,
+link, example, and view is accounted for.
 
 ## 4. Author every locale
 
@@ -101,12 +101,12 @@ each page natively for its technical audience rather than translating sentence
 by sentence.
 
 Every locale must preserve the same primary question, supported facts, `carto:`
-targets, exact source anchors, and presentation structure. Each `node.json`
-source must appear in at least one exact anchor in each locale. Keep each view's
-explanatory role and verified relationships aligned across locales while
-localizing labels, terminology, headings, examples, and explanation order where
-natural. Preserve any cross-locale heading anchor required by a
-`carto:<id>#<anchor>` link.
+targets, exact source anchors, and view purposes from the coverage map. Each
+`node.json` source must appear in at least one exact anchor in each locale. Keep
+each selected view's explanatory role and verified relationships aligned across
+locales while localizing labels, terminology, headings, examples, and
+explanation order where natural. Preserve any cross-locale heading anchor
+required by a `carto:<id>#<anchor>` link.
 
 Verify factual content and views introduced while drafting against executable
 evidence. Add their exact adjacent anchors, and update `sources` when the

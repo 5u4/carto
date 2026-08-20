@@ -3,7 +3,7 @@ title: 渲染与发布流水线
 description: Carto 如何把多语言节点内容转成 Starlight 站点，原子发布构建结果，并预览已发布产物。
 ---
 
-Carto 不会把作者写下的页面原样交给 Astro。渲染器会先建立一次性工作区，把本地与联邦文档节点投影成 Starlight 内容树，执行只影响展示的转换，在隔离目录中完成构建，最后才替换 `dist-site`。CLI 在这里刻意保持轻量：`carto build` 只把当前目录交给模板包，并把抛出的错误转成失败退出。`packages/cli/src/commands/build.ts:1-14`
+Carto 不会把作者页面原样交给 Astro。它先把文档图投影进一次性 Starlight 工作区，在那里完成构建，成功后才替换 `dist-site`。
 
 ```mermaid
 flowchart TD
@@ -15,57 +15,105 @@ flowchart TD
   F --> G["carto preview<br/>只服务现有构建"]
 ```
 
+CLI 只负责薄薄的一次交接：`carto build` 把当前目录传给模板包，并把抛出的错误转成失败退出。`packages/cli/src/commands/build.ts:1-14` 工作区、物化、Astro、发布与清理由渲染器统一掌控。`packages/template/src/render.ts:19-39`
+
 ## 在隔离工作区中构建
 
-`buildSite` 先解析文档根目录，再创建真实路径的临时 `carto-render-*` 目录；生成的源码、Astro 缓存和构建输出都留在其中。随后它链接依赖、写入内容与 Astro 配置、物化文档图、运行 `astro build`，并且只有 Astro 成功后才发布。无论成功还是失败，`finally` 都会清理临时工作区。`packages/template/src/render.ts:19-39`
+`buildSite` 的职责和控制流如下：
 
-这个隔离层划清了两条边界：`.carto` 中的作者内容始终是真源，不会就地变成 Astro 内容树；未完成的 Astro 输出也不会覆盖对外站点。工作区里的配置文件只是模板包已编译内容集合与 Astro 配置的薄转发，因此每个仓库不会各自复制一套构建约定。`packages/template/src/render.ts:126-137`
+```text
+buildCommand.run()
+└─ buildSite(process.cwd())
+   ├─ 解析文档根目录；创建真实路径的 carto-render-* 工作区
+   ├─ 创建 Astro 缓存；链接依赖
+   ├─ 写入内容与 Astro 配置
+   ├─ materialize(root, workspace/src/content/docs)
+   ├─ runAstro(build, output = workspace/output)
+   ├─ publish(workspace/output, root/dist-site)
+   └─ finally：删除工作区
+```
+
+`packages/cli/src/commands/build.ts:4-13` `packages/template/src/render.ts:19-39`
+
+因此，`.carto` 中的作者内容始终是真源，未完成的 Astro 输出也不会成为对外站点。工作区文件只转发模板包已编译的内容集合与共享 Astro 配置，不会让每个仓库复制一套构建契约。`packages/template/src/render.ts:126-137`
 
 ### 复用依赖，而不是重新安装
 
-Carto 会为工作区合成一个 `node_modules`。它先遍历模板包的依赖，对 scope 包递归处理，再补充文档根目录已安装的依赖；目标位置已有包时不会覆盖。通常使用指向真实安装目录的目录符号链接，但 Starlight 会解除符号链接后完整复制，以保持它在临时目录中的包内解析关系。`packages/template/src/render.ts:86-123`
+Carto 先从模板依赖、再从文档根目录已安装的依赖合成工作区 `node_modules`，目标位置已有包时不覆盖。多数包使用目录符号链接；Starlight 则在解除符号链接后完整复制，以维持临时目录内的包内解析关系。scope 包目录会递归遍历。`packages/template/src/render.ts:86-123`
 
-共享 Astro 配置通过 `CARTO_ROOT` 读取作者内容，通过 `CARTO_WORKSPACE` 定位生成内容。它加载文档图、用户配置、多语言标题与源码脚注页面映射，把 `srcDir` 和缓存指向工作区，同时仍把正式站点定义为文档根目录下的输出。流水线装配了 CJK 拼行、源码脚注的 remark/rehype 插件、Mermaid，以及使用 Carto 所有语言和侧边栏数据的 Starlight。`packages/template/astro.config.mjs:10-34`
+共享 Astro 配置通过 `CARTO_ROOT` 读取作者内容，通过 `CARTO_WORKSPACE` 定位生成内容。它把源码与缓存路径指向工作区，加载文档图、用户配置、标题和源码脚注页面映射，并装配 CJK 拼行、源码脚注 remark/rehype、Mermaid，以及使用 Carto 所有语言和侧边栏数据的 Starlight。`packages/template/astro.config.mjs:10-34`
 
 ## 将作者内容物化成站点内容树
 
-物化阶段会加载完整的本地/联邦文档图，并在写文件前收集标题与新鲜度状态。它以根站点声明的语言集合遍历每个文档集和节点。若某个联邦文档集缺少站点要求的语言，Carto 会给出警告并读取该文档集的默认语言页面，但输出位置仍属于请求的站点语言。每个页面都会先改写逻辑链接、注入过期提示，再写入生成目标。`packages/template/src/materialize.ts:21-49`
+物化是一条逐页数据流，不会原地改写作者文件：
 
-目标路径保留节点的父级链。非默认语言增加语言前缀，联邦文档集增加图前缀，因此不可变节点身份可以映射到正确的 Starlight 内容路径，而无需改动作者目录。`packages/template/src/materialize.ts:85-90`
+```text
+loadGraph(root)
+├─ collectGraphTitles(graph)
+├─ collectFreshness(graph)
+└─ 遍历文档集 × 节点 × 站点语言
+   ├─ 选择所需语言或文档集默认语言；发生回退时警告
+   ├─ 读取作者语言页面
+   ├─ rewriteLinks(page, 本地化文档图上下文)
+   ├─ injectStalenessBanner(page, 节点状态)
+   ├─ targetPath(父级链, 语言前缀, 联邦前缀)
+   └─ 写入生成的 MDX
+```
 
-作者写下的 Markdown 链接到此阶段才从逻辑地址变成 URL。对于普通 Markdown 链接里的每个 `carto:` 目标，解析器返回对应语言的 URL；空标签依次回退到目标语言标题、目标默认语言标题和节点 id。无法解析的目标保持原样，渲染器不会擅自猜测。`packages/template/src/materialize.ts:92-123` 身份与 URL 的解析规则见[导航与联邦文档](carto:navigation-federation)。
+`packages/template/src/materialize.ts:21-49` `packages/template/src/materialize.ts:85-123`
+
+输出路径保留节点父级链；非默认语言增加语言前缀，联邦文档集增加图前缀。Markdown 中的逻辑 `carto:` 地址也在此变成本地化 URL；空标签依次回退到目标语言标题、默认语言标题和节点 id。无法解析的目标保持不变，不会被猜测。`packages/core/src/tree.ts:13-29` `packages/core/src/graph.ts:44-89` `packages/core/src/resolver.ts:52-84` 身份与 URL 的规则见[导航与联邦文档](carto:navigation-federation)。
 
 ### 只影响展示的源码与语言转换
 
-进入 Markdown 转换前，Carto 会把每个生成页面路径关联到实际语言和 `node.json` 中的精确源码集合。因此插件能结合当前页面识别引用，包括本地化页面和联邦页面的目标路径。`packages/template/src/remark-source-footnotes.ts:46-60`
+进入 Markdown 转换前，Carto 会把每个生成页面映射到实际语言和 `node.json` 的精确源码集合，本地化页面与联邦页面都包含在内。`packages/template/src/remark-source-footnotes.ts:46-60`
 
-remark 插件把合格的行内代码引用转换成去重脚注，并在文末追加脚注定义。它既接受节点明确跟踪的完整文件路径，也接受仓库相对的 `path:line` 或 `path:start-end` 地址，且行号范围必须正序；代码块、链接、已有脚注、脚注定义与 JSX 都不会被改写。这样，作者 MDX 仍保留供机器读取的规范锚点，而面向读者的站点得到紧凑的源码注释。`packages/template/src/remark-source-footnotes.ts:63-91` `packages/template/src/remark-source-footnotes.ts:118-163`
+remark 处理会把合格的行内代码引用转成去重脚注并追加定义。它接受节点明确跟踪的路径，也接受仓库相对的 `path:line` 或正序 `path:start-end` 地址；代码块、链接、已有脚注、脚注定义与 JSX 保持不变。作者 MDX 因而保留机器可读的规范锚点，站点则得到紧凑的源码注释。`packages/template/src/remark-source-footnotes.ts:63-91` `packages/template/src/remark-source-footnotes.ts:118-163`
 
-随后的 rehype 处理会整理这些生成引用的展示方式，并为脚注区标题选择对应语言，同时区分“只有源码引用”和“还包含作者脚注”两种情况。`packages/template/src/remark-source-footnotes.ts:94-115`
+rehype 处理会整理生成引用的展示并本地化脚注区标题，同时区分“只有源码引用”与“还包含作者脚注”。`packages/template/src/remark-source-footnotes.ts:94-115` CJK remark 仅在换行两侧都属于声明的 CJK 字符类时删除软换行；该范围包含破折号与省略号，而且处理只遍历文本节点，不改写代码或结构。`packages/template/src/remark-join-cjk.ts:7-40`
 
-中文、日文等文字常为排版而在源码中折行，这种换行不代表空格。CJK remark 插件明确列出支持的字符区间，并包含破折号与省略号；只有换行两侧都属于该字符类时才移除软换行。它遍历的是 Markdown 文本节点，不会重写代码或文档结构。`packages/template/src/remark-join-cjk.ts:7-40`
-
-新鲜度提示同样属于构建时展示，不会回写作者页面。节点状态为 `stale` 或 `missing` 时，Carto 才会向 YAML frontmatter 注入警告，经过 HTML 转义后列出已变化或已缺失的源码路径；作者显式设置的 `banner` 优先保留。新鲜或尚未同步的页面不变。`packages/template/src/staleness-banner.ts:3-26` 状态如何产生，见[新鲜度与工作范围](carto:freshness-scope)。
+新鲜度提示也是构建时的展示转换。`stale` 与 `missing` 状态会加入经过转义的受影响源码路径列表，但作者已有的 `banner` 优先；新鲜与尚未同步的页面保持不变。`packages/template/src/staleness-banner.ts:3-26` 状态计算见[新鲜度与工作范围](carto:freshness-scope)。
 
 ## 本地化导航由 Carto 掌控
 
-Carto 把清单中的默认语言映射为 Starlight 的 `root` 语言，并依据父子关系递归生成侧边栏。本地与联邦文档集共用一棵图侧边栏：节点标签取自各语言 frontmatter 中的标题，联邦文档集则形成各自带标题的分组；每种站点语言还会生成主页重定向。`packages/template/src/site-config.ts:7-87`
+Carto 把清单默认语言映射为 Starlight 的 `root` 语言，并根据图中的父子关系递归生成侧边栏。本地与联邦文档集共用这棵图侧边栏，联邦文档集形成带标题的分组，每种站点语言还会得到主页重定向。`packages/template/src/site-config.ts:7-87`
 
-页面物化前，标题会从各语言文件的 YAML frontmatter 读取，因此侧边栏标签与空链接标签共享同一个作者来源。`packages/template/src/site-config.ts:90-127` Starlight 站点标题默认使用文档根目录 basename 的原始值，仅在 basename 为空时回退到 `Carto`；显式配置的 `starlight.title` 仍拥有最高优先级。`packages/template/src/site-config.ts:174-180` `packages/template/astro.config.mjs:10-32` 仓库可以通过 `carto.config.mjs` 或 `carto.config.js` 追加 Starlight 选项，但 Carto 会验证其默认导出，并在合并时继续掌控 `locales` 与 `sidebar`，避免用户配置破坏由文档图导出的导航。`packages/template/src/site-config.ts:142-181`
+frontmatter 标题在物化前统一收集，因此侧边栏标签与空链接标签共享同一份作者来源。`packages/template/src/site-config.ts:90-127` 站点标题默认取文档根目录的原始 basename，仅在 basename 为空时回退到 `Carto`，显式 `starlight.title` 仍优先。用户可用 `carto.config.mjs` 或 `carto.config.js` 追加 Starlight 选项，但合并后的 `locales` 与 `sidebar` 继续由 Carto 掌控。`packages/template/src/site-config.ts:142-181` `packages/template/astro.config.mjs:10-32`
 
 ## 原子发布
 
-Astro 把结果写到临时工作区，而不是直接覆盖旧站点。发布阶段先把完整输出复制到 `dist-site` 同级、名称唯一的 staging 目录。若旧站点存在，Carto 先把它改名为唯一 backup，再把 staging 改名到正式位置；只有新目标就位后才删除 backup。若旧站点已经移入 backup 后 staging 改名失败，Carto 会先尝试把 backup 改名回正式位置，再抛出错误。最终清理会删除残留 staging；若恢复操作也失败，则会刻意保留 backup，而不是将其删除。`packages/template/src/render.ts:139-169`
+发布以文件系统改名作为提交协议：
 
-这次改名就是发布的提交点：文档图加载、物化、插件或 Astro 阶段失败时，旧 `dist-site` 完全不受影响；最终交换失败时，Carto 会尝试从 backup 恢复旧站点。若恢复操作本身也失败，backup 会继续保留。
+```text
+复制完整 workspace/output → 同级 staging
+若 dist-site 存在：改名 dist-site → backup
+尝试改名 staging → dist-site
+失败时：
+  若旧站点已移走：改名 backup → dist-site
+  重新抛错
+若旧站点已移走：删除 backup
+finally：
+  删除 staging
+  仅当发布成功或恢复完成时删除 backup
+```
 
-## Preview 只提供服务，不负责构建
+`packages/template/src/render.ts:139-169`
 
-`carto preview` 是独立入口，接收 host 与 port 参数。命令把当前根目录和转换为数字的端口交给模板包，模板错误则沿用 `build` 的 CLI 报错方式。`packages/cli/src/commands/preview.ts:1-18`
+发布前失败不会触碰旧 `dist-site`。最终交换失败时会尝试恢复旧站点；若恢复本身也失败，backup 会被刻意保留，而不是遭到删除。
 
-模板只在 `dist-site` 已存在且确为目录时才允许预览；host 不能为空，port 必须是 1 到 65535 的整数。检查通过后，它另建一次性工作区，只放置 `astro preview` 运行所需的配置和依赖，并让 Astro 指向已经发布的输出。进程会转发终止信号，服务退出后清理预览工作区。整个过程既不物化作者页面，也不重新发布站点。`packages/template/src/render.ts:42-83`
+## Build 把已发布结果交给 Preview
 
-实际工作流应当是在作者修改或新鲜度更新后运行 `carto build`，再用 `carto preview` 查看这个已发布产物。前者负责转换与原子发布，后者只是服务该发布边界的现有结果。命令编排与错误规则见 [CLI 工作流](carto:cli-workflow)。
+| 边界 | `carto build` | `carto preview` |
+| --- | --- | --- |
+| 所需输入 | 作者提供的本地/联邦文档图 | 已存在的 `dist-site` 目录 |
+| 一次性工作区 | 生成内容、配置、缓存与依赖 | 运行时配置、缓存与依赖 |
+| Astro 操作 | `build` 到 `workspace/output` | 用 `preview` 指向 `dist-site` |
+| 对发布的影响 | 成功后原子替换 `dist-site` | 从不物化，也不重新发布 |
+| 进程生命周期 | Astro 失败时构建失败 | 转发终止信号；退出后清理 |
+
+`packages/cli/src/commands/build.ts:1-14` `packages/cli/src/commands/preview.ts:1-18` `packages/template/src/render.ts:19-83` `packages/template/src/render.ts:181-204`
+
+作者修改或新鲜度更新后先运行 `carto build`，再用 `carto preview` 查看这一份已发布产物。host 不能为空，port 必须是 1 到 65535 的整数；`dist-site` 不存在时，命令会拒绝预览并要求先构建。命令编排与错误规则见 [CLI 工作流](carto:cli-workflow)。
 
 ## 修改流水线时应落在哪一层
 

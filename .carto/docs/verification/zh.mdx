@@ -3,51 +3,100 @@ title: 验证策略
 description: 理解确定性 CI、端到端流水线测试与真实模型写作评估如何互补。
 ---
 
-Carto 实际上验证两类不同的问题：常规 CI 判断已知行为在固定输入下是否仍然成立；Waza 评估则观察编码智能体面对一份陌生的小型代码库时，能否遵循 Carto 技能完成写作，并留下真正可渲染、可阅读的文档。前者通过不代表智能体会写文档，后者偶然成功也不能替代回归测试。
+Carto 验证两类不同的问题：常规 CI 判断已知行为在固定输入下是否仍然成立；Waza 评估则观察编码智能体面对一份陌生的小型代码库时，能否遵循 Carto 写作流程并留下有用的渲染文档。两者不能互相替代。
 
-## 验证全景
-
-根脚本把几条确定性通道分得很清楚：递归构建与类型检查、常规 Vitest 测试、注释规范检查，以及使用独立配置的流水线测试。`package.json:9-14`
-
-CI 在 Node 22 环境中冻结依赖安装，然后依次执行构建、类型检查、lint、单元测试和流水线测试。工作流里没有模型评估步骤，因此拉取请求的绿色结果可复现，也不依赖模型本次生成了什么。`.github/workflows/ci.yml:8-31`
+## 验证通道
 
 | 要回答的问题 | 确定性单元测试 / CI | 确定性流水线测试 | Waza 真实模型评估 |
 | --- | --- | --- | --- |
 | 输入 | 仓库代码与固定测试夹具 | 手写文档集和脚本化源码变更 | 自然语言任务与陌生的限流器夹具 |
 | 执行者 | TypeScript、shell 与 Vitest 进程 | 已构建的 `carto` 可执行文件和真实预览服务 | 由 `copilot-sdk` 驱动的 `claude-sonnet-4.6` |
 | 防守范围 | 编译、类型、注释规范和局部行为契约 | CLI 的端到端状态迁移与渲染产物不变量 | 智能体能否遵循技能，产出双语、可构建且有源码依据的文档 |
-| 可重复性 | 确定 | 确定 | 受模型输出影响；配置为串行单次试验 |
-| 是否阻断 PR | 是 | 是 | 否；CI 并未调用它 |
+| 可重复性 | 确定 | 确定 | 受模型输出影响；串行三次试验 |
+| 是否阻断 PR | 是 | 是 | 否 |
 
-这种分工把实现回归与写作能力分开：CI 守住程序契约，模型评估衡量[写作工作流](carto:authoring-workflow)中的智能体行为。
+这些通道分别由根脚本、CI 工作流与评估配置界定。`package.json:9-14` `.github/workflows/ci.yml:8-31` `scripts/lint-comments.sh:13-26` `evals/carto/eval.yaml:9-19`
 
-## 流水线测试守住哪些状态迁移
+## CI 与流水线工作流
 
-流水线测试不模拟命令内部逻辑，而是把临时夹具交给已经构建好的 CLI，按真实运行顺序观察结果。完整场景覆盖以下状态。`tests/pipeline/carto-pipeline.test.ts:116-226`
+拉取请求会走完一条有序且可复现的路径：
 
-1. **未同步的手写文档 → 合法、覆盖完整的站点。** 首次裸 `sync` 为节点源码建立指纹；随后 `validate` 必须通过，`coverage` 必须从配置的代码根统计出全部三个文件；`build` 产物须同时包含中英文源码脚注、源码标识符，且不能残留 `carto:` href。`tests/pipeline/carto-pipeline.test.ts:137-163`
-2. **静态产物 → 可访问的预览服务。** 测试启动真实预览进程，请求嵌套的 feed 页面，确认内容已渲染，并验证进程收到终止信号后正常退出。`tests/pipeline/carto-pipeline.test.ts:165-172`
-3. **新鲜 → 过期 → 定向刷新完成。** 替换 `src/user.ts` 后，`status` 必须以非零状态退出。测试随后只放入 `user` 节点的新版文档，执行 `sync user`，要求状态恢复绿色，再次构建并确认新旧概念都出现在产物中。`tests/pipeline/carto-pipeline.test.ts:174-193`
-4. **本地图 → 联邦图。** 清单新增文件型 glossary 文档集，两个语言页面都加入跨文档集逻辑链接。此后验证和构建仍须成功；产物须把 glossary 挂载到“别名 + 哈希”前缀下，把自身页面挂载到 `/self/`，并把跨集链接改写成最终 URL，不得遗留 `carto:` href。`tests/pipeline/carto-pipeline.test.ts:195-220`
+```text
+GitHub Actions：check（Node 22）
+├─ checkout；设置 pnpm 与 Node 缓存
+├─ pnpm install --frozen-lockfile
+├─ pnpm build
+├─ pnpm typecheck
+├─ pnpm lint
+├─ pnpm test
+└─ pnpm test:pipeline
+   └─ Vitest 驱动 packages/cli/dist/index.js 与真实 preview 进程
+```
 
-这条确定性端到端防线同时覆盖[新鲜度与作用域](carto:freshness-scope)中的状态变化，以及[渲染流水线](carto:rendering-pipeline)里的构建和预览生命周期。它证明“给定合格的手写文档，程序会如何运行”，却不证明模型能写出这些文档。
+`.github/workflows/ci.yml:8-31` `package.json:9-14` `tests/pipeline/carto-pipeline.test.ts:8-24` `tests/pipeline/carto-pipeline.test.ts:116-125`
+
+CI 没有模型评估步骤，因此拉取请求变绿只依赖可复现的实现契约；Waza 通道衡量的则是[写作工作流](carto:authoring-workflow)所描述的智能体行为。
+
+## 可观察的流水线状态迁移
+
+流水线测试把手写夹具复制进临时根目录，驱动已经构建的 CLI，而不模拟命令内部逻辑。四次状态迁移都有明确的外部观察点：
+
+| 状态迁移 | 触发与命令路径 | 必须观察到的结果 |
+| --- | --- | --- |
+| 未同步文档 → 完成验证与构建的站点 | `sync` → `validate` → `coverage` → `build` | 至少三个节点；coverage 扫描到包含三个文件的 code root；双语源码脚注与标识符；没有未解析的 `carto:` href |
+| 静态产物 → 可访问的预览服务 | 启动 `preview`；请求 `/overview/feed/`；终止进程 | 返回含 `authorId` 的渲染内容，进程正常退出 |
+| 新鲜 → 过期 → 定向刷新完成 | 替换 `src/user.ts`；`status`；安装新版 `user` 文档；`sync user`；`status`；`build` | 首次状态非零；刷新后恢复绿色；新旧概念同时存在于 HTML |
+| 本地图 → 联邦图 | 加入文件型 glossary 与双语逻辑链接；`validate`；`build` | glossary 挂载到别名加哈希前缀，本地页面挂载到 `/self/`，跨集 URL 已解析，不残留 `carto:` href |
+
+`tests/pipeline/carto-pipeline.test.ts:126-163` `packages/cli/src/commands/coverage.ts:4-27` `tests/pipeline/carto-pipeline.test.ts:165-193` `tests/pipeline/carto-pipeline.test.ts:195-220`
+
+这条通道守住[新鲜度与作用域](carto:freshness-scope)中的状态变化，以及[渲染流水线](carto:rendering-pipeline)里的构建与预览生命周期。它证明“给定合格的手写文档，程序如何运行”，却不证明模型能写出这些文档。
 
 ## 真实模型评估测量什么
 
-Waza 套件是一条轻量端到端 smoke：通过 `copilot-sdk` 调用 `claude-sonnet-4.6`，使用仓库内的 Carto 技能目录，单次试验超时 900 秒且不开并行。`evals/carto/eval.yaml:1-19`
+Waza 通过 `copilot-sdk` 串行执行三次试验，每次上限 900 秒，使用 `claude-sonnet-4.6` 和仓库内的 Carto 技能目录。`evals/carto/eval.yaml:1-19`
 
-任务交给模型的是一个预先初始化的文档根：仓库提供的 `carto.json` 声明 `en` 与 `zh`，并把 `codeRoot` 指向限流器夹具。模型须读完三个源码文件，自行判断“最小但有用”的节点集合，为每个节点写带 frontmatter 的双语页面，适当使用逻辑链接，在首次同步前完成审计，最后让 `sync`、`validate` 和 `build` 全部成功。任务刻意不规定节点数量，因为被测对象是文档结构判断，而不是初始化能力或单纯生成文件。`evals/carto/fixtures/carto.json:1-6` `evals/carto/tasks/generate.yaml:1-53`
+预先初始化的根目录声明 `en` 与 `zh`，并把 `codeRoot` 指向限流器夹具。任务不限定节点数量和 view 语法，但要求每种语言都留下两项可观察解释：一项 `TokenBucket.take` 决策 view，把 `refilled < 1` 分支与两个结果放在一起比较；一项实际执行的 `sampleApiLimitTrace()` 调用，包含按顺序返回的全部五条记录。随后，智能体必须先后完成正确性审计与独立的新鲜展示审计，才能执行 `sync`、`validate` 和 `build`。`evals/carto/fixtures/carto.json:1-6` `evals/carto/tasks/generate.yaml:11-44`
 
-因此它是本地运行、依赖真实模型输出的评估，而不是 CI 门禁：CI 没有 eval 命令，这份配置却明确选定了模型与执行器。单次通过只说明某一次智能体运行走完了流程，不能当作确定性的回归证明。
+三次通过提供了跨模型运行的重复证据，但仍不能当作确定性的回归证明。
 
-## 夹具与评分器之间的契约
+## 从夹具输入到评分器输出
 
-夹具规模很小，但三个文件分别迫使文档覆盖抽象契约、核心实现和调用边界：
+评估边界现在会把夹具中的具体行为一直带到渲染契约：
 
-- `RateLimitDecision` 约定是否放行、剩余整数令牌数和重试等待时间；调用方依赖的抽象入口是 `RateLimiter.take(nowMs)`。`evals/carto/fixtures/rate-limiter/src/rate-limit-contract.ts:1-8`
-- `TokenBucket` 初始为满桶；时间倒退时抛错；令牌随时间连续补充但不超过容量；不足一个令牌时拒绝并计算等待时间，否则消耗一个令牌后放行。`evals/carto/fixtures/rate-limiter/src/token-bucket.ts:3-47`
-- API 层固定使用容量为二、以每秒一个令牌的速率连续补充的桶，把完整决策适配成布尔值，并以重复及递增时间戳生成五步示例轨迹。`evals/carto/fixtures/rate-limiter/src/api-request-limiter.ts:4-18`
+```text
+输入
+├─ rate-limit-contract.ts：RateLimiter 与 RateLimitDecision
+├─ token-bucket.ts：补充 → refilled < 1 → 拒绝或消耗
+└─ api-request-limiter.ts：sampleApiLimitTrace()
+        │
+        ▼
+任务：阅读 → 规划 view spine → 编写 en/zh → 两次审计 → sync → validate → build
+        │
+        ▼
+每种语言都必须渲染的证据
+├─ 决策 view
+│  ├─ 拒绝：allowed false；remaining 向下取整；retry 向上取整
+│  └─ 放行：allowed true； remaining 向下取整；retry 为零
+└─ sampleApiLimitTrace()
+   ├─ 1000  true   1     0
+   ├─ 1000  true   0     0
+   ├─ 1000  false  0  1000
+   ├─ 1500  false  0   500
+   └─ 2000  true   0     0
+        │
+        ▼
+评分器
+├─ 确定性程序
+│  ├─ 在渲染后的 <main lang="en|zh"> 内查找语义 view
+│  ├─ 验证两个决策结果和顺序、数值完全一致的 trace
+│  ├─ 要求语言间决策/trace view 的类型、顺序与页面角色一致
+│  └─ 拒绝缺失页面、空产物、flowchart LR 或未解析的 carto: href
+└─ 在任务会话内执行、基于源码的模型量表
+   └─ 判断实用性、覆盖度、必要性、非重复性、分布、仓库特异性、
+      行为证据与语言间语义对齐
+```
 
-任务契约要求模型读懂并记录这些源码。预先提供的 `carto.json` 让技能可以进入编写分支，而不会把初始化责任交给代理；文件评分器要求该 manifest 始终存在，程序评分器再检查可观察的构建产物。`evals/carto/fixtures/carto.json:1-6` `evals/carto/tasks/generate.yaml:32-53` 具体条件包括：至少存在一个节点、每个节点旁都有英文和中文页面、`dist-site` 存在且含 HTML、渲染结果出现 `TokenBucket` 与 `sampleApiLimitTrace`，同时 HTML 中没有未解析的 `carto:` 链接。`evals/carto/graders/check_build.py:7-43`
+`evals/carto/fixtures/rate-limiter/src/rate-limit-contract.ts:1-8` `evals/carto/fixtures/rate-limiter/src/token-bucket.ts:3-47` `evals/carto/fixtures/rate-limiter/src/api-request-limiter.ts:4-18` `evals/carto/graders/check_build.py:9-19` `evals/carto/graders/check_build.py:22-307` `evals/carto/graders/check_build.py:310-373` `evals/carto/tasks/generate.yaml:55-91`
 
-调整评估时应沿这条边界下手：想改变写作问题，就改夹具；想改变智能体必须执行的步骤，就改任务；只有外部可观察的成功条件变化时才改评分器。只在提示词里加强文案要求，不会自动变成确定性断言；若要加强评分器，也应选择稳定的产物不变量，而不是绑定某一种节点拆分方式。
+确定性评分器接受代码块、横向或纵向表格、定宽记录、figure、定义列表和列表等语义容器，不限定标题、节点数量、Mermaid 或某一种语法；它防守具体行为和语言间结构。prompt 量表恢复已经完成的任务会话，按六项基于源码的质量标准评估，并且必须以一次评分工具调用结束。任务定义义务，两类评分器分别覆盖机器稳定的不变量与面向开发者的定性价值。

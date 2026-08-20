@@ -3,68 +3,80 @@ title: "Scoped authoring workflow"
 description: "How agent judgment and deterministic Carto gates produce trustworthy multilingual documentation."
 ---
 
-A Carto authoring run starts with a developer's scope, not with a directory crawl. The coding agent owns interpretation: it decides the durable developer question, follows executable evidence, chooses the files that can invalidate the answer, and writes every declared locale. The CLI owns deterministic bookkeeping: it reports freshness and coverage, hashes reviewed sources, and checks structure and links. The core contract and generation loop establish these responsibilities together. `skills/carto/SKILL.md:17-20` `skills/carto/SKILL.md:41-55` `skills/carto/SKILL.md:83-89` `skills/carto/SKILL.md:91-106`
+A Carto authoring run starts from a developer's scope. The coding agent owns interpretation and authoring; the CLI owns hashing, structural validation, links, and freshness. Two distinct fresh read-only passes check correctness and presentation before the CLI may stamp the result. `skills/carto/SKILL.md:17-20` `skills/carto/SKILL.md:50-60` `skills/carto/SKILL.md:92-110`
 
-## Checkpoint the scope before writing
+## Checkpoint the scope
 
-First probe the installed CLI through help, then require `carto.json` before choosing either inspection or authoring. If it is absent, the agent stops and tells the requester to run `carto init`; initialization remains requester-owned. Presence passes this prerequisite even when `.carto/docs/` does not exist yet, while an invalid manifest remains a configuration error when a Carto command reads it. Creation and refresh work then require a stated scope; status-only and coverage-only inspection do not. `skills/carto/SKILL.md:22-55`
-
-For an authoring request, run `carto status` and `carto coverage`, then intersect their facts with the requested scope. Status identifies stale refresh candidates; coverage identifies unassigned source candidates. An empty intersection ends the run instead of provoking an unnecessary rewrite. Ordinary creation or refresh proceeds directly, but deletion, id rename, reparenting, large source reassignment, or unresolved scope crosses the safety checkpoint and requires explicit approval before files change. `skills/carto/SKILL.md:61-82`
-
-This checkpoint keeps [freshness and source coverage](carto:freshness-scope) as measurements rather than authorship decisions: the CLI can say what is stale or uncovered, while the agent decides whether that fact belongs to the requested developer question. `skills/carto/SKILL.md:64-69`
-
-## Plan the answer from executable evidence
-
-Each node must answer one primary developer question, framed by the applicable ownership, entry point, flow, contract, constraint, and change-surface concepts that make its answer actionable. A useful node starts from one end-to-end responsibility or flow; it does not mirror modules or directories. Splitting is justified only for an independently useful neighboring question with a meaningfully distinct owner, entry point, contract, flow, invariant, or change surface and worthwhile independent navigation or staleness. `skills/carto/references/documenting.md:7-32`
-
-Before drafting any locale, the agent reads the implementation, real callers, downstream effects, shared contracts, and observable paths. Claims and cross-module edges must be supported by the expressions that establish them, not by names or nearby declarations. The locale-neutral evidence plan records the question, supporting subquestions, views, relationships, exact anchors, and `carto:` targets; `node.json.sources` is then derived from every file whose change could invalidate that plan. `skills/carto/references/documenting.md:34-95`
-
-The source set is therefore a staleness crosshair, not a list of convenient files. Every listed source must contribute an exact anchor in every locale, while a navigation link is never evidence. The on-disk contract keeps these roles separate: `sources` drives freshness, literal anchors support prose, and `carto:` ids provide navigation. `skills/carto/SKILL.md:186-261`
-
-## Author every locale from the same plan
-
-Every declared locale is authored independently from one evidence plan, rather than by translating sentences line by line. They preserve the same primary question, supported facts, exact source anchors, `carto:` targets, and presentation purposes, but may use different headings, ordering, terminology, and phrasing when that reads naturally. Any new claim introduced during drafting must be checked against executable evidence and may require expanding `sources`. `skills/carto/references/documenting.md:97-127`
-
-Views carry only code shape that helps answer a supporting question. The agent prefers a verified text shape over prose that reconstructs the same branch or flow, removes decorative inventories, and verifies every label and edge. `skills/carto/references/presenting-code.md:9-18` Anchors remain in adjacent prose rather than inside a diagram; each locale keeps an equivalent view purpose and relationship set. `skills/carto/references/presenting-code.md:109-122`
-
-The workflow itself is such a verified control-flow view. Its evidence-plan contents, aligned native locale authoring, ordering—especially audit before sync and targeted status after validation—and named validation repairs come from the authoring and generation contracts. `skills/carto/SKILL.md:57-124` `skills/carto/references/documenting.md:71-79` `skills/carto/references/documenting.md:99-108` `skills/carto/SKILL.md:313-330`
+Probe the installed CLI and require `carto.json` before choosing a branch. Inspection can report status or coverage directly; creation and refresh require a stated scope. `skills/carto/SKILL.md:22-55`
 
 ```text
-scoped request
-  ├─ status + coverage ──> intersect facts with scope
-  ├─ safety checkpoint ──> stop for approval only on structural risk/ambiguity
-  ├─ evidence plan ──────> question + relationships + anchors + views
-  ├─ node.json sources ──> files that can invalidate the answer
-  ├─ author all locales ─> aligned facts, native prose
-  ├─ focused audit ──────> findings only; fix accepted correctness defects
-  ├─ sync <id...> ───────> stamp exactly the reviewed nodes
-  ├─ validate ───────────> repair named schema/tree/link/locale failures
-  └─ status ─────────────> finish only when every in-scope id is fresh
+request
+├─ inspect status / coverage
+│  └─ run the requested command; report
+└─ create / refresh a named scope
+   ├─ status + coverage → intersect facts with scope
+   ├─ empty intersection → stop without rewriting
+   ├─ ordinary authoring → continue
+   └─ deletion, rename, reparenting, large reassignment, ambiguity
+      └─ list exact affected bundles; wait for approval
 ```
 
-## Audit once, before the first sync
+`skills/carto/SKILL.md:39-79`
 
-After authoring, a fresh read-only reviewer receives the complete in-scope node set, default-locale pages, all listed, directly cited, or relationship-relevant source files, and the audit rubric. It inspects only evidence correctness and returns findings without editing or syncing. `skills/carto/references/auditing.md:3-18`
+## Plan one answer and its view spine
 
-The review is deliberately narrow: report a missing or non-load-bearing source, an unsupported cross-file relationship, or executable code that contradicts a claim, flow, view, or reproduced result. Each finding names the exact page location, proving source anchor, and smallest factual correction; style, terminology, presentation, locale parity, and completeness suggestions are out of scope. `skills/carto/references/auditing.md:20-47`
+Each node answers one durable developer question. Start with one end-to-end responsibility or flow, and split only for a neighboring question with a meaningfully distinct owner, entry point, contract, flow, invariant, or change surface that benefits from independent navigation or freshness. `skills/carto/references/documenting.md:7-32`
 
-The agent accepts or evidence-backed rejects each finding, applies accepted factual corrections to every locale, and realigns anchors and `sources`. Only then may `carto sync` bless the bundle. A second audit is warranted only when a finding forces a substantial rewrite of the page's subject or primary flow. `skills/carto/SKILL.md:91-102`
+Before drafting, inspect the implementation, callers, effects, shared contracts, and observable behavior. Build one locale-neutral evidence plan whose coverage map makes every supporting subquestion explicit:
 
-## Close the targeted sync–validate–status loop
+```text
+primary developer question
+├─ supporting subquestion
+│  ├─ reader takeaway
+│  ├─ smallest verified view ── or ── sound prose-only reason
+│  └─ exact executable evidence
+├─ neighboring carto: targets for navigation
+└─ sources = every file whose change could invalidate the answer
+```
 
-Run `carto sync <id> [<id> ...]` with only the reviewed ids. Naming ids stamps their current source hashes and, when available, the current commit without erasing freshness signals elsewhere. Then run `carto validate`; fix the specific schema, tree, locale, source, or logical-link error it reports, re-sync only changed ids, and validate again. Finish with `carto status`, because validation may succeed while out-of-scope pages remain stale and because every touched id must independently return `fresh`. `skills/carto/SKILL.md:104-144` `skills/carto/SKILL.md:210-217` `skills/carto/SKILL.md:313-330`
+`skills/carto/references/documenting.md:34-95` `skills/carto/references/presenting-code.md:9-55`
 
-The command behavior and failure boundaries belong to the [CLI workflow](carto:cli-workflow). This authoring loop supplies the judgment that deterministic commands cannot: whether the question is useful, evidence is load-bearing, prose is accurate, and a structural change is safe. `skills/carto/SKILL.md:17-20` `skills/carto/SKILL.md:104-144`
+The view spine carries sequence, branch, state, relationship, contract comparison, change surface, and reproduced behavior. Prose orients the reader and explains implications instead of narrating the same shape. Every locale preserves the mapped view purposes, facts, links, and exact anchors while using native technical language. `skills/carto/references/presenting-code.md:11-37` `skills/carto/references/presenting-code.md:147-160` `skills/carto/references/documenting.md:97-127`
+
+## Pass two audits before sync
+
+```text
+author every locale from the shared plan
+  ↓
+fresh correctness pass
+  ├─ default-locale pages + node.json + executable sources
+  └─ sources, anchors, relationships, claims, flows, examples
+  ↓ fix accepted factual findings in every locale
+separate fresh presentation pass
+  ├─ every locale + evidence plan + coverage map
+  └─ missing shapes, duplicate/decorative views, distribution, locale purpose
+  ↓ fix accepted presentation findings in every locale
+carto sync <id...>
+  ↓
+carto validate
+  ↓
+carto status → every touched id is fresh
+```
+
+The correctness pass never becomes a style review. It returns evidence-backed factual findings without editing or syncing. `skills/carto/references/auditing.md:3-47` After correctness is clean, a separate fresh read-only presentation pass checks the mapped views without reopening source code or re-auditing facts. Delegated runs use a different reviewer; without delegation, the parent performs a new distinct pass. `skills/carto/SKILL.md:92-110` `skills/carto/references/auditing-presentation.md:3-41`
+
+The parent resolves every accepted finding in all locales before targeted sync. Validation may remain green while unrelated nodes are stale, so final status must still show every touched id as `fresh`. `skills/carto/SKILL.md:92-132`
 
 ## Responsibility boundary
 
-The workflow separates decisions from checks rather than treating automation as an author. The requester sets scope and approves risky structure changes; the coding agent investigates executable evidence and authors the bundle; the fresh reviewer performs the focused correctness pass; and the CLI provides deterministic sync, validation, and freshness gates. `skills/carto/SKILL.md:50-124` `skills/carto/references/documenting.md:34-127` `skills/carto/references/auditing.md:6-47`
-
-| Participant | Owns | Must not substitute for |
+| Participant | Owns | Does not replace |
 | --- | --- | --- |
 | Requester | Defines scope; approves ambiguous or structurally destructive changes. | Evidence selection or CLI results. |
-| Coding agent | Interprets scope, designs the node question and boundary, inspects executable paths, derives `sources`, authors every locale, and fixes accepted audit findings. | Hashing, link resolution, or freshness computation. |
-| Fresh read-only reviewer | Checks source/anchor/relationship and claim/flow correctness across the complete in-scope default-locale set. | Editing, syncing, style review, or locale review. |
-| Carto CLI | Reports status and coverage, stamps explicitly reviewed ids, validates schema/tree/locales/links, and reports final freshness. | Deciding what the page should teach or whether evidence supports its mental model. |
+| Coding agent | Investigates executable paths, designs the question and coverage map, derives `sources`, authors every locale, and resolves findings. | Hashing, link resolution, or freshness calculation. |
+| Correctness reviewer | Checks the complete in-scope default-locale set against executable evidence. | Editing, syncing, presentation review, or locale review. |
+| Presentation reviewer | Checks view-spine coverage and purpose parity across every locale. | Factual corrections, source review, editing, or syncing. |
+| Carto CLI | Reports status and coverage, stamps reviewed ids, validates the document graph, and reports final freshness. | Deciding what a page should teach or whether its evidence and presentation are sufficient. |
 
-A source split, moved responsibility, changed entry point, or altered contract requires revisiting the evidence plan and every locale before targeted sync; it is not fixed by dropping a stale source. `skills/carto/SKILL.md:140-144` `skills/carto/references/documenting.md:81-113` Changes to the broader deterministic and model-evaluated safety net are mapped separately under [verification](carto:verification).
+These role boundaries come from the generation loop and the two audit contracts. `skills/carto/SKILL.md:50-132` `skills/carto/references/auditing.md:6-47` `skills/carto/references/auditing-presentation.md:6-70`
+
+When a source split, responsibility move, entry-point change, or contract change invalidates the plan, revise the coverage map, sources, and every locale before syncing. Dropping a stale source does not refresh an answer. `skills/carto/SKILL.md:141-152` `skills/carto/references/documenting.md:79-127`

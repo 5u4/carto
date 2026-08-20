@@ -3,23 +3,28 @@
   "sources": [
     {
       "file": "skills/carto/SKILL.md",
-      "hash": "bc26c0a57924d010",
-      "commit": "68adf42439396d39f82c15a51300df662b5127db"
+      "hash": "3a8599ef772c389d",
+      "commit": "6ef9b20b9451c748fe70a9711d077509fc282c98"
     },
     {
       "file": "skills/carto/references/documenting.md",
-      "hash": "546e82197acbb461",
-      "commit": "68adf42439396d39f82c15a51300df662b5127db"
+      "hash": "c44c530aeb974a4e",
+      "commit": "6ef9b20b9451c748fe70a9711d077509fc282c98"
     },
     {
       "file": "skills/carto/references/presenting-code.md",
-      "hash": "e7b2c6542cccde5d",
-      "commit": "68adf42439396d39f82c15a51300df662b5127db"
+      "hash": "32bfc47c29b8bc8c",
+      "commit": "6ef9b20b9451c748fe70a9711d077509fc282c98"
     },
     {
       "file": "skills/carto/references/auditing.md",
       "hash": "c4a5ffd5e257a40d",
-      "commit": "68adf42439396d39f82c15a51300df662b5127db"
+      "commit": "6ef9b20b9451c748fe70a9711d077509fc282c98"
+    },
+    {
+      "file": "skills/carto/references/auditing-presentation.md",
+      "hash": "9484898a4a9e0e10",
+      "commit": "6ef9b20b9451c748fe70a9711d077509fc282c98"
     }
   ]
 }

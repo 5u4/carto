@@ -4,47 +4,62 @@
     {
       "file": "packages/cli/src/commands/build.ts",
       "hash": "0b1055c2205b881f",
-      "commit": "68adf42439396d39f82c15a51300df662b5127db"
+      "commit": "6ef9b20b9451c748fe70a9711d077509fc282c98"
     },
     {
       "file": "packages/cli/src/commands/preview.ts",
       "hash": "9e87134b745061e2",
-      "commit": "68adf42439396d39f82c15a51300df662b5127db"
+      "commit": "6ef9b20b9451c748fe70a9711d077509fc282c98"
     },
     {
       "file": "packages/template/src/render.ts",
       "hash": "620744477eeb4399",
-      "commit": "68adf42439396d39f82c15a51300df662b5127db"
+      "commit": "6ef9b20b9451c748fe70a9711d077509fc282c98"
     },
     {
       "file": "packages/template/src/materialize.ts",
       "hash": "f3a8b611962d8292",
-      "commit": "68adf42439396d39f82c15a51300df662b5127db"
+      "commit": "6ef9b20b9451c748fe70a9711d077509fc282c98"
     },
     {
       "file": "packages/template/src/site-config.ts",
       "hash": "db9c6e26a874fab2",
-      "commit": "68adf42439396d39f82c15a51300df662b5127db"
+      "commit": "6ef9b20b9451c748fe70a9711d077509fc282c98"
     },
     {
       "file": "packages/template/src/remark-source-footnotes.ts",
       "hash": "e3b23b6fbc9183e5",
-      "commit": "68adf42439396d39f82c15a51300df662b5127db"
+      "commit": "6ef9b20b9451c748fe70a9711d077509fc282c98"
     },
     {
       "file": "packages/template/src/remark-join-cjk.ts",
       "hash": "11a1593a397791a2",
-      "commit": "68adf42439396d39f82c15a51300df662b5127db"
+      "commit": "6ef9b20b9451c748fe70a9711d077509fc282c98"
     },
     {
       "file": "packages/template/src/staleness-banner.ts",
       "hash": "6bccccd65f12bf11",
-      "commit": "68adf42439396d39f82c15a51300df662b5127db"
+      "commit": "6ef9b20b9451c748fe70a9711d077509fc282c98"
     },
     {
       "file": "packages/template/astro.config.mjs",
       "hash": "17ff17ef7ce20674",
-      "commit": "68adf42439396d39f82c15a51300df662b5127db"
+      "commit": "6ef9b20b9451c748fe70a9711d077509fc282c98"
+    },
+    {
+      "file": "packages/core/src/tree.ts",
+      "hash": "0bbf3a076aff25a1",
+      "commit": "6ef9b20b9451c748fe70a9711d077509fc282c98"
+    },
+    {
+      "file": "packages/core/src/resolver.ts",
+      "hash": "b6298f154bd71674",
+      "commit": "6ef9b20b9451c748fe70a9711d077509fc282c98"
+    },
+    {
+      "file": "packages/core/src/graph.ts",
+      "hash": "89f05873d153d3a8",
+      "commit": "6ef9b20b9451c748fe70a9711d077509fc282c98"
     }
   ]
 }

@@ -4,47 +4,47 @@
     {
       "file": "packages/core/src/hash.ts",
       "hash": "2afef0f45e81f800",
-      "commit": "68adf42439396d39f82c15a51300df662b5127db"
+      "commit": "6ef9b20b9451c748fe70a9711d077509fc282c98"
     },
     {
       "file": "packages/core/src/status.ts",
       "hash": "3761708d35ba6723",
-      "commit": "68adf42439396d39f82c15a51300df662b5127db"
+      "commit": "6ef9b20b9451c748fe70a9711d077509fc282c98"
     },
     {
       "file": "packages/core/src/coverage.ts",
       "hash": "b50bb0f0f5c123ac",
-      "commit": "68adf42439396d39f82c15a51300df662b5127db"
+      "commit": "6ef9b20b9451c748fe70a9711d077509fc282c98"
     },
     {
       "file": "packages/cli/src/commands/status.ts",
       "hash": "05478a9e2973cf8c",
-      "commit": "68adf42439396d39f82c15a51300df662b5127db"
+      "commit": "6ef9b20b9451c748fe70a9711d077509fc282c98"
     },
     {
       "file": "packages/cli/src/commands/coverage.ts",
       "hash": "afa117eeafdc310f",
-      "commit": "68adf42439396d39f82c15a51300df662b5127db"
+      "commit": "6ef9b20b9451c748fe70a9711d077509fc282c98"
     },
     {
       "file": "packages/cli/src/commands/sync.ts",
       "hash": "55db9e9597df4278",
-      "commit": "68adf42439396d39f82c15a51300df662b5127db"
+      "commit": "6ef9b20b9451c748fe70a9711d077509fc282c98"
     },
     {
       "file": "packages/core/src/manifest.ts",
       "hash": "91d1e5f626775ada",
-      "commit": "68adf42439396d39f82c15a51300df662b5127db"
+      "commit": "6ef9b20b9451c748fe70a9711d077509fc282c98"
     },
     {
       "file": "packages/cli/src/git.ts",
       "hash": "0e0d709390d2f137",
-      "commit": "68adf42439396d39f82c15a51300df662b5127db"
+      "commit": "6ef9b20b9451c748fe70a9711d077509fc282c98"
     },
     {
       "file": "skills/carto/SKILL.md",
-      "hash": "bc26c0a57924d010",
-      "commit": "68adf42439396d39f82c15a51300df662b5127db"
+      "hash": "3a8599ef772c389d",
+      "commit": "6ef9b20b9451c748fe70a9711d077509fc282c98"
     }
   ]
 }

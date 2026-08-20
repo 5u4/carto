@@ -13,9 +13,9 @@ Carto 把**文档判断**、**仓库语义**、**命令编排**和**站点渲染
 
 运行时依赖始终朝同一个方向流动：
 
-- **`@carto/core` 负责仓库语义。** 它作为可导入包存在，不依赖 CLI 或渲染器；运行时仅依赖 `zod` 和 `ignore`。它通过公共导出向上层提供磁盘模型、校验原语、树与链接解析、新鲜度及覆盖率等能力。`packages/core/package.json:9-27` `packages/core/src/index.ts:1-10`
-- **`@carto/cli` 是面向用户的控制面。** 它发布 `carto` 可执行文件，并声明对 core 与 template 的依赖；两个底层包都不反向依赖 CLI。`packages/cli/package.json:9-26`
-- **`@carto/template` 是展示边界。** 它导出可供调用的模块，以 core 提供的 Carto 模型为输入，并引入 Astro、Starlight 与 Mermaid 来完成站点物化和呈现。`packages/template/package.json:9-30`
+- **`@carto/core` 负责仓库语义。** 它的运行时依赖只有 `zod` 和 `ignore`，公共导出向上层提供磁盘模型、校验原语、树与链接解析、新鲜度及覆盖率能力。`packages/core/package.json:9-27` `packages/core/src/index.ts:1-10`
+- **`@carto/cli` 是面向用户的控制面。** 它发布 `carto` 可执行文件。`packages/cli/package.json:9-26`
+- **`@carto/template` 是展示边界。** 它导出渲染模块，并引入 Astro、Starlight 与 Mermaid 来完成站点物化和呈现。`packages/template/package.json:9-30`
 
 ```mermaid
 flowchart TD
@@ -24,11 +24,11 @@ flowchart TD
     T -->|依赖| K
 ```
 
-这张图只表达依赖关系：CLI 可以导入两个底层包，template 可以导入 core，而两个底层包都不导入 CLI。具体行为的修改入口由下列专题页面分别说明。`packages/cli/package.json:23-26` `packages/template/package.json:25-30`
+这条单向依赖图让仓库语义同时位于命令编排和展示层之下，各专题页面可以分别承担行为改动面，而不必反转包职责。`packages/cli/package.json:23-26` `packages/template/package.json:25-30`
 
 ## 一次编写请求如何到达站点
 
-1. **确定范围并编写。** 编写契约把人的需求转成边界明确、证据充分且覆盖全部语言的节点集合；这一判断密集型循环见[编写工作流](carto:authoring-workflow)。`skills/carto/SKILL.md:41-102`
+1. **确定范围并编写。** 编写契约把人的需求转成边界明确的节点集合，其中包含可执行证据、view-spine coverage map 和分别写作的各语言页面；第一次同步前还要通过独立的正确性与展示审计。这一判断密集型循环见[编写工作流](carto:authoring-workflow)。`skills/carto/SKILL.md:39-110`
 2. **解释文档集。** core 导出 schema、manifest、tree、graph 与 resolver 等能力，让节点包在内存中获得明确语义；具体契约见[文档模型](carto:document-model)和[导航与联邦](carto:navigation-federation)。`packages/core/src/index.ts:1-10`
 3. **度量，并且只确认审阅过的范围。** 哈希、覆盖率、状态与定向同步的规则见[新鲜度与范围](carto:freshness-scope)。
 4. **经过命令门禁。** 要从可执行入口追踪初始化、校验、同步、构建与预览，请读 [CLI 工作流](carto:cli-workflow)。
