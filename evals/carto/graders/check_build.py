@@ -25,11 +25,15 @@ class RenderedContentParser(HTMLParser):
         self.pages = []
         self.current = None
         self.active_views = []
+        self.document_locale = ""
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         attributes = dict(attrs)
+        if tag == "html":
+            self.document_locale = attributes.get("lang", "")
+            return
         if tag == "main":
-            self.current = {"locale": attributes.get("lang", ""), "parts": [], "views": []}
+            self.current = {"locale": attributes.get("lang") or self.document_locale, "parts": [], "views": []}
             self.active_views = []
             return
         if self.current is None:
