@@ -3,7 +3,7 @@ title: Rendering and publication pipeline
 description: How Carto turns authored multilingual node bundles into a localized Starlight site, publishes it atomically, and previews the built result.
 ---
 
-An authored Carto page is not handed directly to Astro. The renderer first constructs a disposable workspace, projects every local and federated node into Starlight's content tree, applies rendering-only transforms, builds elsewhere, and only then replaces the published `dist-site`. The CLI command is deliberately thin: `carto build` passes the current directory to the template package and converts any thrown error into a failing process. `packages/cli/src/commands/build.ts:1-14`
+An authored Carto page is not handed directly to Astro. Carto projects the documentation graph into a disposable Starlight workspace, builds there, and replaces `dist-site` only after the build succeeds.
 
 ```mermaid
 flowchart TD
@@ -15,57 +15,105 @@ flowchart TD
   F --> G["carto preview<br/>serve the existing build"]
 ```
 
+The CLI remains a thin handoff: `carto build` passes the current directory to the template package and turns a thrown error into a failing process. `packages/cli/src/commands/build.ts:1-14` The renderer owns workspace construction, materialization, Astro, publication, and cleanup. `packages/template/src/render.ts:19-39`
+
 ## Build in an isolated workspace
 
-`buildSite` resolves the documentation root, creates a real temporary `carto-render-*` directory, and keeps generated source, Astro cache, and build output inside it. It links dependencies, writes generated content and Astro configuration, materializes the documentation graph, runs `astro build`, and publishes only after Astro succeeds. The `finally` block removes the workspace on both success and failure. `packages/template/src/render.ts:19-39`
+`buildSite` makes that ownership and control flow explicit:
 
-This separation has two useful boundaries. Authored `.carto` bundles remain the source of truth rather than becoming an Astro content tree in place, and an incomplete Astro output never becomes the public site. The workspace configuration files are tiny re-exports of the template's compiled content collection and Astro configuration, so the build does not fork those contracts per repository. `packages/template/src/render.ts:126-137`
+```text
+buildCommand.run()
+└─ buildSite(process.cwd())
+   ├─ resolve doc root; create real carto-render-* workspace
+   ├─ create Astro cache; link dependencies
+   ├─ write content and Astro configuration
+   ├─ materialize(root, workspace/src/content/docs)
+   ├─ runAstro(build, output = workspace/output)
+   ├─ publish(workspace/output, root/dist-site)
+   └─ finally: remove workspace
+```
+
+`packages/cli/src/commands/build.ts:4-13` `packages/template/src/render.ts:19-39`
+
+The authored `.carto` bundles therefore remain the source of truth, and incomplete Astro output cannot become the public site. The generated workspace files merely re-export the template's compiled content collection and shared Astro configuration rather than forking those contracts per repository. `packages/template/src/render.ts:126-137`
 
 ### Dependency linking without reinstalling
 
-The workspace receives a synthesized `node_modules`. Carto traverses the template package's dependencies first, handles scoped packages recursively, and then considers dependencies installed at the documentation root. Existing destinations win. Most packages are directory symlinks to their real installation; Starlight itself is copied with symlinks dereferenced so its package-local resolution remains coherent inside the temporary tree. `packages/template/src/render.ts:86-123`
+Carto synthesizes the workspace's `node_modules` from template dependencies first and then dependencies installed at the documentation root; an existing destination wins. Most packages become directory symlinks, while Starlight is copied with symlinks dereferenced so package-local resolution stays coherent in the temporary tree. Scoped package directories are traversed recursively. `packages/template/src/render.ts:86-123`
 
-The shared Astro configuration reads `CARTO_ROOT` for authored data and `CARTO_WORKSPACE` for generated content. It loads the graph, user configuration, localized titles, and the source-footnote page map; then it points `srcDir` and the cache at the workspace while keeping the canonical site output at the documentation root. The configured pipeline installs CJK joining and source-footnote remark/rehype plugins, Mermaid, and Starlight with Carto-owned locale and sidebar data. `packages/template/astro.config.mjs:10-34`
+The shared Astro configuration reads authored data through `CARTO_ROOT` and generated content through `CARTO_WORKSPACE`. It points source and cache paths into the workspace, loads the graph, user configuration, titles, and source-footnote page map, and installs CJK joining, source-footnote remark/rehype passes, Mermaid, and Starlight with Carto-owned locales and sidebar data. `packages/template/astro.config.mjs:10-34`
 
 ## Materialize the authored graph
 
-Materialization loads the complete local/federated graph and computes titles and freshness before writing pages. It iterates the root site's locale set across every doc set and node. If a federated doc set lacks a site locale, Carto warns and reads that set's default-locale page instead; the output still occupies the requested site locale. Each page then passes through logical-link rewriting and staleness-banner injection before being written to its generated target. `packages/template/src/materialize.ts:21-49`
+Materialization is a page-by-page data flow, not an in-place edit:
 
-The target path preserves the node's parent chain. Non-default locales gain a locale prefix, and federated sets gain their graph prefix, so one immutable node identity maps to the correct Starlight content path without changing the authored bundle. `packages/template/src/materialize.ts:85-90`
+```text
+loadGraph(root)
+├─ collectGraphTitles(graph)
+├─ collectFreshness(graph)
+└─ for each doc set × node × site locale
+   ├─ choose requested locale or doc-set default; warn on fallback
+   ├─ read authored locale page
+   ├─ rewriteLinks(page, localized graph context)
+   ├─ injectStalenessBanner(page, node status)
+   ├─ targetPath(parent chain, locale prefix, federation prefix)
+   └─ write generated MDX
+```
 
-Authored Markdown links stay logical until this stage. For each ordinary Markdown target beginning with `carto:`, the resolver supplies the localized URL; an empty link label is filled from the target's locale title, then its default-locale title, then its id. Unresolvable targets are left untouched rather than being guessed during rendering. `packages/template/src/materialize.ts:92-123` See [navigation and federation](carto:navigation-federation) for how those identities resolve.
+`packages/template/src/materialize.ts:21-49` `packages/template/src/materialize.ts:85-123`
+
+The output path preserves the node's parent chain. Non-default locales gain a locale prefix, and federated sets gain their graph prefix. Logical `carto:` Markdown targets become localized URLs here; empty labels fall back through the target locale title, default-locale title, and node id. An unresolvable target remains unchanged rather than being guessed. `packages/core/src/tree.ts:13-29` `packages/core/src/graph.ts:44-89` `packages/core/src/resolver.ts:52-84` See [navigation and federation](carto:navigation-federation) for identity and URL resolution.
 
 ### Rendering-only source and language transforms
 
-Before Markdown transformation, Carto maps each generated page path to its effective locale and the exact `node.json` source set. This lets the plugin recognize citations in the context of the page being rendered, including localized and federated target paths. `packages/template/src/remark-source-footnotes.ts:46-60`
+Before Markdown transformation, Carto maps every generated page to its effective locale and exact `node.json` source set, including localized and federated targets. `packages/template/src/remark-source-footnotes.ts:46-60`
 
-The remark plugin turns eligible inline-code citations into deduplicated footnote references and appends their definitions. Exact tracked file names are accepted, as are repository-relative `path:line` and `path:start-end` addresses with valid ascending lines; code blocks, links, existing footnotes, definitions, and JSX are deliberately skipped. Thus authored MDX retains canonical machine-readable anchors while the human site gets compact source notes. `packages/template/src/remark-source-footnotes.ts:63-91` `packages/template/src/remark-source-footnotes.ts:118-163`
+The remark pass converts eligible inline-code citations into deduplicated footnotes and appends their definitions. It accepts exact tracked paths and repository-relative `path:line` or ascending `path:start-end` addresses; code blocks, links, existing footnotes, definitions, and JSX stay untouched. The authored MDX keeps canonical machine-readable anchors while the site receives compact source notes. `packages/template/src/remark-source-footnotes.ts:63-91` `packages/template/src/remark-source-footnotes.ts:118-163`
 
-A rehype pass unwraps the generated reference presentation and localizes the footnote section heading, distinguishing a source-only section from one that also contains author-written notes. `packages/template/src/remark-source-footnotes.ts:94-115`
+The rehype pass unwraps the generated reference presentation and localizes the footnote heading, distinguishing source-only footnotes from a section that also contains author notes. `packages/template/src/remark-source-footnotes.ts:94-115` The CJK remark pass removes a soft line break only when both neighboring characters belong to its declared CJK class, including em dash and ellipsis; it walks text nodes rather than rewriting code or structure. `packages/template/src/remark-join-cjk.ts:7-40`
 
-Chinese, Japanese, and related scripts often use source line wrapping without semantic spaces. The CJK remark plugin defines the supported character ranges (plus em dash and ellipsis) and removes only soft line breaks whose characters on both sides are in that class; it walks Markdown text nodes rather than rewriting code or structure. `packages/template/src/remark-join-cjk.ts:7-40`
-
-Freshness is also a presentation concern at build time, not an authored-page mutation. For nodes classified `stale` or `missing`, Carto inserts a warning into YAML frontmatter, lists changed or absent source paths with HTML escaping, and preserves any explicit author-provided `banner`. Fresh and unsynced pages pass through unchanged. `packages/template/src/staleness-banner.ts:3-26` The state itself is explained in [freshness and scope](carto:freshness-scope).
+Freshness banners are another build-time presentation transform. `stale` and `missing` states add an escaped list of affected source paths unless the author already supplied a `banner`; fresh and unsynced pages pass through unchanged. `packages/template/src/staleness-banner.ts:3-26` The state calculation is covered in [freshness and scope](carto:freshness-scope).
 
 ## Localized navigation remains Carto-owned
 
-Carto maps the manifest's default locale to Starlight's `root` locale and builds a recursive sidebar from parent relationships. Local and federated doc sets share the graph sidebar; labels use each node's extracted locale title, and federated sets form separately labeled groups. Home redirects are emitted once per site locale. `packages/template/src/site-config.ts:7-87`
+Carto maps the manifest's default locale to Starlight's `root` locale and derives a recursive sidebar from graph parentage. Local and federated sets share that graph sidebar, federated sets form labeled groups, and each site locale receives a home redirect. `packages/template/src/site-config.ts:7-87`
 
-Titles are read from each locale file's YAML frontmatter before materialization, giving sidebar labels and empty-link labels the same authored source. `packages/template/src/site-config.ts:90-127` The Starlight site title defaults to the documentation root's exact basename and falls back to `Carto` only when that basename is empty; an explicit `starlight.title` remains the final override. `packages/template/src/site-config.ts:174-180` `packages/template/astro.config.mjs:10-32` A repository may supply `carto.config.mjs` or `carto.config.js` with additional Starlight options, but Carto validates the default export and retains ownership of `locales` and `sidebar` when merging, preventing user configuration from breaking graph-derived navigation. `packages/template/src/site-config.ts:142-181`
+Frontmatter titles are collected before materialization, so sidebar labels and empty-link labels share one authored source. `packages/template/src/site-config.ts:90-127` The site title defaults to the documentation root's exact basename, falls back to `Carto` only for an empty basename, and yields to an explicit `starlight.title`. A user `carto.config.mjs` or `carto.config.js` may add Starlight options, but the merged `locales` and `sidebar` remain Carto-owned. `packages/template/src/site-config.ts:142-181` `packages/template/astro.config.mjs:10-32`
 
 ## Publish atomically
 
-Astro writes into the temporary workspace, not directly over the prior site. Publication copies that complete output to a uniquely named staging directory beside `dist-site`. If an old site exists, Carto renames it to a unique backup, renames staging into place, and removes the backup only after the new destination exists. If the staging rename fails after an old site was moved, Carto attempts to rename the backup back into place before rethrowing. Cleanup removes abandoned staging; if that restoration also fails, it deliberately preserves the backup instead of deleting it. `packages/template/src/render.ts:139-169`
+Publication uses filesystem renames as its commit protocol:
 
-That rename sequence is the commit point: failures during graph loading, materialization, plugins, or Astro leave the previous `dist-site` untouched, while a failure at the final swap attempts to restore the previous site from its backup. If restoration itself fails, the backup remains preserved.
+```text
+copy complete workspace/output → sibling staging
+if dist-site exists: rename dist-site → backup
+try rename staging → dist-site
+catch:
+  if previous site moved: rename backup → dist-site
+  rethrow
+if previous site moved: remove backup
+finally:
+  remove staging
+  remove backup only when publication succeeded or restoration completed
+```
 
-## Preview serves; it does not build
+`packages/template/src/render.ts:139-169`
 
-`carto preview` is a separate handoff with host and port options. The command passes the current root and parsed port to the template package and reports template errors in the same CLI form as `build`. `packages/cli/src/commands/preview.ts:1-18`
+Failures before publication leave the old `dist-site` untouched. A failed final swap attempts to restore it; if restoration also fails, the backup is deliberately preserved instead of being erased.
 
-The template refuses to preview unless `dist-site` already exists as a directory, validates a non-empty host and an integer port from 1 through 65535, and then creates another disposable workspace containing only the runtime configuration and linked dependencies needed by `astro preview`. It points Astro at the existing published output, forwards termination signals, and removes the preview workspace when the server exits. It never materializes authored pages and never republishes the site. `packages/template/src/render.ts:42-83`
+## Build hands the published result to preview
 
-In practice, run `carto build` after authoring or freshness work, then `carto preview` to inspect exactly that published artifact. The former is a transformation and atomic publication boundary; the latter is only a server for the boundary's existing result. CLI command sequencing and error behavior are covered in [the CLI workflow](carto:cli-workflow).
+| Boundary | `carto build` | `carto preview` |
+| --- | --- | --- |
+| Required input | Authored local/federated graph | Existing `dist-site` directory |
+| Disposable workspace | Generated content, config, cache, dependencies | Runtime config, cache, dependencies |
+| Astro operation | `build` into `workspace/output` | `preview` pointed at `dist-site` |
+| Effect on publication | Atomically replaces `dist-site` after success | Never materializes or republishes |
+| Process lifecycle | Fails when Astro fails | Forwards termination signals; cleans up after exit |
+
+`packages/cli/src/commands/build.ts:1-14` `packages/cli/src/commands/preview.ts:1-18` `packages/template/src/render.ts:19-83` `packages/template/src/render.ts:181-204`
+
+Run `carto build` after authoring or freshness work, then `carto preview` to inspect exactly that published artifact. Host must be nonempty, port must be an integer from 1 through 65535, and a missing `dist-site` is rejected with an instruction to build first. CLI sequencing and error behavior are covered in [the CLI workflow](carto:cli-workflow).
 
 ## Where to change the pipeline
 

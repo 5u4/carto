@@ -6,15 +6,53 @@ This presentation palette adapts Markdown-native code views from HumanLayer's `s
 - Fixed upstream commit: `3c2629142c5d437428269b1b722b08c0b87f574d`
 - License: MIT, Copyright (c) 2026 HumanLayer. See [LICENSE.show-me](../LICENSE.show-me) for the full license text.
 
-## Select views by subquestion
+## Build the view spine
 
-Prefer a verified text code shape over paragraphs that verbally reconstruct the same calls, branches, files, or states. Use prose to orient the reader, connect implications, and state evidence; let the view carry the shape.
+Before drafting a locale, build a locale-neutral **view spine**. It maps each
+load-bearing supporting subquestion involving sequence, branch, state,
+relationship, contract comparison, change surface, or reproduced behavior to
+the smallest verified view. Choose prose-only only when a view adds no value,
+and record why.
 
-There is no fixed view count. A page may use none, one, or several. Every view must solve a distinct supporting subquestion under the node's primary developer question. Remove views that repeat the prose, duplicate another view, inventory code without explaining it, or answer a neighboring node's question.
+Record the spine as a coverage map with one row per supporting subquestion:
 
-Keep all views inline in the Carto Markdown/MDX page. Use Markdown/MDX-native structures such as fenced text, code, diff, Mermaid, and tables. Do not create standalone HTML, SVG, image, or generated-diagram artifacts. Keep each view only as large as its subquestion requires.
+- supporting subquestion;
+- reader takeaway;
+- chosen view or prose-only reason;
+- exact executable evidence.
 
-The examples here show presentation shapes, not evidence about the repository being documented. Verify every authored label, edge, path, code fragment, state transition, and example against that repository.
+Let the mapped subquestions determine the views. Prefer a verified text code
+shape over prose that reconstructs the same calls, branches, files, or states.
+Use prose to orient the reader, connect implications, and state evidence. Remove
+a view when it repeats prose, duplicates another view, inventories code without
+explaining it, or answers a neighboring node's question.
+
+Keep views inline in the Carto Markdown/MDX page. Use Markdown/MDX-native
+structures such as fenced text, code, diff, Mermaid, and tables. Keep each view
+only as large as its subquestion requires. Do not create standalone HTML, SVG,
+image, or generated-diagram artifacts.
+
+The examples here show presentation shapes, not evidence about the repository
+being documented. Verify every authored label, edge, path, code fragment, state
+transition, and example against that repository.
+
+## Test the spine
+
+Test every coverage-map row before locale authoring:
+
+- The chosen view carries the stated takeaway and preserves the executable
+  shape that matters to the supporting subquestion.
+- Its form is the smallest one that keeps the verified order, branches,
+  relationships, states, contract cases, or reproduced values legible.
+- Adjacent prose explains the implication instead of narrating the view, and a
+  neighboring view does not carry the same purpose.
+- The view is repository-specific. Its labels and structure could not describe
+  an unrelated codebase unchanged.
+- Every visible claim and relationship has exact executable evidence. Apply the
+  evidence rules below when authoring the page.
+
+Replace a view that fails these tests, or choose prose-only and record the
+reason in the map.
 
 ## Text code shapes
 

@@ -3,51 +3,100 @@ title: Verification strategy
 description: How deterministic CI and pipeline checks complement Carto's real-model authoring evaluation.
 ---
 
-Carto verifies two different things. Ordinary CI asks whether known behavior still works under repeatable inputs. The Waza evaluation asks whether a coding agent, given the Carto skill and a small unfamiliar codebase, can follow the authoring workflow and leave behind useful rendered documentation. Neither result substitutes for the other.
+Carto verifies two different things. Ordinary CI asks whether known behavior still works under repeatable inputs. The Waza evaluation asks whether a coding agent can follow Carto's authoring workflow on a small unfamiliar codebase and leave useful rendered documentation. Neither result substitutes for the other.
 
-## Verification map
-
-The root scripts keep the deterministic lanes explicit: recursive package build and typecheck, the regular Vitest suite, comment linting, and a separately configured pipeline suite. `package.json:9-14`
-
-CI runs those lanes in order after a frozen install on Node 22: build, typecheck, lint, unit tests, then the pipeline test. It never invokes the model evaluation, so a green pull request is reproducible and does not depend on model output. `.github/workflows/ci.yml:8-31`
+## Verification lanes
 
 | Question | Deterministic unit / CI checks | Deterministic pipeline test | Waza real-model evaluation |
 | --- | --- | --- | --- |
 | Input | Checked-in code and fixed test fixtures | Hand-written doc sets plus scripted source mutations | A natural-language task and an unfamiliar rate-limiter fixture |
 | Actor | TypeScript, shell, and Vitest processes | The built `carto` executable and a live preview server | `copilot-sdk` running `claude-sonnet-4.6` |
 | Defended behavior | Compilation, types, comment policy, and focused contracts | End-to-end CLI state transitions and rendered-site invariants | Whether an agent follows the skill and produces bilingual, buildable, code-grounded docs |
-| Repeatability | Deterministic | Deterministic | Model-dependent; configured as one serial trial |
-| Pull-request gate | Yes | Yes | No; it is not called by CI |
+| Repeatability | Deterministic | Deterministic | Model-dependent; three serial trials |
+| Pull-request gate | Yes | Yes | No |
 
-The separation is deliberate in effect: CI protects implementation contracts, while the evaluation measures the agent behavior described in the [authoring workflow](carto:authoring-workflow).
+The lane definitions come from the root scripts, CI workflow, and evaluation configuration. `package.json:9-14` `.github/workflows/ci.yml:8-31` `scripts/lint-comments.sh:13-26` `evals/carto/eval.yaml:9-19`
 
-## What the pipeline proves
+## CI and the pipeline workflow
 
-The pipeline test executes the already-built CLI against temporary copies rather than mocking command internals. Its runtime moves through these observable states. `tests/pipeline/carto-pipeline.test.ts:116-226`
+The pull-request path is an ordered, reproducible workflow:
 
-1. **Unsynced authored docs → valid covered site.** Bare `sync` fingerprints the initial node sources; `validate` must pass; `coverage` must report all three files under the configured code root; and `build` must emit English and Chinese source footnotes, source identifiers, and no unresolved `carto:` hrefs. `tests/pipeline/carto-pipeline.test.ts:137-163`
-2. **Built site → live preview.** A real preview process serves the nested feed URL, returns rendered content, and exits cleanly when terminated. `tests/pipeline/carto-pipeline.test.ts:165-172`
-3. **Fresh → stale → refreshed.** Replacing `src/user.ts` must make `status` fail. The test then installs revised authoring for only the `user` node, runs targeted `sync user`, requires green status, rebuilds, and checks that old and new concepts coexist in the output. `tests/pipeline/carto-pipeline.test.ts:174-193`
-4. **Local graph → federated graph.** The manifest gains a file-backed glossary and both locale pages gain a logical cross-doc-set link. Validation and build must still pass; the output must mount the glossary below an alias-and-hash prefix, mount the local set below `/self/`, and rewrite the cross-set link without leaving a `carto:` href. `tests/pipeline/carto-pipeline.test.ts:195-220`
+```text
+GitHub Actions: check (Node 22)
+├─ checkout; set up pnpm and Node cache
+├─ pnpm install --frozen-lockfile
+├─ pnpm build
+├─ pnpm typecheck
+├─ pnpm lint
+├─ pnpm test
+└─ pnpm test:pipeline
+   └─ Vitest drives packages/cli/dist/index.js and a real preview process
+```
 
-This is the deterministic end-to-end defense for the state transitions explained in [freshness and scope](carto:freshness-scope) and for the build/preview lifecycle in the [rendering pipeline](carto:rendering-pipeline). It establishes what the executable does when supplied valid hand-written docs; it does not establish that a model can author those docs.
+`.github/workflows/ci.yml:8-31` `package.json:9-14` `tests/pipeline/carto-pipeline.test.ts:8-24` `tests/pipeline/carto-pipeline.test.ts:116-125`
+
+There is no model-evaluation step in CI. A green pull request therefore defends implementation contracts without depending on a fresh model response; the Waza lane instead measures the agent behavior described in the [authoring workflow](carto:authoring-workflow).
+
+## Observable pipeline state transitions
+
+The pipeline test copies hand-written fixtures into a temporary root and exercises the built CLI rather than mocking command internals. Its assertions define four observable transitions:
+
+| Transition | Trigger and command path | Required observation |
+| --- | --- | --- |
+| Unsynced docs → validated, built site | `sync` → `validate` → `coverage` → `build` | At least three nodes; coverage scans a three-file code root; bilingual source footnotes and identifiers; no unresolved `carto:` href |
+| Built site → live preview | Start `preview`; request `/overview/feed/`; terminate process | Rendered `authorId` is served and the process exits cleanly |
+| Fresh → stale → refreshed | Replace `src/user.ts`; `status`; install revised `user` docs; `sync user`; `status`; `build` | First status is nonzero; refreshed status is green; old and new concepts coexist in HTML |
+| Local graph → federated graph | Add file-backed glossary and bilingual logical links; `validate`; `build` | Glossary mounts under alias-hash, local pages under `/self/`, cross-set URL resolves, no `carto:` href remains |
+
+`tests/pipeline/carto-pipeline.test.ts:126-163` `packages/cli/src/commands/coverage.ts:4-27` `tests/pipeline/carto-pipeline.test.ts:165-193` `tests/pipeline/carto-pipeline.test.ts:195-220`
+
+This lane defends the state changes explained in [freshness and scope](carto:freshness-scope) and the build/preview lifecycle in the [rendering pipeline](carto:rendering-pipeline). It proves what the executable does with valid hand-written docs; it does not prove that a model can author them.
 
 ## What the real-model evaluation measures
 
-The Waza suite is configured as a lightweight end-to-end smoke: one 900-second, non-parallel trial through `copilot-sdk`, using `claude-sonnet-4.6` and the repository's Carto skill directory. `evals/carto/eval.yaml:1-19`
+Waza runs three non-parallel trials through `copilot-sdk`, each with a 900-second cap, using `claude-sonnet-4.6` and the repository's Carto skill directory. `evals/carto/eval.yaml:1-19`
 
-The task gives the model a pre-initialized documentation root whose checked-in `carto.json` declares `en` and `zh` and points `codeRoot` at the rate-limiter fixture. The model must read all three source files, choose the smallest useful node set, author both locale pages with frontmatter, use logical links where appropriate, audit before the first sync, then reach successful `sync`, `validate`, and `build`. The node count is intentionally not prescribed: the behavior under evaluation includes documentation judgment, not initialization or mere file emission. `evals/carto/fixtures/carto.json:1-6` `evals/carto/tasks/generate.yaml:1-53`
+The pre-initialized root declares `en` and `zh` and points `codeRoot` at the rate-limiter fixture. The task leaves node count and view syntax open, but requires two observable explanations in every locale: one structural `TokenBucket.take` decision view comparing the `refilled < 1` branch with both outcomes, and one executed `sampleApiLimitTrace()` invocation with all five returned records. The agent must then run the correctness audit and a separate fresh presentation audit before `sync`, `validate`, and `build`. `evals/carto/fixtures/carto.json:1-6` `evals/carto/tasks/generate.yaml:11-44`
 
-That makes this a local, model-dependent evaluation rather than a CI gate: CI contains no eval step, while this suite explicitly selects a real model and executor. Its single-trial result is evidence that one agent run completed the workflow, not a deterministic regression proof.
+Three successful trials provide repeated evidence across model runs; they do not become a deterministic regression proof.
 
-## Fixture-to-grader contract
+## Fixture-to-grader input and output
 
-The fixture is small, but its three files force the generated page to explain a contract, an implementation, and a usage boundary:
+The evaluation boundary now carries concrete behavior from fixture to rendered contract:
 
-- `RateLimitDecision` carries `allowed`, remaining whole tokens, and retry delay; `RateLimiter.take(nowMs)` is the abstraction consumed by callers. `evals/carto/fixtures/rate-limiter/src/rate-limit-contract.ts:1-8`
-- `TokenBucket` starts full, rejects time moving backwards, refills continuously up to capacity, denies when fewer than one token is available with a computed retry delay, and otherwise spends one token. `evals/carto/fixtures/rate-limiter/src/token-bucket.ts:3-47`
-- The API layer fixes a two-token bucket refilling continuously at one token per second, adapts a decision to a boolean, and exposes a five-sample trace over repeated and advancing timestamps. `evals/carto/fixtures/rate-limiter/src/api-request-limiter.ts:4-18`
+```text
+inputs
+├─ rate-limit-contract.ts: RateLimiter and RateLimitDecision
+├─ token-bucket.ts: refill → refilled < 1 → deny or spend
+└─ api-request-limiter.ts: sampleApiLimitTrace()
+        │
+        ▼
+task: read → map view spine → author en/zh → audit twice → sync → validate → build
+        │
+        ▼
+required rendered evidence in each locale
+├─ decision view
+│  ├─ deny:  allowed false; floor remaining; ceil retry
+│  └─ allow: allowed true;  floor remaining; zero retry
+└─ sampleApiLimitTrace()
+   ├─ 1000  true   1     0
+   ├─ 1000  true   0     0
+   ├─ 1000  false  0  1000
+   ├─ 1500  false  0   500
+   └─ 2000  true   0     0
+        │
+        ▼
+graders
+├─ deterministic program
+│  ├─ find semantic views inside rendered <main lang="en|zh">
+│  ├─ verify both decision outcomes and exact ordered trace records
+│  ├─ require matching locale kind, order, and page role for decision/trace views
+│  └─ reject missing pages, empty output, flowchart LR, or unresolved carto: hrefs
+└─ in-session source-grounded model rubric
+   └─ judge utility, coverage, necessity, nonduplication, distribution,
+      repository specificity, behavioral evidence, and locale alignment
+```
 
-The task contract says the model must read and document those files. The supplied `carto.json` lets the skill enter its authoring branch without transferring initialization ownership to the agent; the file grader requires that manifest to remain present, and the program grader checks observable build artifacts. `evals/carto/fixtures/carto.json:1-6` `evals/carto/tasks/generate.yaml:32-53` It requires at least one node, an English and Chinese page beside every node, a nonempty `dist-site`, rendered occurrences of `TokenBucket` and `sampleApiLimitTrace`, and no unresolved `carto:` link in HTML. `evals/carto/graders/check_build.py:7-43`
+`evals/carto/fixtures/rate-limiter/src/rate-limit-contract.ts:1-8` `evals/carto/fixtures/rate-limiter/src/token-bucket.ts:3-47` `evals/carto/fixtures/rate-limiter/src/api-request-limiter.ts:4-18` `evals/carto/graders/check_build.py:9-19` `evals/carto/graders/check_build.py:22-303` `evals/carto/graders/check_build.py:306-369` `evals/carto/tasks/generate.yaml:55-91`
 
-This boundary matters when changing the evaluation. Edit the fixture when the authoring problem should change, edit the task when the agent's obligations should change, and edit the grader only when the externally observable success condition should change. Strengthening prose quality solely in the prompt will not make it a deterministic assertion; strengthening the grader requires a robust output invariant rather than one preferred node shape.
+The deterministic grader accepts semantic containers such as code blocks, row- or column-oriented tables, fixed-width records, figures, definition lists, and lists without prescribing headings, node count, Mermaid, or one exact syntax. It defends concrete behavior and locale structure. The prompt rubric resumes the completed task session, evaluates six source-grounded quality criteria, and must finish with exactly one grading tool call. The task owns obligations; the two graders cover machine-stable invariants and qualitative developer value separately.

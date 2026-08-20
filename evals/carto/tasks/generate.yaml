@@ -20,13 +20,26 @@ inputs:
       ./rate-limiter/src/api-request-limiter.ts, then generate the smallest useful
       Carto node set. One node is allowed when it sufficiently documents the
       codebase; do not force either one node or multiple nodes.
+    - In every locale, include a verified branch/decision view for
+      `TokenBucket.take`. Make the `refilled < 1` decision and both outcomes
+      directly comparable in one Markdown/MDX-native view, retaining the exact
+      identifiers and executable expressions `TokenBucket`, `refilled < 1`,
+      `allowed: false`, `allowed: true`, `remaining`, `retryAfterMs`,
+      `Math.floor`, and `Math.ceil`. Choose the view syntax that best fits the
+      decision; the node count, headings, and use of Mermaid remain open.
+    - Execute `sampleApiLimitTrace()` and, in every locale, render its complete
+      returned records with the exact `atMs`, `allowed`, `remaining`, and
+      `retryAfterMs` values in execution order. Keep the function name or
+      invocation adjacent to this structurally readable result rather than
+      describing it only in prose.
     - For every node write .carto/docs/<id>/node.json and
       .carto/docs/<id>/<locale>.mdx for every declared locale. Every .mdx MUST
       begin with a YAML frontmatter block
       containing a `title:` field.
     - Link nodes with carto: links when they are related.
-    - After authoring, complete the Carto skill's correctness audit before the
-      first carto sync. Then run carto sync, carto validate, and carto build.
+    - After authoring, complete the Carto skill's correctness audit and then its
+      separate fresh read-only presentation audit before the first carto sync.
+      Then run carto sync, carto validate, and carto build.
 
     Do not stop until `carto validate` exits 0 and `carto build` succeeds.
   files:
@@ -46,6 +59,36 @@ graders:
       command: python3
       args: ["evals/carto/graders/check_build.py"]
       timeout: 60
+  - type: prompt
+    name: visual_explanation_quality
+    config:
+      continue_session: true
+      mode: independent
+      prompt: |
+        Use the source files and generated locale pages already present in this
+        completed task session. Do not call any tool except the final grading
+        tool, delegate, run commands, edit files, or inspect build output.
+
+        Evaluate these six criteria against the source:
+
+        1. Developers can recover ownership, contract, decision branches, and
+           trace behavior without reconstructing them from paragraphs.
+        2. Every view answers a load-bearing subquestion without duplicating
+           adjacent prose; decorative views and raw source dumps fail.
+        3. Views are distributed beside their subquestions rather than
+           front-loaded before unsupported prose.
+        4. Labels, branches, expressions, records, and relationships are
+           repository-specific and source-correct.
+        5. The TokenBucket view shows the real condition and both field-level
+           outcomes; the sampleApiLimitTrace result is exact and ordered.
+        6. English and Chinese preserve view purposes, relationships, and order
+           while each locale reads naturally.
+
+        If every criterion passes, call `set_waza_grade_pass` exactly once with
+        the six criterion verdicts in `reason`. Otherwise call
+        `set_waza_grade_fail` exactly once with the failed criteria and smallest
+        corrections in `reason`. Make exactly one grading tool call and return
+        no prose.
   - type: file
     name: wrote_nodes
     config:

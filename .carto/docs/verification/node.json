@@ -4,52 +4,62 @@
     {
       "file": "package.json",
       "hash": "83f082075382c852",
-      "commit": "68adf42439396d39f82c15a51300df662b5127db"
+      "commit": "6ef9b20b9451c748fe70a9711d077509fc282c98"
     },
     {
       "file": ".github/workflows/ci.yml",
       "hash": "1c56f2b4a78556eb",
-      "commit": "68adf42439396d39f82c15a51300df662b5127db"
+      "commit": "6ef9b20b9451c748fe70a9711d077509fc282c98"
     },
     {
       "file": "tests/pipeline/carto-pipeline.test.ts",
       "hash": "e0df92348ecf2b9b",
-      "commit": "68adf42439396d39f82c15a51300df662b5127db"
+      "commit": "6ef9b20b9451c748fe70a9711d077509fc282c98"
     },
     {
       "file": "evals/carto/eval.yaml",
-      "hash": "b1fa9f86d7c7ca6c",
-      "commit": "68adf42439396d39f82c15a51300df662b5127db"
+      "hash": "33b87bb605f27f83",
+      "commit": "6ef9b20b9451c748fe70a9711d077509fc282c98"
     },
     {
       "file": "evals/carto/tasks/generate.yaml",
-      "hash": "adbcebce448e6c94",
-      "commit": "68adf42439396d39f82c15a51300df662b5127db"
+      "hash": "3762f66d9d1e4226",
+      "commit": "6ef9b20b9451c748fe70a9711d077509fc282c98"
     },
     {
       "file": "evals/carto/fixtures/carto.json",
       "hash": "02a46f95c4a6929a",
-      "commit": "68adf42439396d39f82c15a51300df662b5127db"
+      "commit": "6ef9b20b9451c748fe70a9711d077509fc282c98"
     },
     {
       "file": "evals/carto/graders/check_build.py",
-      "hash": "4a74baa42289822e",
-      "commit": "68adf42439396d39f82c15a51300df662b5127db"
+      "hash": "104e05694e41b4a7",
+      "commit": "6ef9b20b9451c748fe70a9711d077509fc282c98"
     },
     {
       "file": "evals/carto/fixtures/rate-limiter/src/rate-limit-contract.ts",
       "hash": "37a2c51dafff946a",
-      "commit": "68adf42439396d39f82c15a51300df662b5127db"
+      "commit": "6ef9b20b9451c748fe70a9711d077509fc282c98"
     },
     {
       "file": "evals/carto/fixtures/rate-limiter/src/token-bucket.ts",
       "hash": "c4e6e1614085a3b8",
-      "commit": "68adf42439396d39f82c15a51300df662b5127db"
+      "commit": "6ef9b20b9451c748fe70a9711d077509fc282c98"
     },
     {
       "file": "evals/carto/fixtures/rate-limiter/src/api-request-limiter.ts",
       "hash": "f6911d28d5e60223",
-      "commit": "68adf42439396d39f82c15a51300df662b5127db"
+      "commit": "6ef9b20b9451c748fe70a9711d077509fc282c98"
+    },
+    {
+      "file": "scripts/lint-comments.sh",
+      "hash": "9f0444dcb36850e4",
+      "commit": "6ef9b20b9451c748fe70a9711d077509fc282c98"
+    },
+    {
+      "file": "packages/cli/src/commands/coverage.ts",
+      "hash": "afa117eeafdc310f",
+      "commit": "6ef9b20b9451c748fe70a9711d077509fc282c98"
     }
   ]
 }

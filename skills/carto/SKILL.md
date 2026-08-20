@@ -54,9 +54,10 @@ generate without saying what, ask. Pure **inspection** ("which docs are
 stale?", "what code is undocumented?") needs no scope — just run `carto status`
 / `carto coverage` and report.
 
-**Pre-sync gate:** on every creation or refresh run, complete the post-authoring
-audit in step 6 before the first `carto sync`. Sync stamps reviewed content;
-never use it to bless a bundle that has not passed that audit.
+**Pre-sync gate:** on every creation or refresh run, complete the correctness
+audit in step 6 and the separate presentation audit in step 7 before the first
+`carto sync`. Sync stamps reviewed content; never bless a bundle that has not
+passed both audits.
 
 Given a scope:
 
@@ -78,8 +79,8 @@ Given a scope:
    describe the structural change, and wait for approval before touching files.
 
 3. Start with the smallest useful node set and build one locale-neutral
-   developer-question and evidence plan per proposed node before writing any
-   `node.json` record or locale.
+   developer-question and evidence plan with a view spine coverage map per node
+   before writing any `node.json` record or locale.
 
 4. Derive each node's `sources` from the evidence that could invalidate its
    content, then write the in-scope `node.json` records only. Touch no other
@@ -89,32 +90,39 @@ Given a scope:
    declared locale from the same evidence plan.
 
 6. After authoring, read [auditing.md](references/auditing.md) in full for the
-   first time; do not load it during inspection, planning, or authoring. When
-   delegation is available, assign exactly one fresh read-only reviewer
-   subagent to the complete in-scope doc set. Give it every in-scope
-   `node.json`, every default-locale MDX path, the relevant source paths, and
-   the audit rubric. It returns findings only and never edits or syncs. When
-   delegation is unavailable, the parent performs the same audit in one
-   distinct fresh pass. The parent fixes every accepted finding, propagates the
-   same factual corrections to all locales, aligns anchors with `sources`, and
-   may reject a finding only with exact code evidence. Run this audit once;
-   repeat it only when a finding forces a substantial rewrite of a page's
-   subject or primary flow.
+   first time; do not load it during inspection, planning, or authoring. Run
+   its focused correctness audit. When delegation is available, assign exactly
+   one fresh read-only reviewer subagent to the complete in-scope doc set. Give
+   it every in-scope `node.json`, every default-locale MDX path, the relevant
+   source paths, and the audit rubric. It returns findings only and never edits
+   or syncs. When delegation is unavailable, the parent performs the same audit
+   in one distinct fresh pass. The parent fixes every accepted finding,
+   propagates the same factual corrections to all locales, aligns anchors with
+   `sources`, and may reject a finding only with exact code evidence. Run this
+   audit once; repeat it only when a finding forces a substantial rewrite of a
+   page's subject or primary flow.
 
-7. carto sync <id> [<id> ...]   Bless exactly the correctness-clean nodes — the
-   CLI recomputes their source hashes and stamps the current commit. Naming the
-   ids is what keeps every other page's freshness untouched.
+7. After the correctness audit is clean, read
+   [auditing-presentation.md](references/auditing-presentation.md) in full for
+   the first time. Run its separate fresh read-only presentation audit with a
+   different reviewer from step 6. If delegation is unavailable, the parent
+   performs a new distinct pass. Resolve every finding under that reference's
+   parent-handling rules. Complete this audit once before the first sync.
 
-8. carto validate   Checks schema, tree, and links, and that in-scope pages are
+8. carto sync <id> [<id> ...]   Bless exactly the audit-clean nodes. The CLI
+   recomputes their source hashes and stamps the current commit. Naming the ids
+   keeps every other page's freshness untouched.
+
+9. carto validate   Checks schema, tree, and links, and that in-scope pages are
    synced. On error, fix the mdx or node.json it names, then run targeted
    `carto sync <id>` and validate again. Leftover stale pages outside your scope
    are expected and reported as warnings — not your job this run.
 
-9. carto status   Confirm every id you set out to write or refresh is now
-   `fresh`. If one is still `stale`, review its source changes, update its
-   prose, run targeted `carto sync <id>`, and re-check. Return to step 6 only
-   when this requires a substantial rewrite of the page's subject or primary
-   flow.
+10. carto status   Confirm every id you set out to write or refresh is now
+    `fresh`. If one is still `stale`, review its source changes, update its
+    prose, run targeted `carto sync <id>`, and re-check. Return to the
+    correctness audit in step 6 only when this requires a substantial rewrite
+    of the page's subject or primary flow.
 ```
 
 Never leave a run until `carto validate` exits 0 **and** `carto status` reports
@@ -286,19 +294,19 @@ content. This section defines how those decisions map onto carto's nodes and
 
 ## Locale discipline
 
-- **Share evidence, author prose natively.** Before drafting, establish one
-  locale-neutral contract for the node: its primary developer question,
-  boundary, supported claims, `carto:` targets, code anchors, and presentation
-  structure. Then write each locale directly from the code and that contract.
-  Each page should read as if it was conceived in that language for its local
-  technical audience.
-- **Keep facts and views aligned, not sentences.** Locales answer the same
-  developer question, preserve every `carto:` target and every complete
+- **Share evidence, author prose natively.** Before drafting, establish the
+  locale-neutral evidence plan and view spine coverage map required by the
+  authoring references. Then write each locale directly from the code and that
+  plan. Each page should read as if it was conceived in that language for its
+  local technical audience.
+- **Keep facts and view purposes aligned, not sentences.** Locales answer the
+  same developer question, preserve every `carto:` target and every complete
   repository-relative `path:line` or `path:start-end` anchor verbatim, and keep
-  equivalent code-shaped views in the same explanatory role. Link labels,
-  headings, paragraph structure, terminology, examples, and explanation order
-  may differ when the locale reads more naturally that way. Any heading targeted
-  by a `carto:<id>#<anchor>` link must expose that same anchor in every locale.
+  each mapped view purpose and verified relationship in the same explanatory
+  role. Link labels, headings, paragraph structure, terminology, examples, and
+  explanation order may differ when the locale reads more naturally that way.
+  Any heading targeted by a `carto:<id>#<anchor>` link must expose that same
+  anchor in every locale.
 - **Read each locale in isolation.** Read it without the default-locale page
   beside it. Rewrite calques, source-language sentence shapes, unnatural
   transitions, and terminology that local practitioners would not use. A

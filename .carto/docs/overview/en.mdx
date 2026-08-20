@@ -13,9 +13,9 @@ The repository root is the monorepo control plane rather than another runtime la
 
 The runtime dependency graph points in one direction:
 
-- **`@carto/core` is the repository-semantics layer.** It is an importable package with no dependency on the CLI or renderer; its only runtime dependencies are `zod` and `ignore`. Its public surface makes the disk model, validation primitives, tree and link resolution, freshness, and coverage behavior available to higher layers. `packages/core/package.json:9-27` `packages/core/src/index.ts:1-10`
-- **`@carto/cli` is the user-facing control plane.** It publishes the `carto` binary and declares dependencies on both core and template, while neither lower package depends back on the CLI. `packages/cli/package.json:9-26`
-- **`@carto/template` is the presentation boundary.** It exports an importable module, depends on core for Carto’s model, and brings in Astro, Starlight, and Mermaid for site materialization and presentation. `packages/template/package.json:9-30`
+- **`@carto/core` is the repository-semantics layer.** Its runtime dependencies are `zod` and `ignore`; its public surface provides the disk model, validation primitives, tree and link resolution, freshness, and coverage behavior. `packages/core/package.json:9-27` `packages/core/src/index.ts:1-10`
+- **`@carto/cli` is the user-facing control plane.** It publishes the `carto` binary. `packages/cli/package.json:9-26`
+- **`@carto/template` is the presentation boundary.** It exports the rendering module and brings in Astro, Starlight, and Mermaid for site materialization and presentation. `packages/template/package.json:9-30`
 
 ```mermaid
 flowchart TD
@@ -24,11 +24,11 @@ flowchart TD
     T -->|depends on| K
 ```
 
-The diagram is a dependency map: CLI can import both lower packages, template can import core, and neither lower package imports CLI. The focused pages below own behavioral change surfaces. `packages/cli/package.json:23-26` `packages/template/package.json:25-30`
+This one-way graph keeps repository semantics below both command orchestration and presentation, so the focused pages can own behavioral change surfaces without reversing package responsibilities. `packages/cli/package.json:23-26` `packages/template/package.json:25-30`
 
 ## From an authoring request to a site
 
-1. **Scope and author.** The authoring contract turns a human request into a bounded, evidence-backed, localized node set. [Authoring workflow](carto:authoring-workflow) explains that judgment-heavy loop. `skills/carto/SKILL.md:41-102`
+1. **Scope and author.** The authoring contract turns a human request into a bounded node set with executable evidence, a view-spine coverage map, and native locale pages; separate correctness and presentation audits gate the first sync. [Authoring workflow](carto:authoring-workflow) explains that judgment-heavy loop. `skills/carto/SKILL.md:39-110`
 2. **Interpret the document set.** Core exposes the schema, manifest, tree, graph, and resolver facilities that give node bundles their in-memory meaning. Follow their contracts through [Document model](carto:document-model) and [Navigation and federation](carto:navigation-federation). `packages/core/src/index.ts:1-10`
 3. **Measure and bless deliberately.** Continue with [Freshness and scope](carto:freshness-scope) for hashes, coverage, status, and targeted sync.
 4. **Apply command gates.** Use [CLI workflow](carto:cli-workflow) to trace initialization, validation, sync, build, and preview from the executable entry.
